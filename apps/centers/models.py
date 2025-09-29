@@ -1,11 +1,27 @@
 from django.db import models
-from apps.common.models import TimeStampedModel
+from apps.common.models import NamedModel
 
-# Create your models here.
-class Center(TimeStampedModel):
-    code = models.CharField(max_length=10, unique=True)
-    name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=20, blank=True)
-    email = models.EmailField(blank=True)
+
+class Center(NamedModel):
     address = models.CharField(max_length=255, blank=True)
-    is_active = models.BooleanField(default=True)
+    phone = models.CharField(max_length=20, blank=True)
+    avatar = models.ImageField(upload_to="center_avatars/", null=True, blank=True)
+    description = models.TextField(blank=True)
+
+
+def __str__(self):
+    return self.name
+
+
+class Room(models.Model):
+    center = models.ForeignKey(Center, on_delete=models.CASCADE, related_name="rooms")
+    name = models.CharField(max_length=100)
+    note = models.CharField(max_length=255, blank=True)
+
+
+class Meta:
+    unique_together = (("center", "name"),)
+
+
+def __str__(self):
+    return f"{self.center.name} - {self.name}"
