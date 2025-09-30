@@ -29,7 +29,9 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
-
+# Login settings
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "redirect_by_role"
 
 # Application definition
 
