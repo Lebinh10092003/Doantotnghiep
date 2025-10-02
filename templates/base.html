@@ -4,6 +4,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <script>
+        document.body.addEventListener('htmx:configRequest', function (e) {
+        e.detail.headers['X-CSRFToken'] =
+            document.querySelector('meta[name="csrf-token"]').content;
+        });
+    </script>
+
     <title>
       {% block title %}
         HOME
@@ -18,17 +26,27 @@
     <link rel="stylesheet" href="{% static 'compiled/css/app.css' %}">
     <link rel="stylesheet" href="{% static 'compiled/css/app-dark.css' %}">
     <link rel="stylesheet" href="{% static 'compiled/css/iconly.css' %}">
+    <link rel="icon" type="image/png" href="{% static 'compiled/png/favicon.png' %}">
+
+    <!-- Google Font: Be Vietnam Pro -->
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     {% block extra_css %}
     {% endblock %}
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="{% static 'extensions/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'static/js/pages/component-toasts.js' %}"></script>
   </head>
+
   <body>
+    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
     <div id="app">
         <div id="sidebar">
             <div class="sidebar-wrapper active">
                 <div class="sidebar-header position-relative">
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="logo">
-                            <a href="#">
+                            <a href="{% url 'common:home' %}">
                               <img src="{% static 'compiled/svg/logo.svg' %}" alt="Logo">
                             </a>
                         </div>
@@ -90,16 +108,14 @@
         </div>
     </div>
   <!-- JS -->
-  <script src="{% static 'static/js/components/dark.js' %}"></script>
-  <script src="{% static 'extensions/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
-  <script src="{% static 'compiled/js/app.js' %}"></script>
 
-  <!-- Need: Apexcharts -->
-  <script src="{% static 'extensions/apexcharts/apexcharts.min.js' %}"></script>
-  <script src="{% static 'static/js/pages/dashboard.js' %}"></script>
+    <script src="{% static 'static/js/components/dark.js' %}"></script>
+    <script src="{% static 'extensions/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
+    <script src="{% static 'compiled/js/app.js' %}"></script>
+    <script src="{% static 'static/js/pages/component-toasts.js' %}"></script>
+    <script src="{% static 'static/js/pages/toastify.js' %}"></script>
     {% block extra_js %}
     {% endblock %}
-    <script src="{% static '/js/main.js' %}"></script>
 </body>
 
 </html>

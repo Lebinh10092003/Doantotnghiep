@@ -1,8 +1,5 @@
-const Swal2 = Swal.mixin({
-  customClass: {
-    input: 'form-control'
-  }
-})
+// ===== SweetAlert2 base =====
+const Swal2 = Swal.mixin({ customClass: { input: 'form-control' } });
 
 const Toast = Swal.mixin({
   toast: true,
@@ -10,174 +7,93 @@ const Toast = Swal.mixin({
   showConfirmButton: false,
   timer: 3000,
   timerProgressBar: true,
-  didOpen: (toast) => {
-    toast.addEventListener('mouseenter', Swal.stopTimer)
-    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  didOpen: (t) => {
+    t.addEventListener('mouseenter', Swal.stopTimer);
+    t.addEventListener('mouseleave', Swal.resumeTimer);
   }
-})
+});
 
+// ===== Modal helper =====
+function handleModalAndMaybeRedirect(payload) {
+  return Swal.fire({
+    icon: payload.icon || 'info',
+    title: payload.title || '',
+    text: payload.text || '',
+    confirmButtonText: 'OK'
+  }).then(() => {
+    if (payload.redirect) {
+      window.location.href = payload.redirect;
+    }
+  });
+}
 
+// ===== Toast helper =====
+function fireToast(icon, title) {
+  if (!icon || !title) return;
+  Toast.fire({ icon, title });
+}
 
+// ===== Parsers =====
+function tryJsonNotify(xhr) {
+  try {
+    const data = JSON.parse(xhr.responseText || '{}');
+    if (data.modal) {
+      handleModalAndMaybeRedirect(data.modal);
+      return true;
+    }
+    const p = data.toast || data;
+    if (p && p.icon && p.title) {
+      fireToast(p.icon, p.title);
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
 
-document.getElementById("basic").addEventListener("click", (e) => {
-  Swal2.fire("Any fool can use a computer")
-})
-document.getElementById("footer").addEventListener("click", (e) => {
-  Swal2.fire({
-    icon: "error",
-    title: "Oops...",
-    text: "Something went wrong!",
-    footer: "<a href>Why do I have this issue?</a>",
-  })
-})
-document.getElementById("title").addEventListener("click", (e) => {
-  Swal2.fire("The Internet?", "That thing is still around?", "question")
-})
-document.getElementById("success").addEventListener("click", (e) => {
-  Swal2.fire({
-    icon: "success",
-    title: "Success",
-  })
-})
-document.getElementById("error").addEventListener("click", (e) => {
-  Swal2.fire({
-    icon: "error",
-    title: "Error",
-  })
-})
-document.getElementById("warning").addEventListener("click", (e) => {
-  Swal2.fire({
-    icon: "warning",
-    title: "Warning",
-  })
-})
-document.getElementById("info").addEventListener("click", (e) => {
-  Swal2.fire({
-    icon: "info",
-    title: "Info",
-  })
-})
-document.getElementById("question").addEventListener("click", (e) => {
-  Swal2.fire({
-    icon: "question",
-    title: "Question",
-  })
-})
-document.getElementById("text").addEventListener("click", (e) => {
-  Swal2.fire({
-    title: "Enter your IP address",
-    input: "text",
-    inputLabel: "Your IP address",
-    showCancelButton: true,
-  })
-})
-document.getElementById("email").addEventListener("click", async (e) => {
-  const { value: email } = await Swal2.fire({
-    title: "Input email address",
-    input: "email",
-    inputLabel: "Your email address",
-    inputPlaceholder: "Enter your email address",
-  })
-
-  if (email) {
-    Swal2.fire(`Entered email: ${email}`)
+function tryHeaderTrigger(xhr) {
+  const h = xhr.getResponseHeader('HX-Trigger') ||
+            xhr.getResponseHeader('HX-Trigger-After-Settle') ||
+            xhr.getResponseHeader('HX-Trigger-After-Swap');
+  if (!h) return false;
+  try {
+    const obj = JSON.parse(h);
+    if (obj.modal) {
+      handleModalAndMaybeRedirect(obj.modal);
+      return true;
+    }
+    const p = obj.toast || obj.Toast || null;
+    if (p && p.icon && p.title) {
+      fireToast(p.icon, p.title);
+      return true;
+    }
+  } catch (_) {
+    // nếu header là chuỗi đơn giản
+    fireToast('info', h);
+    return true;
   }
-})
-document.getElementById("url").addEventListener("click", async (e) => {
-  const { value: url } = await Swal2.fire({
-    input: "url",
-    inputLabel: "URL address",
-    inputPlaceholder: "Enter the URL",
-  })
+  return false;
+}
 
-  if (url) {
-    Swal2.fire(`Entered URL: ${url}`)
-  }
-})
-document.getElementById("password").addEventListener("click", async (e) => {
-  const { value: password } = await Swal2.fire({
-    title: "Enter your password",
-    input: "password",
-    inputLabel: "Password",
-    inputPlaceholder: "Enter your password",
-    inputAttributes: {
-      maxlength: 10,
-      autocapitalize: "off",
-      autocorrect: "off",
-    },
-  })
+function tryHtmlDataToast(target) {
+  const el = target.querySelector('[data-swal-icon][data-swal-title]') ||
+             target.querySelector('[data-toast-icon][data-toast-title]');
+  if (!el) return false;
+  const icon = el.dataset.swalIcon || el.dataset.toastIcon;
+  const title = el.dataset.swalTitle || el.dataset.toastTitle;
+  fireToast(icon, title);
+  return true;
+}
 
-  if (password) {
-    Swal2.fire(`Entered password: ${password}`)
-  }
-})
-document.getElementById("textarea").addEventListener("click", async (e) => {
-  const { value: text } = await Swal2.fire({
-    input: "textarea",
-    inputLabel: "Message",
-    inputPlaceholder: "Type your message here...",
-    inputAttributes: {
-      "aria-label": "Type your message here",
-    },
-    showCancelButton: true,
-  })
+// ===== HTMX integration =====
+document.body.addEventListener('htmx:afterRequest', (e) => {
+  if (tryJsonNotify(e.detail.xhr)) return;
+  if (tryHeaderTrigger(e.detail.xhr)) return;
+});
 
-  if (text) {
-    Swal2.fire(text)
-  }
-})
-document.getElementById("select").addEventListener("click", async (e) => {
-  const { value: fruit } = await Swal2.fire({
-    title: "Select field validation",
-    input: "select",
-    inputOptions: {
-      Fruits: {
-        apples: "Apples",
-        bananas: "Bananas",
-        grapes: "Grapes",
-        oranges: "Oranges",
-      },
-      Vegetables: {
-        potato: "Potato",
-        broccoli: "Broccoli",
-        carrot: "Carrot",
-      },
-      icecream: "Ice cream",
-    },
-    inputPlaceholder: "Select a fruit",
-    showCancelButton: true,
-    inputValidator: (value) => {
-      return new Promise((resolve) => {
-        if (value === "oranges") {
-          resolve()
-        } else {
-          resolve("You need to select oranges :)")
-        }
-      })
-    },
-  })
+document.body.addEventListener('htmx:afterSwap', (e) => {
+  tryHtmlDataToast(e.detail.target);
+});
 
-  if (fruit) {
-    Swal2.fire(`You selected: ${fruit}`)
-  }
-})
-
-// Toasts
-document.getElementById('toast-success').addEventListener('click', () => {
-  Toast.fire({
-    icon: 'success',
-    title: 'Signed in successfully'
-  })
-})
-document.getElementById('toast-warning').addEventListener('click', () => {
-  Toast.fire({
-    icon: 'warning',
-    title: 'Please input your email'
-  })
-})
-document.getElementById('toast-failed').addEventListener('click', () => {
-  Toast.fire({
-    icon: 'error',
-    title: 'Transaction error. Please try again later'
-  })
-})
+// ===== Export helpers =====
+window.fireToast = fireToast;
+window.handleModalAndMaybeRedirect = handleModalAndMaybeRedirect;
