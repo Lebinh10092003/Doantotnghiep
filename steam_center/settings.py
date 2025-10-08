@@ -23,6 +23,7 @@ LOGIN_REDIRECT_URL = "redirect_by_role"
 
 # Session settings
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+LOGIN_REDIRECT_URL = "common:dashboard"
 
 # Application definition
 
@@ -54,6 +55,7 @@ INSTALLED_APPS = [
     "apps.billing",
     "apps.notifications",
     "apps.reports",
+    "apps.rewards",
 ]
 
 MIDDLEWARE = [
@@ -64,6 +66,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_htmx.middleware.HtmxMiddleware",
 ]
 
 ROOT_URLCONF = "steam_center.urls"

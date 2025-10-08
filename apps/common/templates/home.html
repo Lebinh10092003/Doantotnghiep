@@ -141,7 +141,7 @@
                     <a
                       href="
                       {% if user.is_authenticated %}
-                          
+                          {% url 'common:dashboard' %}
                       {% else %}
                           {% url 'accounts:login' %}
                       {% endif %}
@@ -165,7 +165,7 @@
                     <a
                       href="
                       {% if user.is_authenticated %}
-                          
+                          {% url 'common:dashboard' %}
                       {% else %}
                           {% url 'accounts:login' %}
                       {% endif %}
@@ -189,7 +189,7 @@
                     <a
                       href="
                       {% if user.is_authenticated %}
-                          
+                          {% url 'common:dashboard' %}
                       {% else %}
                           {% url 'accounts:login' %}
                       {% endif %}

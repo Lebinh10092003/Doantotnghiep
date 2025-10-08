@@ -1,4 +1,5 @@
 {% load static %}
+{% load group_tags %}
 <!DOCTYPE html>
 <html lang="vi">
   <head>
@@ -37,7 +38,6 @@
     <script src="{% static 'extensions/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'static/js/pages/component-toasts.js' %}"></script>
   </head>
-
   <body>
     <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
     <div id="app">
@@ -85,27 +85,83 @@
                         </div>
                     </div>
                 </div>
-                <div class="sidebar-menu">
-                  <ul class="menu">
-                    <li class="sidebar-title">Menu</li>
+                <ul class="menu">
 
-                        <li class="sidebar-item  ">
-                            <a href="index.html" class='sidebar-link'>
-                                <i class="bi bi-grid-fill"></i>
-                                <span>Dashboard</span>
-                            </a>
+                <!-- Dashboard -->
+                <li class="sidebar-item {% if request.path == '/dashboard/' %}active{% endif %}">
+                    <a href="{% url 'common:dashboard' %}" class="sidebar-link">
+                    <i class="bi bi-grid-fill"></i><span>Dashboard</span>
+                    </a>
+                </li>
 
+                <!-- ADMIN -->
+                {% if user.is_superuser or user|in_group:"ADMIN" %}
+                    <li class="sidebar-item {% if request.path == '/accounts/manage/' %}active{% endif %}">
+                    <a href="{% url 'accounts:manage_accounts' %}" class="sidebar-link">
+                        <i class="bi bi-people"></i><span>Users</span>
+                    </a>
+                    </li>
+                    <li class="sidebar-item {% if '/centers/' in request.path %}active{% endif %}">
+                    <a href="#" class="sidebar-link">
+                        <i class="bi bi-building"></i><span>Centers</span>
+                    </a>
+                    </li>
 
-                        </li>
-                  </ul>
+                    <li class="sidebar-item {% if '/classes/' in request.path %}active{% endif %}">
+                    <a href="#" class="sidebar-link">
+                        <i class="bi bi-journal-bookmark"></i><span>Classes</span>
+                    </a>
+                    </li>
 
-                </div>
+                    <li class="sidebar-item {% if '/reports/' in request.path %}active{% endif %}">
+                    <a href="#" class="sidebar-link">
+                        <i class="bi bi-graph-up"></i><span>Reports</span>
+                    </a>
+                    </li>
+                {% endif %}
+
+                <!-- TEACHER -->
+                {% if user.is_superuser or user|in_any_group:"TEACHER,ADMIN" %}
+                    <li class="sidebar-item {% if '/my-classes/' in request.path %}active{% endif %}">
+                    <a href="#" class="sidebar-link">
+                        <i class="bi bi-calendar-event"></i><span>My Classes</span>
+                    </a>
+                    </li>
+
+                    <li class="sidebar-item {% if '/attendance/' in request.path %}active{% endif %}">
+                    <a href="#" class="sidebar-link">
+                        <i class="bi bi-clipboard-check"></i><span>Attendance</span>
+                    </a>
+                    </li>
+                {% endif %}
+
+                <!-- SALES STAFF -->
+                {% if user.is_superuser or user|in_group:"STAFF_SALES" %}
+                    <li class="sidebar-item {% if '/sales/' in request.path %}active{% endif %}">
+                    <a href="#" class="sidebar-link">
+                        <i class="bi bi-kanban"></i><span>Leads</span>
+                    </a>
+                    </li>
+                {% endif %}
+
+                <!-- Luôn hiển thị -->
+                <li class="sidebar-item {% if '/profile/' in request.path %}active{% endif %} mt-3">
+                    <a href="#" class="sidebar-link">
+                    <i class="bi bi-person"></i><span>Profile</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-item">
+                    <a href="{% url 'accounts:logout' %}" class="sidebar-link">
+                    <i class="bi bi-box-arrow-right"></i><span>Logout</span>
+                    </a>
+                </li>
+
+                </ul>
             </div>
         </div>
-        <div id="main">
-          {% block content %}
-          {% endblock %}
-        </div>
+        {% block content %}
+        {% endblock %}
     </div>
   <!-- JS -->
 
