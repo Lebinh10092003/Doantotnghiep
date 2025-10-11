@@ -46,7 +46,7 @@
                         class="dataTable-selector form-select form-select-sm w-auto"
                         hx-get="{% url 'accounts:manage_accounts' %}"
                         hx-target="#accounts-table"
-                        hx-include="[name='q'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
+                        hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
                         hx-trigger="change">
                   <option value="5" {% if per_page|default:10 == 5 %}selected{% endif %}>5</option>
                   <option value="10" {% if per_page|default:10 == 10 %}selected{% endif %}>10</option>
@@ -54,91 +54,83 @@
                 </select>
                 <label class="mb-0">entries per page</label>
               </div>
-
-              <!-- Right controls: search, filter, group -->
-              <div class="d-flex align-items-center gap-2">
+              <div class="d-flex flex-wrap align-items-center gap-2" style="width:100%;">
 
                 <!-- Search -->
-                <div class="dataTable-search">
-                  <input
-                    name="q"
-                    value="{{ q|default:'' }}"
-                    class="dataTable-input form-control form-control-sm"
-                    style="width: 180px"
-                    placeholder="Search name, email, phone"
-                    hx-get="{% url 'accounts:manage_accounts' %}"
-                    hx-target="#accounts-table"
-                    hx-include="[name='q'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
-                    hx-trigger="keyup changed delay:500ms" />
+                <div class="dataTable-search flex-grow-1" style="min-width:180px;">
+                  <input name="q" value="" class="dataTable-input form-control form-control-sm"
+                        style="width:100%; max-width:250px;"
+                        placeholder="Search name, email, phone"
+                        hx-get="/accounts/manage/"
+                        hx-target="#accounts-table"
+                        hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
+                        hx-trigger="keyup changed delay:500ms">
                 </div>
 
-                <!-- Status filter -->
-                <div class="dataTable-filter">
-                  <select name="status"
-                          class="form-select form-select-sm w-auto"
-                          hx-get="{% url 'accounts:manage_accounts' %}"
+                <!-- Center filter -->
+                <div class="dataTable-center">
+                  <select name="center" class="form-select form-select-sm w-auto"
+                          hx-get="/accounts/manage/"
                           hx-target="#accounts-table"
-                          hx-include="[name='q'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
+                          hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
                           hx-trigger="change">
-                    <option value="" {% if status == "" %}selected{% endif %}>All status</option>
-                    <option value="active" {% if status == "active" %}selected{% endif %}>Active</option>
-                    <option value="inactive" {% if status == "inactive" %}selected{% endif %}>Inactive</option>
+                    <option value="">All centers</option>
+                    {% for c in centers_list %}
+                      <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
                   </select>
                 </div>
 
-                <!-- Role filter (groups) -->
-                <div class="dataTable-role">
-                  <select name="role"
-                          class="form-select form-select-sm w-auto"
-                          hx-get="{% url 'accounts:manage_accounts' %}"
+                <!-- Status -->
+                <div class="dataTable-filter">
+                  <select name="status" class="form-select form-select-sm w-auto"
+                          hx-get="/accounts/manage/"
                           hx-target="#accounts-table"
-                          hx-include="[name='q'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
+                          hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
                           hx-trigger="change">
-                    <option value="" {% if role == "" %}selected{% endif %}>All roles</option>
-                    {# Expect view cung cấp groups_list: a list of role names.
-                       Nếu không có thì mục này sẽ trống. #}
-                    {% for group in groups_list|default_if_none:'' %}
-                      <option value="{{ group }}" {% if role == group %}selected{% endif %}>{{ group }}</option>
+                    <option value="">All status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+
+                <!-- Role (groups) -->
+                <div class="dataTable-role">
+                  <select name="role" class="form-select form-select-sm w-auto"
+                          hx-get="/accounts/manage/"
+                          hx-target="#accounts-table"
+                          hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
+                          hx-trigger="change">
+                    <option value="">All roles</option>
+                    {% for g in groups_list %}
+                      <option value="{{ g }}">{{ g }}</option>
                     {% endfor %}
                   </select>
                 </div>
 
                 <!-- Group by -->
                 <div class="dataTable-groupby">
-                  <select name="group_by"
-                          class="form-select form-select-sm w-auto"
-                          hx-get="{% url 'accounts:manage_accounts' %}"
+                  <select name="group_by" class="form-select form-select-sm w-auto"
+                          hx-get="/accounts/manage/"
                           hx-target="#accounts-table"
-                          hx-include="[name='q'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
+                          hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
                           hx-trigger="change">
-                    <option value="" {% if group_by == "" %}selected{% endif %}>No group</option>
-                    <option value="role" {% if group_by == "role" %}selected{% endif %}>Group by role</option>
-                    <option value="center" {% if group_by == "center" %}selected{% endif %}>Group by center</option>
+                    <option value="">No group</option>
+                    <option value="role">Group by role</option>
+                    <option value="center">Group by center</option>
                   </select>
                 </div>
 
               </div>
             </div>
-
             <!-- TABLE - this container will be swapped by HTMX -->
             <div id="accounts-table">
               {% include "_accounts_table.html" %}
             </div>
-
           </div>
         </div>
       </div>
     </section>
   </div>
-
-  <footer>
-    <div class="footer clearfix mb-0 text-muted">
-      <div class="float-start"><p>2023 © Mazer</p></div>
-      <div class="float-end">
-        <p>Crafted with <span class="text-danger"><i class="bi bi-heart-fill icon-mid"></i></span>
-          by <a href="https://saugi.me">Saugi</a></p>
-      </div>
-    </div>
-  </footer>
 </div>
 {% endblock %}

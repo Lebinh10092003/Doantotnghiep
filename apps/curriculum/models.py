@@ -5,9 +5,8 @@ from apps.common.models import NamedModel
 class Subject(NamedModel):
     description = models.TextField(blank=True)
 
-
-def __str__(self):
-    return self.name
+    def __str__(self):
+        return self.name
 
 
 class Module(models.Model):
@@ -19,13 +18,13 @@ class Module(models.Model):
     description = models.TextField(blank=True)
 
 
-class Meta:
-    unique_together = (("subject", "order"),)
-    ordering = ["subject", "order"]
+    class Meta:
+        unique_together = (("subject", "order"),)
+        ordering = ["subject", "order"]
 
 
-def __str__(self):
-    return f"{self.subject.name} - Học phần {self.order}: {self.title}"
+    def __str__(self):
+        return f"{self.subject.name} - Học phần {self.order}: {self.title}"
 
 
 class Lesson(models.Model):
@@ -35,13 +34,13 @@ class Lesson(models.Model):
     objectives = models.TextField(blank=True)
 
 
-class Meta:
-    unique_together = (("module", "order"),)
-    ordering = ["module", "order"]
+    class Meta:
+        unique_together = (("module", "order"),)
+        ordering = ["module", "order"]
 
 
-def __str__(self):
-    return f"{self.module.title} - Bài {self.order}: {self.title}"
+    def __str__(self):
+        return f"{self.module.title} - Bài {self.order}: {self.title}"
 
 
 class Lecture(models.Model):
@@ -53,8 +52,8 @@ class Lecture(models.Model):
     video_url = models.URLField(blank=True, null=True)
 
 
-def __str__(self):
-    return f"Bài giảng của {self.lesson.title}"
+    def __str__(self):
+        return f"Bài giảng của {self.lesson.title}"
 
 
 class Exercise(models.Model):
@@ -70,5 +69,5 @@ class Exercise(models.Model):
     )
 
 
-def __str__(self):
-    return f"Bài tập của {self.lesson.title}"
+    def __str__(self):
+        return f"Bài tập của {self.lesson.title}"

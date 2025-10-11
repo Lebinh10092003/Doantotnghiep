@@ -6,8 +6,6 @@ from django.conf import settings
 ROLE_CHOICES = [
     ("ADMIN", "Admin"),
     ("CENTER_MANAGER", "Center Manager"),
-    ("STAFF", "Staff"),
-    ("STAFF_SALES", "Sales Staff"),
     ("TEACHER", "Teacher"),
     ("ASSISTANT", "Assistant"),
     ("PARENT", "Parent"),
