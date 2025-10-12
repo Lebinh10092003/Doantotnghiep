@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.reports",
     "apps.rewards",
 ]
+INSTALLED_APPS += ["django_seed"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
