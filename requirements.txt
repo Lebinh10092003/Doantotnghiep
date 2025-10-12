@@ -20,3 +20,7 @@ django-cors-headers==4.5.0
 
 # Optional: For production 
 whitenoise==6.7.0
+# Load environment variables from .env file
+python-dotenv>=1.0.0
+# HTMX support
+django-htmx==1.18.0
