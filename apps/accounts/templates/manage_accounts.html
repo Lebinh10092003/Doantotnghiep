@@ -14,14 +14,14 @@
     <div class="page-title">
       <div class="row">
         <div class="col-12 col-md-6 order-md-1 order-last">
-          <h3>Accounts</h3>
-          <p class="text-subtitle text-muted">Account management</p>
+          <h3>Tài khoản</h3>
+          <p class="text-subtitle text-muted">Quản lý người dùng</p>
         </div>
         <div class="col-12 col-md-6 order-md-2 order-first">
           <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
             <ol class="breadcrumb">
-              <li class="breadcrumb-item"><a href="{% url 'accounts:manage_accounts' %}">User</a></li>
-              <li class="breadcrumb-item active" aria-current="page">Accounts</li>
+              <li class="breadcrumb-item"><a href="{% url 'accounts:manage_accounts' %}">Người dùng</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Danh sách người dùng</li>
             </ol>
           </nav>
         </div>
@@ -31,7 +31,7 @@
     <section class="section">
       <div class="card">
         <div class="card-header">
-          <h5 class="card-title">Accounts Table</h5>
+          <h5 class="card-title">Danh sách tài khoản</h5>
         </div>
 
         <div class="card-body">
@@ -44,13 +44,13 @@
               <div class="dataTable-dropdown d-flex align-items-center gap-2">
                 <select name="per_page"
                         class="dataTable-selector form-select form-select-sm w-auto"
-                        hx-get="{% url 'accounts:manage_accounts' %}"
+                        hx-get="/accounts/manage/"
                         hx-target="#accounts-table"
                         hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
                         hx-trigger="change">
-                  <option value="5" {% if per_page|default:10 == 5 %}selected{% endif %}>5</option>
-                  <option value="10" {% if per_page|default:10 == 10 %}selected{% endif %}>10</option>
-                  <option value="25" {% if per_page|default:10 == 25 %}selected{% endif %}>25</option>
+                  <option value="5" {% if request.GET.per_page == '5' %}selected{% endif %}>5</option>
+                  <option value="10" {% if request.GET.per_page == '10' or not request.GET.per_page %}selected{% endif %}>10</option>
+                  <option value="25" {% if request.GET.per_page == '25' %}selected{% endif %}>25</option>
                 </select>
                 <label class="mb-0">entries per page</label>
               </div>
@@ -58,7 +58,7 @@
 
                 <!-- Search -->
                 <div class="dataTable-search flex-grow-1" style="min-width:180px;">
-                  <input name="q" value="" class="dataTable-input form-control form-control-sm"
+                  <input name="q" value="{{ request.GET.q|default:'' }}" class="dataTable-input form-control form-control-sm"
                         style="width:100%; max-width:250px;"
                         placeholder="Search name, email, phone"
                         hx-get="/accounts/manage/"
@@ -76,7 +76,7 @@
                           hx-trigger="change">
                     <option value="">All centers</option>
                     {% for c in centers_list %}
-                      <option value="{{ c.id }}">{{ c.name }}</option>
+                      <option value="{{ c.id }}" {% if request.GET.center == c.id|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -89,8 +89,8 @@
                           hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
                           hx-trigger="change">
                     <option value="">All status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
                   </select>
                 </div>
 
@@ -103,7 +103,7 @@
                           hx-trigger="change">
                     <option value="">All roles</option>
                     {% for g in groups_list %}
-                      <option value="{{ g }}">{{ g }}</option>
+                      <option value="{{ g }}" {% if request.GET.role == g %}selected{% endif %}>{{ g }}</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -116,8 +116,8 @@
                           hx-include="[name='q'], [name='center'], [name='status'], [name='role'], [name='group_by'], [name='per_page']"
                           hx-trigger="change">
                     <option value="">No group</option>
-                    <option value="role">Group by role</option>
-                    <option value="center">Group by center</option>
+                    <option value="role" {% if request.GET.group_by == 'role' %}selected{% endif %}>Group by role</option>
+                    <option value="center" {% if request.GET.group_by == 'center' %}selected{% endif %}>Group by center</option>
                   </select>
                 </div>
 

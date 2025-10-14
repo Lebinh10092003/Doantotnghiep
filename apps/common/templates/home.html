@@ -65,7 +65,7 @@
                         {{ user.get_full_name|default:user.username }}
                       </h6>
                       <p class="user-dropdown-status text-sm text-muted">
-                        Member
+                        {{ user.get_role_display }}
                       </p>
                     </div>
                   </a>
@@ -73,8 +73,8 @@
                     class="dropdown-menu dropdown-menu-end shadow-lg"
                     aria-labelledby="topbarUserDropdown"
                   >
-                    <li><a class="dropdown-item" href="#">My Account</a></li>
-                    <li><a class="dropdown-item" href="#">Settings</a></li>
+                    <li><a class="dropdown-item" href="#">Tài khoản của tô  i</a></li>
+                    <li><a class="dropdown-item" href="#">Cài đặt</a></li>
                     <li><hr class="dropdown-divider" /></li>
                     <li>
                       <form 
