@@ -2,21 +2,22 @@
 {% load group_tags %}
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
+
+<head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content="{{ csrf_token }}">
     <script>
         document.body.addEventListener('htmx:configRequest', function (e) {
-        e.detail.headers['X-CSRFToken'] =
-            document.querySelector('meta[name="csrf-token"]').content;
+            e.detail.headers['X-CSRFToken'] =
+                document.querySelector('meta[name="csrf-token"]').content;
         });
     </script>
 
     <title>
-      {% block title %}
+        {% block title %}
         HOME
-      {% endblock %}
+        {% endblock %}
     </title>
 
     <!-- Favicon -->
@@ -30,15 +31,17 @@
     <link rel="icon" type="image/png" href="{% static 'compiled/png/favicon.png' %}">
 
     <!-- Google Font: Be Vietnam Pro -->
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     {% block extra_css %}
     {% endblock %}
     <meta name="csrf-token" content="{{ csrf_token }}">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="{% static 'extensions/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'static/js/pages/component-toasts.js' %}"></script>
-  </head>
-  <body>
+</head>
+
+<body>
     <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
     <div id="app">
         <div id="sidebar">
@@ -47,123 +50,218 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="logo">
                             <a href="{% url 'common:home' %}">
-                              <img src="{% static 'compiled/svg/logo.svg' %}" alt="Logo">
+                                <img src="{% static 'compiled/svg/logo.svg' %}" alt="Logo">
                             </a>
                         </div>
                         <div class="theme-toggle d-flex gap-2  align-items-center mt-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-                                aria-hidden="true" role="img" class="iconify iconify--system-uicons" width="20"
-                                height="20" preserveAspectRatio="xMidYMid meet" viewBox="0 0 21 21">
-                                <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <path
-                                        d="M10.5 14.5c2.219 0 4-1.763 4-3.982a4.003 4.003 0 0 0-4-4.018c-2.219 0-4 1.781-4 4c0 2.219 1.781 4 4 4zM4.136 4.136L5.55 5.55m9.9 9.9l1.414 1.414M1.5 10.5h2m14 0h2M4.135 16.863L5.55 15.45m9.899-9.9l1.414-1.415M10.5 19.5v-2m0-14v-2"
-                                        opacity=".3"></path>
-                                    <g transform="translate(-210 -1)">
-                                        <path d="M220.5 2.5v2m6.5.5l-1.5 1.5"></path>
-                                        <circle cx="220.5" cy="11.5" r="4"></circle>
-                                        <path d="m214 5l1.5 1.5m5 14v-2m6.5-.5l-1.5-1.5M214 18l1.5-1.5m-4-5h2m14 0h2">
-                                        </path>
-                                    </g>
-                                </g>
-                            </svg>
+                            <!-- theme icons omitted for brevity -->
                             <div class="form-check form-switch fs-6">
                                 <input class="form-check-input  me-0" type="checkbox" id="toggle-dark"
                                     style="cursor: pointer">
                                 <label class="form-check-label"></label>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-                                aria-hidden="true" role="img" class="iconify iconify--mdi" width="20" height="20"
-                                preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
-                                <path fill="currentColor"
-                                    d="m17.75 4.09l-2.53 1.94l.91 3.06l-2.63-1.81l-2.63 1.81l.91-3.06l-2.53-1.94L12.44 4l1.06-3l1.06 3l3.19.09m3.5 6.91l-1.64 1.25l.59 1.98l-1.7-1.17l-1.7 1.17l.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95l2.06.05m-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85c-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14c.4-.4.82-.76 1.27-1.08c.75-.53 1.93.36 1.85 1.19c-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82c-2.81 3.14-2.7 7.96.31 10.98c3.02 3.01 7.84 3.12 10.98.31Z">
-                                </path>
-                            </svg>
                         </div>
                         <div class="sidebar-toggler  x">
                             <a href="#" class="sidebar-hide d-xl-none d-block"><i class="bi bi-x bi-middle"></i></a>
                         </div>
                     </div>
                 </div>
+
                 <ul class="menu">
 
-                <!-- Dashboard -->
-                <li class="sidebar-item {% if request.path == '/dashboard/' %}active{% endif %}">
-                    <a href="{% url 'common:dashboard' %}" class="sidebar-link">
-                    <i class="bi bi-grid-fill"></i><span>Dashboard</span>
-                    </a>
-                </li>
-
-                <!-- ADMIN -->
-                {% if user.is_superuser or user|in_group:"ADMIN" %}
-                    <li class="sidebar-item {% if request.path == '/accounts/manage/' %}active{% endif %}">
-                    <a href="{% url 'accounts:manage_accounts' %}" class="sidebar-link">
-                        <i class="bi bi-people"></i><span>Users</span>
-                    </a>
-                    </li>
-                    <li class="sidebar-item {% if '/centers/' in request.path %}active{% endif %}">
-                    <a href="#" class="sidebar-link">
-                        <i class="bi bi-building"></i><span>Centers</span>
-                    </a>
+                    <!-- Dashboard -->
+                    <li class="sidebar-item {% if request.path == '/dashboard/' %}active{% endif %}">
+                        <a href="{% url 'common:dashboard' %}" class="sidebar-link"><i class="bi bi-grid-fill"></i><span>Tổng quan</span></a>
                     </li>
 
-                    <li class="sidebar-item {% if '/classes/' in request.path %}active{% endif %}">
-                    <a href="#" class="sidebar-link">
-                        <i class="bi bi-journal-bookmark"></i><span>Classes</span>
-                    </a>
+                    <!-- Accounts -->
+                    {% if user.is_superuser or user|in_any_group:"ADMIN,STAFF,STAFF_SALES,CENTER_MANAGER" %}
+                    <li class="sidebar-item has-sub {% if '/accounts/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-people"></i><span>Tài khoản</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item">
+                                <a href="{% url 'accounts:manage_accounts' %}" class="submenu-link">
+                                    <i class="bi bi-person-lines-fill"></i><span>Danh sách người dùng</span>
+                                    {% if users_count is defined %}
+                                    <span class="badge ms-2">{{ users_count }}</span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                            {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER" %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-plus"></i><span>Tạo tài khoản</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-arrow-up"></i><span>Import / Export</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-shield-lock"></i><span>Quản lý nhóm & Roles</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-badge"></i><span>Gán quyền & Vai trò</span></a></li>
+                            {% endif %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-circle"></i><span>Hồ sơ cá nhân</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-key"></i><span>Đổi mật khẩu / Reset</span></a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <!-- Centers -->
+                    {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER,STAFF" %}
+                    <li class="sidebar-item has-sub {% if '/centers/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-building"></i><span>Trung tâm</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="{% url 'centers:centers_manage' %}" class="submenu-link"><i class="bi bi-house"></i><span>Quản lý trung tâm</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-door-closed"></i><span>Phòng</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-graph-up"></i><span>Báo cáo doanh thu</span></a></li>                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <!-- Curriculum -->
+                    {% if user.is_superuser or user|in_any_group:"ADMIN,TEACHER,CENTER_MANAGER" %}
+                    <li class="sidebar-item has-sub {% if '/curriculum/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-book"></i><span>Khóa học</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-journal-bookmark"></i><span>Danh sách môn</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-grid-1x2-fill"></i><span>Module</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-text"></i><span>Bài học</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-play-btn"></i><span>Bài giảng (Lecture)</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-puzzle"></i><span>Bài tập (Exercise)</span></a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <!-- Classes -->
+                    {% if user.is_superuser or user|in_any_group:"ADMIN,TEACHER,CENTER_MANAGER,ASSISTANT" %}
+                    <li class="sidebar-item has-sub {% if '/classes/' in request.path or '/class_sessions/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-easel"></i><span>Lớp học</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-list-ul"></i><span>Danh sách lớp</span></a></li>
+                            {% if user.is_superuser or user|in_any_group:"ADMIN" %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-plus-square"></i><span>Tạo lớp</span></a></li>
+                            {% endif %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-calendar-event"></i><span>Danh sách buổi học</span></a></li>
+                            {% if user.is_superuser or user|in_any_group:"ADMIN" %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-workspace"></i><span>Phân công GV / Trợ giảng</span></a></li>
+                            {% endif %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-people-fill"></i><span>Danh sách HS theo lớp</span></a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <!-- Class Sessions -->
+                    {% if user.is_superuser or user|in_any_group:"TEACHER,ASSISTANT,CENTER_MANAGER" %}
+                    <li class="sidebar-item has-sub {% if '/sessions/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-clock"></i><span>Buổi học</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-calendar3"></i><span>Lịch buổi học</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-check2-square"></i><span>Điểm danh</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-card-image"></i><span>Sản phẩm buổi học</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-chat-left-text"></i><span>Ghi chú & Phản hồi</span></a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    <!-- Assessments -->
+                    {% if user.is_superuser or user|in_any_group:"TEACHER,CENTER_MANAGER" %}
+                    <li class="sidebar-item has-sub {% if '/assessments/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-clipboard-check"></i><span>Đánh giá</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-list-check"></i><span>Danh sách bài đánh giá</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-bar-chart"></i><span>Kết quả HS</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-bar-graph"></i><span>Báo cáo tổng hợp</span></a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <!-- Student Products -->
+                    {% if user.is_authenticated %}
+                    <li class="sidebar-item has-sub {% if '/student_products/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-images"></i><span>Sản phẩm HS</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-card-image"></i><span>Danh sách sản phẩm</span></a></li>
+                            {% if user|in_group:"STUDENT" %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-lines-fill"></i><span>Sản phẩm của tôi</span></a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <!-- Rewards -->
+                    {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER,TEACHER,STUDENT" %}
+                    <li class="sidebar-item has-sub {% if '/rewards/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-gem"></i><span>Thưởng & Điểm</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-coin"></i><span>Tài khoản điểm</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-gift"></i><span>Đổi thưởng</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-receipt"></i><span>Lịch sử đổi thưởng</span></a></li>
+                            {% if user.is_superuser or user|in_any_group:"ADMIN" %} 
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-receipt"></i><span>Danh sách phần quà</span></a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <!-- Notifications -->
+                    <li class="sidebar-item {% if '/notifications/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-bell"></i><span>Thông báo</span></a>
                     </li>
 
-                    <li class="sidebar-item {% if '/reports/' in request.path %}active{% endif %}">
-                    <a href="#" class="sidebar-link">
-                        <i class="bi bi-graph-up"></i><span>Reports</span>
-                    </a>
+                    <!-- Reports -->
+                    {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER,TEACHER" %}
+                    <li class="sidebar-item has-sub {% if '/reports/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-bar-chart-line"></i><span>Báo cáo & Thống kê</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-graph-up"></i><span>Báo cáo học tập</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-building"></i><span>Báo cáo trung tâm</span></a></li>
+                        </ul>
                     </li>
-                {% endif %}
+                    {% endif %}
 
-                <!-- TEACHER -->
-                {% if user.is_superuser or user|in_any_group:"TEACHER,ADMIN" %}
-                    <li class="sidebar-item {% if '/my-classes/' in request.path %}active{% endif %}">
-                    <a href="#" class="sidebar-link">
-                        <i class="bi bi-calendar-event"></i><span>My Classes</span>
-                    </a>
+                    <!-- Billing -->
+                    {% if user.is_superuser or user|in_any_group:"CENTER_MANAGER,BILLING" %}
+                    <li class="sidebar-item has-sub {% if '/billing/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-wallet2"></i><span>Tài chính / Học phí</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-receipt-cutoff"></i><span>Hóa đơn</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-credit-card"></i><span>Thanh toán</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-graph-down"></i><span>Báo cáo doanh thu</span></a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <!-- Support -->
+                    <li class="sidebar-item has-sub {% if '/support/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-life-preserver"></i><span>Hỗ trợ & Nhật ký</span></a>
+                        <ul class="submenu">
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-question-circle"></i><span>FAQ</span></a></li>
+                        </ul>
                     </li>
 
-                    <li class="sidebar-item {% if '/attendance/' in request.path %}active{% endif %}">
-                    <a href="#" class="sidebar-link">
-                        <i class="bi bi-clipboard-check"></i><span>Attendance</span>
-                    </a>
+                    <!-- Portal for authenticated users short-links -->
+                    {% if user.is_authenticated %}
+                    <li class="sidebar-item has-sub {% if '/portal/' in request.path %}active{% endif %}">
+                        <a href="#" class="sidebar-link"><i class="bi bi-person-badge"></i><span>Cổng thông tin</span></a>
+                        <ul class="submenu">
+                            {% if user|in_group:"PARENT" %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-people"></i><span>Kết quả của con</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-images"></i><span>Ảnh buổi học & Đánh giá</span></a></li>
+                            {% endif %}
+                            {% if user|in_group:"STUDENT" %}
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-card-image"></i><span>Sản phẩm của tôi</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-bar-chart-line"></i><span>Kết quả học tập</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-calendar"></i><span>Lịch & Bài tập</span></a></li>
+                            {% endif %}
+                        </ul>
                     </li>
-                {% endif %}
+                    {% endif %}
 
-                <!-- SALES STAFF -->
-                {% if user.is_superuser or user|in_group:"STAFF_SALES" %}
-                    <li class="sidebar-item {% if '/sales/' in request.path %}active{% endif %}">
-                    <a href="#" class="sidebar-link">
-                        <i class="bi bi-kanban"></i><span>Leads</span>
-                    </a>
+                    <!-- Logout -->
+                    <li class="sidebar-item">
+                        <a href="{% url 'accounts:logout' %}" class="sidebar-link"><i class="bi bi-box-arrow-right"></i><span>Đăng xuất</span></a>
                     </li>
-                {% endif %}
-
-                <!-- Luôn hiển thị -->
-                <li class="sidebar-item {% if '/profile/' in request.path %}active{% endif %} mt-3">
-                    <a href="#" class="sidebar-link">
-                    <i class="bi bi-person"></i><span>Profile</span>
-                    </a>
-                </li>
-
-                <li class="sidebar-item">
-                    <a href="{% url 'accounts:logout' %}" class="sidebar-link">
-                    <i class="bi bi-box-arrow-right"></i><span>Logout</span>
-                    </a>
-                </li>
 
                 </ul>
+
             </div>
         </div>
+
         {% block content %}
         {% endblock %}
     </div>
-  <!-- JS -->
+    <!-- JS -->
 
     <script src="{% static 'static/js/components/dark.js' %}"></script>
     <script src="{% static 'extensions/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
