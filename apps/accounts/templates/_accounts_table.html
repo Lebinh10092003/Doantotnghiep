@@ -1,4 +1,3 @@
-{# apps/accounts/templates/accounts/_accounts_table.html #}
 <div class="dataTable-container table-responsive" style="width:100%; overflow-x:auto;">
   <table class="table table-striped dataTable-table" id="table1" style="width:100%;">
     <thead>
@@ -265,7 +264,7 @@
 
 <div class="dataTable-bottom d-flex justify-content-between align-items-center">
   <div class="dataTable-info">
-    Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ paginator.count }} entries
+    Hiện {{ page_obj.start_index }} đến {{ page_obj.end_index }} trong tổng số {{ paginator.count }} mục
   </div>
 
 <nav class="dataTable-pagination">

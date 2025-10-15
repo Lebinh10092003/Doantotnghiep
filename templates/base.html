@@ -20,17 +20,14 @@
         {% endblock %}
     </title>
 
-    <!-- Favicon -->
     <link rel="shortcut icon" href="{% static 'compiled/svg/favicon.svg' %}" type="image/x-icon">
     <link rel="shortcut icon" href="{% static 'compiled/png/favicon.png' %}" type="image/png">
 
-    <!-- CSS -->
     <link rel="stylesheet" href="{% static 'compiled/css/app.css' %}">
     <link rel="stylesheet" href="{% static 'compiled/css/app-dark.css' %}">
     <link rel="stylesheet" href="{% static 'compiled/css/iconly.css' %}">
     <link rel="icon" type="image/png" href="{% static 'compiled/png/favicon.png' %}">
 
-    <!-- Google Font: Be Vietnam Pro -->
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     {% block extra_css %}
@@ -54,7 +51,6 @@
                             </a>
                         </div>
                         <div class="theme-toggle d-flex gap-2  align-items-center mt-2">
-                            <!-- theme icons omitted for brevity -->
                             <div class="form-check form-switch fs-6">
                                 <input class="form-check-input  me-0" type="checkbox" id="toggle-dark"
                                     style="cursor: pointer">
@@ -69,18 +65,17 @@
 
                 <ul class="menu">
 
-                    <!-- Dashboard -->
                     <li class="sidebar-item {% if request.path == '/dashboard/' %}active{% endif %}">
                         <a href="{% url 'common:dashboard' %}" class="sidebar-link"><i class="bi bi-grid-fill"></i><span>Tổng quan</span></a>
                     </li>
 
-                    <!-- Accounts -->
                     {% if user.is_superuser or user|in_any_group:"ADMIN,STAFF,STAFF_SALES,CENTER_MANAGER" %}
                     <li class="sidebar-item has-sub {% if '/accounts/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-people"></i><span>Tài khoản</span></a>
                         <ul class="submenu">
-                            <li class="submenu-item">
-                                <a href="{% url 'accounts:manage_accounts' %}" class="submenu-link">
+                            {% url 'accounts:manage_accounts' as manage_accounts_url %}
+                            <li class="submenu-item {% if request.path == manage_accounts_url %}active{% endif %}">
+                                <a href="{{ manage_accounts_url }}" class="submenu-link">
                                     <i class="bi bi-person-lines-fill"></i><span>Danh sách người dùng</span>
                                     {% if users_count is defined %}
                                     <span class="badge ms-2">{{ users_count }}</span>
@@ -99,18 +94,20 @@
                     </li>
                     {% endif %}
 
-                    <!-- Centers -->
                     {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER,STAFF" %}
                     <li class="sidebar-item has-sub {% if '/centers/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-building"></i><span>Trung tâm</span></a>
                         <ul class="submenu">
-                            <li class="submenu-item"><a href="{% url 'centers:centers_manage' %}" class="submenu-link"><i class="bi bi-house"></i><span>Quản lý trung tâm</span></a></li>
+                            {% url 'centers:centers_manage' as centers_manage_url %}
+                            <li class="submenu-item {% if request.path == centers_manage_url %}active{% endif %}">
+                                <a href="{{ centers_manage_url }}" class="submenu-link"><i class="bi bi-house"></i><span>Quản lý trung tâm</span></a>
+                            </li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-door-closed"></i><span>Phòng</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-graph-up"></i><span>Báo cáo doanh thu</span></a></li>                        </ul>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-graph-up"></i><span>Báo cáo doanh thu</span></a></li>
+                        </ul>
                     </li>
                     {% endif %}
 
-                    <!-- Curriculum -->
                     {% if user.is_superuser or user|in_any_group:"ADMIN,TEACHER,CENTER_MANAGER" %}
                     <li class="sidebar-item has-sub {% if '/curriculum/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-book"></i><span>Khóa học</span></a>
@@ -124,7 +121,6 @@
                     </li>
                     {% endif %}
 
-                    <!-- Classes -->
                     {% if user.is_superuser or user|in_any_group:"ADMIN,TEACHER,CENTER_MANAGER,ASSISTANT" %}
                     <li class="sidebar-item has-sub {% if '/classes/' in request.path or '/class_sessions/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-easel"></i><span>Lớp học</span></a>
@@ -142,7 +138,6 @@
                     </li>
                     {% endif %}
 
-                    <!-- Class Sessions -->
                     {% if user.is_superuser or user|in_any_group:"TEACHER,ASSISTANT,CENTER_MANAGER" %}
                     <li class="sidebar-item has-sub {% if '/sessions/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-clock"></i><span>Buổi học</span></a>
@@ -154,7 +149,6 @@
                         </ul>
                     </li>
                     {% endif %}
-                    <!-- Assessments -->
                     {% if user.is_superuser or user|in_any_group:"TEACHER,CENTER_MANAGER" %}
                     <li class="sidebar-item has-sub {% if '/assessments/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-clipboard-check"></i><span>Đánh giá</span></a>
@@ -166,7 +160,6 @@
                     </li>
                     {% endif %}
 
-                    <!-- Student Products -->
                     {% if user.is_authenticated %}
                     <li class="sidebar-item has-sub {% if '/student_products/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-images"></i><span>Sản phẩm HS</span></a>
@@ -179,7 +172,6 @@
                     </li>
                     {% endif %}
 
-                    <!-- Rewards -->
                     {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER,TEACHER,STUDENT" %}
                     <li class="sidebar-item has-sub {% if '/rewards/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-gem"></i><span>Thưởng & Điểm</span></a>
@@ -194,12 +186,10 @@
                     </li>
                     {% endif %}
 
-                    <!-- Notifications -->
                     <li class="sidebar-item {% if '/notifications/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-bell"></i><span>Thông báo</span></a>
                     </li>
 
-                    <!-- Reports -->
                     {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER,TEACHER" %}
                     <li class="sidebar-item has-sub {% if '/reports/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-bar-chart-line"></i><span>Báo cáo & Thống kê</span></a>
@@ -210,7 +200,6 @@
                     </li>
                     {% endif %}
 
-                    <!-- Billing -->
                     {% if user.is_superuser or user|in_any_group:"CENTER_MANAGER,BILLING" %}
                     <li class="sidebar-item has-sub {% if '/billing/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-wallet2"></i><span>Tài chính / Học phí</span></a>
@@ -222,7 +211,6 @@
                     </li>
                     {% endif %}
 
-                    <!-- Support -->
                     <li class="sidebar-item has-sub {% if '/support/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-life-preserver"></i><span>Hỗ trợ & Nhật ký</span></a>
                         <ul class="submenu">
@@ -230,7 +218,6 @@
                         </ul>
                     </li>
 
-                    <!-- Portal for authenticated users short-links -->
                     {% if user.is_authenticated %}
                     <li class="sidebar-item has-sub {% if '/portal/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-person-badge"></i><span>Cổng thông tin</span></a>
@@ -248,7 +235,6 @@
                     </li>
                     {% endif %}
 
-                    <!-- Logout -->
                     <li class="sidebar-item">
                         <a href="{% url 'accounts:logout' %}" class="sidebar-link"><i class="bi bi-box-arrow-right"></i><span>Đăng xuất</span></a>
                     </li>
@@ -261,8 +247,6 @@
         {% block content %}
         {% endblock %}
     </div>
-    <!-- JS -->
-
     <script src="{% static 'static/js/components/dark.js' %}"></script>
     <script src="{% static 'extensions/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
     <script src="{% static 'compiled/js/app.js' %}"></script>
