@@ -15,7 +15,9 @@ from django.template.loader import render_to_string
 from django.db.models import Q, Count
 from apps.centers.models import Center
 from .models import ParentStudentRelation
-from .forms import AdminUserCreateForm, AdminUserUpdateForm
+from .forms import AdminUserCreateForm, AdminUserUpdateForm, ImportUserForm
+from .resources import UserResource
+from tablib import Dataset
 
 User = get_user_model()
 
@@ -107,11 +109,9 @@ def logout_view(request):
 def is_admin(user):
     return user.is_superuser or getattr(user, "role", None) == "ADMIN"
 
-
-@login_required
-def manage_accounts(request):
+def _filter_users_queryset(request):
     qs = User.objects.all().select_related("center").prefetch_related("groups")
-    groups_for_dropdown = list(Group.objects.values_list("name", "name"))
+    
     # params
     q = request.GET.get("q", "").strip()
     status = request.GET.get("status", "")
@@ -124,15 +124,6 @@ def manage_accounts(request):
     date_to = request.GET.get("date_joined_to", "")
     last_login_from = request.GET.get("last_login_from", "")
     last_login_to = request.GET.get("last_login_to", "")
-    group_by = request.GET.get("group_by", "")
-    try:
-        per_page = int(request.GET.get("per_page", 10))
-    except (TypeError, ValueError):
-        per_page = 10
-    try:
-        page = int(request.GET.get("page", 1))
-    except (TypeError, ValueError):
-        page = 1
 
     # Search
     if q:
@@ -202,6 +193,26 @@ def manage_accounts(request):
 
     qs = apply_date_range(qs, "date_joined", date_from, date_to)
     qs = apply_date_range(qs, "last_login", last_login_from, last_login_to)
+    
+    return qs.distinct()
+
+
+@login_required
+def manage_accounts(request):
+    qs = _filter_users_queryset(request)
+    groups_for_dropdown = list(Group.objects.values_list("name", "name"))
+    
+    # Params for sorting and pagination
+    group_by = request.GET.get("group_by", "")
+    try:
+        per_page = int(request.GET.get("per_page", 10))
+    except (TypeError, ValueError):
+        per_page = 10
+    try:
+        page = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+
 
     # Ordering / grouping
     if group_by == "role":
@@ -212,8 +223,6 @@ def manage_accounts(request):
         qs = qs.order_by("center__name", "last_name", "first_name")
     else:
         qs = qs.order_by("last_name", "first_name")
-
-    qs = qs.distinct()
 
     # Pagination
     paginator = Paginator(qs, per_page)
@@ -229,21 +238,21 @@ def manage_accounts(request):
     context = {
         "page_obj": page_obj,
         "paginator": paginator,
-        "q": q,
-        "status": status,
-        "role": role_choice,
+        "q": request.GET.get("q", "").strip(),
+        "status": request.GET.get("status", ""),
+        "role": request.GET.get("role", ""),
         "group_list": groups_for_dropdown,
-        "group": group_name,
+        "group": request.GET.get("group", ""),
         "groups_list": groups_list,
-        "center": center_id,
+        "center": request.GET.get("center", ""),
         "centers_list": centers_list,
-        "is_staff": is_staff,
-        "is_superuser": is_superuser,
-        "date_joined_from": date_from,
-        "date_joined_to": date_to,
-        "last_login_from": last_login_from,
-        "last_login_to": last_login_to,
-        "group_by": group_by,
+        "is_staff": request.GET.get("is_staff", ""),
+        "is_superuser": request.GET.get("is_superuser", ""),
+        "date_joined_from": request.GET.get("date_joined_from", ""),
+        "date_joined_to": request.GET.get("date_joined_to", ""),
+        "last_login_from": request.GET.get("last_login_from", ""),
+        "last_login_to": request.GET.get("last_login_to", ""),
+        "group_by": request.GET.get("group_by", ""),
         "per_page": per_page,
         "relations": relations,
     }
@@ -385,3 +394,79 @@ def user_edit_view(request, user_id):
         form = AdminUserUpdateForm(instance=user)
 
     return render(request, '_edit_user_form.html', {'form': form, 'user': user})
+
+@login_required
+def export_users_view(request):
+    user_resource = UserResource()
+    # Sử dụng hàm lọc đã được tái cấu trúc
+    queryset = _filter_users_queryset(request)
+    dataset = user_resource.export(queryset.order_by('id'))
+    
+    # Định dạng file export, có thể là 'xls', 'xlsx', 'csv'
+    file_format = request.GET.get('format', 'xlsx')
+    if file_format == 'xlsx':
+        response = HttpResponse(dataset.xlsx, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="users.xlsx"'
+    elif file_format == 'csv':
+        response = HttpResponse(dataset.csv, content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="users.csv"'
+    else: # Mặc định là xls
+        response = HttpResponse(dataset.xls, content_type='application/vnd.ms-excel')
+        response['Content-Disposition'] = 'attachment; filename="users.xls"'
+        
+    return response
+
+@login_required
+def import_users_view(request):
+    if request.method == 'POST':
+        user_resource = UserResource()
+        dataset = Dataset()
+        new_users_file = request.FILES.get('file')
+
+        if not new_users_file:
+            form = ImportUserForm()
+            messages.error(request, "Bạn chưa chọn file để import.")
+            return render(request, '_import_users_form.html', {'form': form, 'errors': ["Bạn chưa chọn file để import."]}, status=422)
+
+        # Đọc dữ liệu từ file upload
+        if new_users_file.name.endswith('csv'):
+            dataset.load(new_users_file.read().decode('utf-8'), format='csv')
+        else: # Mặc định là excel
+            dataset.load(new_users_file.read(), format='xlsx')
+
+        # Thực hiện import, dry_run=True để kiểm tra lỗi trước
+        result = user_resource.import_data(dataset, dry_run=True, raise_errors=False)
+
+        if not result.has_errors() and not result.has_validation_errors():
+            # Nếu không có lỗi, thực hiện import thật
+            user_resource.import_data(dataset, dry_run=False)
+            response = HttpResponse(status=200)
+            response['HX-Trigger'] = json.dumps({
+                "reloadTableEvent": True,
+                "closeUserModal": True,
+                "show-sweet-alert": {
+                    "icon": "success",
+                    "title": "Import người dùng thành công!"
+                }
+            })
+            return response
+        else:
+            # Nếu có lỗi, render lại form với thông báo lỗi
+            errors = [f"Dòng {err.row}: {', '.join(err.error.messages)}" for err in result.row_errors()]
+            form = ImportUserForm()
+            return render(request, '_import_users_form.html', {'form': form, 'errors': errors}, status=422)
+
+    else:
+        form = ImportUserForm()
+        return render(request, '_import_users_form.html', {'form': form})
+
+@login_required
+def export_import_template_view(request):
+    """
+    Tạo và trả về một file Excel mẫu để người dùng điền thông tin import.
+    """
+    user_resource = UserResource()
+    dataset = Dataset(headers=user_resource.get_export_headers())
+    response = HttpResponse(dataset.xlsx, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="import_users_template.xlsx"'
+    return response

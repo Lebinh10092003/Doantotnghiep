@@ -1,0 +1,39 @@
+{% load widget_tweaks %}
+
+<form hx-post="{% url 'accounts:import_users' %}"
+      hx-encoding="multipart/form-data"
+      hx-target="this"
+      hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="modal-body">
+        {% if errors %}
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                <div>
+                    <h5 class="alert-heading mb-1">Import thất bại!</h5>
+                    <ul class="mb-0 ps-3">
+                    {% for error in errors %}
+                        <li><small>{{ error }}</small></li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="alert alert-light-info" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-info-circle"></i> Hướng dẫn</h5>
+            <p class="mb-1">Tải lên file <code>.xlsx</code> hoặc <code>.csv</code>. Cột <code>username</code> là bắt buộc và không được trùng lặp.</p>
+            <hr>
+            <p class="mb-0">Vui lòng <a href="{% url 'accounts:import_template' %}" class="fw-bold">tải xuống file mẫu</a> để đảm bảo đúng định dạng dữ liệu.</p>
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.file.id_for_label }}" class="form-label">{{ form.file.label }}</label>
+            {% render_field form.file class="form-control" %}
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Đóng</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Bắt đầu Import</button>
+    </div>
+</form>

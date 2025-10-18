@@ -88,7 +88,7 @@
                                 </a>
                             </li>
                             {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER" %}
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-arrow-up"></i><span>Import / Export</span></a></li>
+                            {% url 'accounts:import_users' as import_users_url %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-shield-lock"></i><span>Quản lý nhóm & Roles</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-badge"></i><span>Gán quyền & Vai trò</span></a></li>
                             {% endif %}
