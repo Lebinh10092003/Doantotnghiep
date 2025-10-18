@@ -73,8 +73,8 @@
 
         <div class="card-body">
           <div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
-            <!-- Thêm id="filters-form" để gom các bộ lọc -->
-            <div id="filters-form" class="dataTable-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Bọc các bộ lọc trong thẻ form -->
+            <form id="filters-form" class="dataTable-top d-flex justify-content-between align-items-center flex-wrap gap-2">
               
               <div class="dataTable-dropdown d-flex align-items-center gap-2">
                 <select name="per_page"
@@ -152,7 +152,7 @@
                 </div>
           
               </div>
-            </div>
+            </form>
             
             <form id="accounts-table-form" 
                   hx-trigger="reloadTableEvent from:body" 

@@ -34,13 +34,10 @@ class UserResource(resources.ModelResource):
 
     # Xử lý mật khẩu khi import
     def before_save_instance(self, instance, using_transactions, dry_run):
-        # Nếu là người dùng mới (chưa có id), đặt mật khẩu mặc định
-        # Bạn có thể thay đổi logic này, ví dụ đọc mật khẩu từ một cột trong file excel
+        # Nếu là người dùng mới (chưa có id), đặt mật khẩu mặc định.
         if not instance.pk:
             instance.set_password('123456') # Mật khẩu mặc định cho user mới
-
-    def after_save_instance(self, instance, using_transactions, dry_run):
-        # Cập nhật trường 'role' sau khi gán group
-        if instance.groups.exists():
-            instance.role = instance.groups.first().name
-            instance.save(update_fields=['role'])
+        if hasattr(instance, '_m2m_data') and 'groups' in instance._m2m_data:
+            group_names = instance._m2m_data['groups']
+            if group_names:
+                instance.role = group_names[0]

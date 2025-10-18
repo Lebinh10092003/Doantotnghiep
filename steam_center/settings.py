@@ -17,12 +17,11 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
-# Login settings
-LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "redirect_by_role"
 
 # Session settings
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# Login settings - LOGIN_URL cần có namespace nếu URL được định nghĩa trong một app có app_name
+LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "common:dashboard"
 
 # Application definition

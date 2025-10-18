@@ -366,8 +366,38 @@ def user_delete_view(request):
 
 @login_required
 def user_detail_view(request, user_id):
-    user = get_object_or_404(User.objects.prefetch_related('groups'), pk=user_id)
-    return render(request, '_user_detail.html', {'user': user})
+    # Tối ưu truy vấn bằng cách select_related và prefetch_related
+    user = get_object_or_404(
+        User.objects.select_related('center').prefetch_related('groups'), 
+        pk=user_id
+    )
+    
+    children = None
+    parents = None
+    enrolled_classes = None
+    teaching_classes = None
+
+    # Kiểm tra vai trò của người dùng và lấy các mối quan hệ tương ứng
+    if user.role == 'PARENT':
+        children = ParentStudentRelation.objects.filter(parent=user).select_related('student__center')
+    
+    if user.role == 'STUDENT':
+        parents = ParentStudentRelation.objects.filter(student=user).select_related('parent__center')
+        # Lấy các lớp học sinh đang ghi danh
+        enrolled_classes = user.enrollments.select_related('klass__subject', 'klass__center').all()
+
+    if user.role == 'TEACHER':
+        # Lấy các lớp giáo viên đang dạy
+        teaching_classes = user.taught_classes.select_related('subject', 'center').all()
+
+    context = {
+        'user': user,
+        'children': children,
+        'parents': parents,
+        'enrolled_classes': enrolled_classes,
+        'teaching_classes': teaching_classes,
+    }
+    return render(request, '_user_detail.html', context)
 
 @login_required
 def user_edit_view(request, user_id):
@@ -405,13 +435,13 @@ def export_users_view(request):
     # Định dạng file export, có thể là 'xls', 'xlsx', 'csv'
     file_format = request.GET.get('format', 'xlsx')
     if file_format == 'xlsx':
-        response = HttpResponse(dataset.xlsx, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response = HttpResponse(dataset.export('xlsx'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename="users.xlsx"'
     elif file_format == 'csv':
-        response = HttpResponse(dataset.csv, content_type='text/csv')
+        response = HttpResponse(dataset.export('csv'), content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="users.csv"'
     else: # Mặc định là xls
-        response = HttpResponse(dataset.xls, content_type='application/vnd.ms-excel')
+        response = HttpResponse(dataset.export('xls'), content_type='application/vnd.ms-excel')
         response['Content-Disposition'] = 'attachment; filename="users.xls"'
         
     return response
@@ -425,12 +455,21 @@ def import_users_view(request):
 
         if not new_users_file:
             form = ImportUserForm()
-            messages.error(request, "Bạn chưa chọn file để import.")
-            return render(request, '_import_users_form.html', {'form': form, 'errors': ["Bạn chưa chọn file để import."]}, status=422)
+            # Truyền lỗi trực tiếp vào context thay vì dùng messages framework
+            return render(request, '_import_users_form.html', {'form': form, 'errors': ["Vui lòng chọn một file để import."]}, status=422)
 
         # Đọc dữ liệu từ file upload
         if new_users_file.name.endswith('csv'):
-            dataset.load(new_users_file.read().decode('utf-8'), format='csv')
+            # Dữ liệu từ file CSV có thể là tab-separated, nên dùng format 'tsv'
+            # Thử đọc với utf-8-sig trước, nếu lỗi thì thử cp1252 (Windows encoding)
+            file_content = new_users_file.read()
+            try:
+                decoded_content = file_content.decode('utf-8-sig')
+            except UnicodeDecodeError:
+                # Nếu utf-8-sig thất bại, thử với cp1252 là một phương án dự phòng phổ biến
+                decoded_content = file_content.decode('cp1252')
+            # Để tablib tự động phát hiện định dạng (csv hoặc tsv)
+            dataset.load(decoded_content)
         else: # Mặc định là excel
             dataset.load(new_users_file.read(), format='xlsx')
 
@@ -451,8 +490,30 @@ def import_users_view(request):
             })
             return response
         else:
-            # Nếu có lỗi, render lại form với thông báo lỗi
-            errors = [f"Dòng {err.row}: {', '.join(err.error.messages)}" for err in result.row_errors()]
+            errors = []
+            # Lỗi xác thực (validation errors)
+            for invalid_row in result.invalid_rows:
+                errors.append(f"Dòng {invalid_row.number}: Lỗi dữ liệu - {invalid_row.error_dict}")
+
+            # Lỗi chung (ví dụ: không tìm thấy foreign key)
+            for row_num, error_list in result.row_errors():
+                error_messages = []
+                for error in error_list:
+                    original_error = error.error
+                    # Tùy chỉnh thông báo lỗi cho các trường hợp cụ thể
+                    if isinstance(original_error, Center.DoesNotExist):
+                        # Lỗi không tìm thấy Center
+                        error_messages.append("Trung tâm không tồn tại. Vui lòng tạo trung tâm trước khi import.")
+                    elif isinstance(original_error, Group.DoesNotExist):
+                        # Lỗi không tìm thấy Group
+                        error_messages.append("Nhóm quyền không tồn tại. Vui lòng tạo nhóm quyền trước khi import.")
+                    elif hasattr(original_error, 'messages'):
+                        # Dành cho Django ValidationErrors
+                        error_messages.extend(original_error.messages)
+                    else:
+                        # Các lỗi khác
+                        error_messages.append(str(original_error))
+                errors.append(f"Dòng {row_num}: {', '.join(error_messages)}")
             form = ImportUserForm()
             return render(request, '_import_users_form.html', {'form': form, 'errors': errors}, status=422)
 
@@ -462,11 +523,9 @@ def import_users_view(request):
 
 @login_required
 def export_import_template_view(request):
-    """
-    Tạo và trả về một file Excel mẫu để người dùng điền thông tin import.
-    """
     user_resource = UserResource()
     dataset = Dataset(headers=user_resource.get_export_headers())
-    response = HttpResponse(dataset.xlsx, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    # Sử dụng phương thức export() để đảm bảo định dạng được xử lý đúng cách
+    response = HttpResponse(dataset.export('xlsx'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="import_users_template.xlsx"'
     return response

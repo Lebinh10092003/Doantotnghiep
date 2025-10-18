@@ -1,10 +1,14 @@
+import random
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group
 from apps.common.factories import (
     CenterFactory, SubjectFactory, UserFactory,
     KlassFactory, ClassSessionFactory, StudentProductFactory
 )
+from apps.accounts.models import ParentStudentRelation, User
+from apps.enrollments.models import Enrollment
 from django.db import transaction
+from django.db.utils import IntegrityError
 
 
 class Command(BaseCommand):
@@ -13,7 +17,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--centers', type=int, default=5)
         parser.add_argument('--subjects', type=int, default=3)
-        parser.add_argument('--users', type=int, default=50)
+        parser.add_argument('--users', type=int, default=100)
         parser.add_argument('--modules_per_subject', type=int, default=12)
         parser.add_argument('--sessions_per_module', type=int, default=12)
 
@@ -42,7 +46,7 @@ class Command(BaseCommand):
             center_managers_count = options['centers']
             teachers_count = max(5, options['subjects'] * 2)
             assistants_count = max(3, options['subjects'])
-            parents_count = max(5, total_users // 10)
+            parents_count = max(10, total_users // 5)
             assigned = admins_count + center_managers_count + teachers_count + assistants_count + parents_count
             students_count = max(0, total_users - assigned)
 
@@ -62,6 +66,9 @@ class Command(BaseCommand):
                     elif role_code == "CENTER_MANAGER":
                         user.center = centers[i % len(centers)]
                         user.save()
+                    elif role_code == "STUDENT":
+                        user.center = random.choice(centers)
+                        user.save()
                     user.groups.add(g)
                     created_users.append(user)
 
@@ -75,7 +82,30 @@ class Command(BaseCommand):
 
             # === BUILD RELATIONSHIPS ===
             teachers = [u for u in created_users if u.role == "TEACHER"]
+            parents = [u for u in created_users if u.role == "PARENT"]
             students = [u for u in created_users if u.role == "STUDENT"]
+
+            # --- Create Parent-Student relationships ---
+            parent_student_relations = []
+            if parents and students:
+                for student in students:
+                    # Each student gets 1 or 2 parents
+                    num_parents = random.randint(1, 2)
+                    assigned_parents = random.sample(parents, min(num_parents, len(parents)))
+                    for parent in assigned_parents:
+                        try:
+                            relation, _ = ParentStudentRelation.objects.get_or_create(
+                                parent=parent,
+                                student=student,
+                                defaults={'note': 'Auto-generated relation'}
+                            )
+                            parent_student_relations.append(relation)
+                        except IntegrityError:
+                            # This can happen if a parent is randomly selected twice for the same student
+                            # Or if the relation already exists from a previous run.
+                            # It's safe to ignore.
+                            self.stdout.write(self.style.WARNING(f"Relation for {parent.username} and {student.username} already exists. Skipping."))
+                            pass
 
             classes = []
             sessions = []
@@ -98,10 +128,21 @@ class Command(BaseCommand):
                         session = ClassSessionFactory(klass=klass)
                         sessions.append(session)
 
+            # --- Enroll students in classes ---
+            enrollments = []
+            if students and classes:
+                for klass in classes:
+                    # Enroll 5 to 15 random students in each class
+                    num_students_to_enroll = random.randint(5, min(15, len(students)))
+                    students_for_this_class = random.sample(students, num_students_to_enroll)
+                    for student in students_for_this_class:
+                        enrollment, _ = Enrollment.objects.get_or_create(student=student, klass=klass)
+                        enrollments.append(enrollment)
+
             # === CREATE STUDENT PRODUCTS (1 product per session) ===
             if students and sessions:
-                for i, session in enumerate(sessions):
-                    student = students[i % len(students)]
+                for session in sessions:
+                    student = random.choice(students)
                     StudentProductFactory(session=session, student=student)
 
         # === LOG RESULTS ===
@@ -111,10 +152,12 @@ class Command(BaseCommand):
 -----------------------------
 Centers: {len(centers)}
 Subjects: {len(subjects)}
-Users: {len(created_users)} (Admins={admins_count}, Teachers={teachers_count}, Students={students_count})
+Users: {len(created_users)} (Admins={admins_count}, Managers={center_managers_count}, Teachers={teachers_count}, Assistants={assistants_count}, Parents={parents_count}, Students={students_count})
 Classes (Modules): {len(classes)}
 Sessions: {len(sessions)}
-Student Products: {len(sessions)} (1 per session)
+Parent-Student Relations: {len(parent_student_relations)}
+Enrollments: {len(enrollments)}
+Student Products: {len(sessions)}
 -----------------------------
 All data are fully linked: Center → Subject → Class → Session → StudentProduct.
 """
