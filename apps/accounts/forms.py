@@ -11,7 +11,7 @@ class AdminUserCreateForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'is_active', 'is_staff', 'groups']
+        fields = ['email', 'phone', 'first_name', 'last_name', 'is_active', 'center', 'is_staff', 'groups']
 
     def clean(self):
         cleaned = super().clean()
@@ -36,7 +36,7 @@ class AdminUserUpdateForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'is_active', 'is_staff', 'groups']
+        fields = ['email','phone', 'first_name', 'last_name', 'is_active', 'is_staff', 'groups']
 
     def save(self, commit=True):
         user = super().save(commit=False)

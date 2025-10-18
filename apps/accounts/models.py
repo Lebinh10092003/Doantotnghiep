@@ -33,13 +33,13 @@ class User(AbstractUser):
     address = models.CharField(max_length=255, blank=True)
 
 
-class Meta:
-    db_table = "accounts_user"
-    indexes = [models.Index(fields=["role"]), models.Index(fields=["center"])]
+    class Meta:
+        db_table = "accounts_user"
+        indexes = [models.Index(fields=["role"]), models.Index(fields=["center"])]
 
 
-def __str__(self):
-    return f"{self.username} ({self.get_role_display()})"
+    def __str__(self):
+        return f"{self.username} ({self.get_role_display()})"
 
 
 class ParentStudentRelation(models.Model):
@@ -56,10 +56,10 @@ class ParentStudentRelation(models.Model):
     note = models.CharField(max_length=255, blank=True)
 
 
-class Meta:
-    unique_together = (("parent", "student"),)
-    indexes = [models.Index(fields=["parent"]), models.Index(fields=["student"])]
+    class Meta:
+        unique_together = (("parent", "student"),)
+        indexes = [models.Index(fields=["parent"]), models.Index(fields=["student"])]
 
 
-def __str__(self):
-    return f"{self.parent.username} → {self.student.username}"
+    def __str__(self):
+        return f"{self.parent.username} → {self.student.username}"

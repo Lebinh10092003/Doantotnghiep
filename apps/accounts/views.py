@@ -1,18 +1,20 @@
 import json
 from datetime import timedelta
+from pyexpat.errors import messages
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.shortcuts import render, redirect
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
-
+from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator, EmptyPage
 from django.db.models import Q, Count
 from apps.centers.models import Center
 from .models import ParentStudentRelation
+from .forms import AdminUserCreateForm
 
 User = get_user_model()
 
@@ -245,3 +247,106 @@ def manage_accounts(request):
         return render(request, "_accounts_table.html", context)
 
     return render(request, "manage_accounts.html", context)
+
+@login_required
+def user_create_view(request):
+    if request.method == 'POST':
+        form = AdminUserCreateForm(request.POST)
+        if form.is_valid():
+            form.save()
+            response = HttpResponse(status=204) # 204 No Content
+            response['HX-Trigger'] = json.dumps({
+                "modal": {"icon": "success", "title": "Thành công!", "text": "Người dùng mới đã được tạo."},
+                "reloadTable": True,      # Lệnh tải lại bảng
+                "closeUserModal": True,   # Lệnh đóng form modal
+            })
+            return response
+    else:
+        form = AdminUserCreateForm()
+    
+    return render(request, '_add_user_form.html', {'form': form})
+
+
+
+@require_POST
+@login_required
+def user_delete_view(request):
+    user_ids = request.POST.getlist('user_ids')
+    
+    original_count = len(user_ids)
+    if original_count == 0:
+        return HttpResponse(status=204)
+
+    current_user_id_str = str(request.user.id)
+    
+    # Lọc ra danh sách ID, không bao gồm ID của người dùng hiện tại
+    user_ids_to_delete = [uid for uid in user_ids if uid != current_user_id_str]
+    
+    count_deleted = 0
+    if user_ids_to_delete:
+        user_ids_int = [int(uid) for uid in user_ids_to_delete]
+        count_deleted, _ = User.objects.filter(id__in=user_ids_int).delete()
+    
+    # --- BẮT ĐẦU THAY ĐỔI ---
+
+    toast = {} # Tạo một dictionary để chứa thông tin toast
+
+    # Xây dựng nội dung thông báo dựa trên kết quả
+    if original_count > len(user_ids_to_delete): # Trường hợp người dùng cố gắng tự xóa
+        if count_deleted > 0:
+            toast = {
+                "type": "warning",
+                "message": f"Đã xóa {count_deleted} người dùng. Bạn không thể tự xóa chính mình."
+            }
+        else:
+            toast = {
+                "type": "danger", # Dùng 'danger' cho Bootstrap
+                "message": "Không thể xóa, bạn không thể tự xóa chính mình."
+            }
+    else: # Trường hợp xóa bình thường
+        toast = {
+            "type": "success",
+            "message": f"Đã xóa {count_deleted} người dùng thành công."
+        }
+
+    response = HttpResponse(status=204) # Giữ nguyên status 204
+    # Gửi đúng trigger "showToast" mà base.html đang lắng nghe
+    triggers = {
+        "showToast": toast,
+        "reloadTable": True
+    }
+    response['HX-Trigger'] = json.dumps(triggers)
+    
+    # --- KẾT THÚC THAY ĐỔI ---
+    
+    return response
+
+@login_required
+def confirm_delete_view(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    return render(request, "_confirm_delete_modal.html", {"user": user})
+
+@login_required
+def user_detail_view(request, user_id):
+    user = get_object_or_404(User.objects.prefetch_related('groups'), pk=user_id)
+    return render(request, '_user_detail.html', {'user': user})
+
+@login_required
+def user_edit_view(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+
+    if request.method == 'POST':
+        form = AdminUserCreateForm(request.POST, instance=user)
+        if form.is_valid():
+            form.save()
+            response = HttpResponse(status=204)
+            response['HX-Trigger'] = json.dumps({
+                "modal": {"icon": "success", "title": "Thành công!", "text": "Thông tin người dùng đã được cập nhật."},
+                "reloadTable": True,
+                "closeUserModal": True,
+            })
+            return response
+    else:
+        form = AdminUserCreateForm(instance=user)
+
+    return render(request, '_edit_user_form.html', {'form': form, 'user': user})

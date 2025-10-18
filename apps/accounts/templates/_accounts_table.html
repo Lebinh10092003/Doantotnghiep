@@ -2,6 +2,7 @@
   <table class="table table-striped dataTable-table" id="table1" style="width:100%;">
     <thead>
       <tr>
+        <th><input type="checkbox" onclick="toggleAllCheckboxes(this)"></th>
         <th>Họ tên</th>
         <th>Email</th>
         <th>Số điện thoại</th>
@@ -9,6 +10,7 @@
         <th>Nhóm</th>
         <th>Cơ sở</th>
         <th>Trạng thái</th>
+        <th>Hành động</th>
       </tr>
     </thead>
     <tbody>
@@ -17,10 +19,11 @@
       {% regroup page_obj.object_list by role as role_list %}
       {% for role_group in role_list %}
       <tr class="table-group">
-        <td colspan="7"><strong>{{ role_group.grouper|default:"(No role)" }}</strong></td>
+        <td colspan="9"><strong>{{ role_group.grouper|default:"(No role)" }}</strong></td>
       </tr>
       {% for user in role_group.list %}
       <tr>
+        <td><input type="checkbox" name="user_ids" value="{{ user.id }}"></td>
         <td>{{ user.get_full_name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
@@ -70,6 +73,22 @@
           {% else %}
           <span class="badge bg-danger">Inactive</span>
           {% endif %}
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-info"
+                    hx-get="{% url 'accounts:user_detail' user.id %}"
+                    hx-target="#modal-content"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
+                    data-bs-toggle="modal"
+                    data-bs-target="#user-modal">
+                <i class="bi bi-eye"></i>
+            </button>
+            
+            <button class="btn btn-danger btn-sm"
+                    hx-get="{% url 'accounts:confirm_delete' user.id %}"
+                    hx-target="body"
+                    hx-swap="beforeend">
+              <i class="bi bi-trash"></i></button>
         </td>
       </tr>
       {% endfor %}
@@ -79,10 +98,11 @@
       {% regroup page_obj.object_list by groups.0.name as group_list %}
       {% for ggroup in group_list %}
       <tr class="table-group">
-        <td colspan="7"><strong>{{ ggroup.grouper|default:"(No group)" }}</strong></td>
+        <td colspan="9"><strong>{{ ggroup.grouper|default:"(No group)" }}</strong></td>
       </tr>
       {% for user in ggroup.list %}
       <tr>
+        <td><input type="checkbox" name="user_ids" value="{{ user.id }}"></td>
         <td>{{ user.get_full_name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
@@ -132,6 +152,22 @@
           {% else %}
           <span class="badge bg-danger">Inactive</span>
           {% endif %}
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-info"
+                    hx-get="{% url 'accounts:user_detail' user.id %}"
+                    hx-target="#modal-content"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
+                    data-bs-toggle="modal"
+                    data-bs-target="#user-modal">
+                <i class="bi bi-eye"></i>
+            </button>
+            
+            <button class="btn btn-danger btn-sm"
+                    hx-get="{% url 'accounts:confirm_delete' user.id %}"
+                    hx-target="body"
+                    hx-swap="beforeend">
+              <i class="bi bi-trash"></i></button>
         </td>
       </tr>
       {% endfor %}
@@ -140,10 +176,11 @@
       {% regroup page_obj.object_list by center.name as center_list %}
       {% for cgroup in center_list %}
       <tr class="table-group">
-        <td colspan="7"><strong>{{ cgroup.grouper|default:"(No center)" }}</strong></td>
+        <td colspan="9"><strong>{{ cgroup.grouper|default:"(No center)" }}</strong></td>
       </tr>
       {% for user in cgroup.list %}
       <tr>
+        <td><input type="checkbox" name="user_ids" value="{{ user.id }}"></td>
         <td>{{ user.get_full_name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
@@ -194,6 +231,22 @@
           {% else %}
           <span class="badge bg-danger">Inactive</span>
           {% endif %}
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-info"
+                    hx-get="{% url 'accounts:user_detail' user.id %}"
+                    hx-target="#modal-content"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
+                    data-bs-toggle="modal"
+                    data-bs-target="#user-modal">
+                <i class="bi bi-eye"></i>
+            </button>
+            
+            <button class="btn btn-danger btn-sm"
+                    hx-get="{% url 'accounts:confirm_delete' user.id %}"
+                    hx-target="body"
+                    hx-swap="beforeend">
+              <i class="bi bi-trash"></i></button>
         </td>
       </tr>
       {% endfor %}
@@ -201,6 +254,7 @@
       {% else %}
       {% for user in page_obj.object_list %}
       <tr>
+        <td><input type="checkbox" name="user_ids" value="{{ user.id }}"></td>
         <td>{{ user.get_full_name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
@@ -251,10 +305,26 @@
           <span class="badge bg-danger">Inactive</span>
           {% endif %}
         </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-info"
+                    hx-get="{% url 'accounts:user_detail' user.id %}"
+                    hx-target="#modal-content"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
+                    data-bs-toggle="modal"
+                    data-bs-target="#user-modal">
+                <i class="bi bi-eye"></i>
+            </button>
+            
+            <button class="btn btn-danger btn-sm"
+                    hx-get="{% url 'accounts:confirm_delete' user.id %}"
+                    hx-target="body"
+                    hx-swap="beforeend">
+              <i class="bi bi-trash"></i></button>
+        </td>
       </tr>
       {% empty %}
       <tr>
-        <td colspan="7">No users</td>
+        <td colspan="9">No users</td>
       </tr>
       {% endfor %}
       {% endif %}

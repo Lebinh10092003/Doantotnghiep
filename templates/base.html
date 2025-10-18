@@ -8,9 +8,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content="{{ csrf_token }}">
     <script>
-        document.body.addEventListener('htmx:configRequest', function (e) {
-            e.detail.headers['X-CSRFToken'] =
-                document.querySelector('meta[name="csrf-token"]').content;
+        document.body.addEventListener('htmx:configRequest', function(evt) {
+            const cookie = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='));
+            if (cookie) {
+                evt.detail.headers['X-CSRFToken'] = cookie.split('=')[1];
+            }
         });
     </script>
 
@@ -34,12 +38,31 @@
     {% endblock %}
     <meta name="csrf-token" content="{{ csrf_token }}">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="{% static 'extensions/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'static/js/pages/component-toasts.js' %}"></script>
 </head>
 
 <body>
-    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+    <div id="toast-container" 
+         class="toast-container position-fixed bottom-0 end-0 p-3"
+         style="z-index: 1100"
+         x-data="{ toasts: [] }"
+         @htmx:after-swap.window="
+            if ($event.detail.xhr.getResponseHeader('HX-Trigger')) {
+                try {
+                    let triggers = JSON.parse($event.detail.xhr.getResponseHeader('HX-Trigger'));
+                    if (triggers.showToast) {
+                        toasts.push({ id: Date.now(), message: triggers.showToast.message, type: triggers.showToast.type });
+                        setTimeout(() => toasts.shift(), 4000); 
+                    }
+                } catch (e) {}
+            }
+         ">
+        <template x-for="toast in toasts" :key="toast.id">
+            {% include 'includes/toast.html' %}
+        </template>
+    </div>
     <div id="app">
         <div id="sidebar">
             <div class="sidebar-wrapper active">
@@ -83,13 +106,12 @@
                                 </a>
                             </li>
                             {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER" %}
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-plus"></i><span>Tạo tài khoản</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-arrow-up"></i><span>Import / Export</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-shield-lock"></i><span>Quản lý nhóm & Roles</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-badge"></i><span>Gán quyền & Vai trò</span></a></li>
                             {% endif %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-circle"></i><span>Hồ sơ cá nhân</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-key"></i><span>Đổi mật khẩu / Reset</span></a></li>
+                           
                         </ul>
                     </li>
                     {% endif %}
@@ -102,7 +124,6 @@
                             <li class="submenu-item {% if request.path == centers_manage_url %}active{% endif %}">
                                 <a href="{{ centers_manage_url }}" class="submenu-link"><i class="bi bi-house"></i><span>Quản lý trung tâm</span></a>
                             </li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-door-closed"></i><span>Phòng</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-graph-up"></i><span>Báo cáo doanh thu</span></a></li>
                         </ul>
                     </li>
@@ -113,8 +134,8 @@
                         <a href="#" class="sidebar-link"><i class="bi bi-book"></i><span>Khóa học</span></a>
                         <ul class="submenu">
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-journal-bookmark"></i><span>Danh sách môn</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-grid-1x2-fill"></i><span>Module</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-text"></i><span>Bài học</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-grid-1x2-fill"></i><span>Học phần (Module)</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-text"></i><span>Bài học (Lesson)</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-play-btn"></i><span>Bài giảng (Lecture)</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-puzzle"></i><span>Bài tập (Exercise)</span></a></li>
                         </ul>

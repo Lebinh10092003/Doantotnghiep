@@ -3,7 +3,8 @@
 {% block title %}Quản lý người dùng{% endblock %}
 
 {% block content %}
-<div id="main">
+{# Bọc toàn bộ #main trong một component Alpine.js để quản lý trạng thái modal #}
+<div id="main" x-data="{ modalTitle: 'Tiêu đề Modal' }">
   <header class="mb-3">
     <a href="#" class="burger-btn d-block d-xl-none">
       <i class="bi bi-justify fs-3"></i>
@@ -30,17 +31,32 @@
 
     <section class="section">
       <div class="card">
-        <div class="card-header">
-          <h5 class="card-title">Danh sách tài khoản</h5>
-        </div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">Danh sách tài khoản</h5>
+          <button type="button" class="btn btn-primary btn-sm  mb -0"
+                  hx-get="{% url 'accounts:add_user' %}"
+                  hx-target="#modal-content"
+                  @click="modalTitle = 'Thêm người dùng mới'"
+                  data-bs-toggle="modal"
+                  data-bs-target="#user-modal">
+            <i class="bi bi-plus-lg"></i> Thêm mới
+          </button>
+          <button 
+              type="button" 
+              class="btn btn-danger btn-sm mb-0"
+              hx-post="{% url 'accounts:delete_users' %}"
+              hx-include="#accounts-table-form"
+              hx-target="#accounts-table"
+              hx-confirm="Bạn có chắc chắn muốn xóa những người dùng đã chọn?">
+              <i class="bi bi-trash"></i> Xóa mục đã chọn
+          </button>
+        </div>  
 
         <div class="card-body">
           <div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
 
-            <!-- TOP CONTROLS: uses HTMX to reload only #accounts-table -->
             <div class="dataTable-top d-flex justify-content-between align-items-center flex-wrap gap-2">
-
-              <!-- Per page -->
+              
               <div class="dataTable-dropdown d-flex align-items-center gap-2">
                 <select name="per_page"
                         class="dataTable-selector form-select form-select-sm w-auto"
@@ -56,7 +72,6 @@
               </div>
               <div class="d-flex flex-wrap align-items-center gap-2" style="width:100%;">
 
-                <!-- Search -->
                 <div class="dataTable-search flex-grow-1" style="min-width:180px;">
                   <input name="q" value="{{ request.GET.q|default:'' }}" class="dataTable-input form-control form-control-sm"
                         style="width:100%; max-width:250px;"
@@ -67,7 +82,6 @@
                         hx-trigger="keyup changed delay:300ms">
                 </div>
 
-                <!-- Center filter -->
                 <div class="dataTable-center">
                   <select name="center" class="form-select form-select-sm w-auto"
                           hx-get="/accounts/manage/"
@@ -81,7 +95,6 @@
                   </select>
                 </div>
 
-                <!-- Status -->
                 <div class="dataTable-filter">
                   <select name="status" class="form-select form-select-sm w-auto"
                           hx-get="/accounts/manage/"
@@ -94,7 +107,6 @@
                   </select>
                 </div>
 
-                <!-- Role (groups) -->
                 <div class="dataTable-role">
                   <select name="role" class="form-select form-select-sm w-auto"
                           hx-get="/accounts/manage/"
@@ -108,7 +120,6 @@
                   </select>
                 </div>
 
-                <!-- Group by -->
                 <div class="dataTable-groupby">
                   <select name="group_by" class="form-select form-select-sm w-auto"
                           hx-get="/accounts/manage/"
@@ -120,17 +131,49 @@
                     <option value="center" {% if request.GET.group_by == 'center' %}selected{% endif %}>Group by center</option>
                   </select>
                 </div>
-
+          
               </div>
             </div>
-            <!-- TABLE - this container will be swapped by HTMX -->
-            <div id="accounts-table">
-              {% include "_accounts_table.html" %}
-            </div>
+            
+            <form id="accounts-table-form" 
+                  hx-trigger="reloadTable from:body" 
+                  hx-get="{% url 'accounts:manage_accounts' %}"
+                  hx-target="#accounts-table"
+                  hx-swap="innerHTML">
+              {% csrf_token %}
+              <div id="accounts-table">
+                {% include "_accounts_table.html" %}
+              </div>
+            </form>
           </div>
         </div>
       </div>
     </section>
   </div>
 </div>
+
+<div class="modal fade" id="user-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+            </div>
+            <div id="modal-content">
+                <div class="modal-body">
+                    <p>Đang tải...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function toggleAllCheckboxes(source) {
+        const checkboxes = document.querySelectorAll('input[name="user_ids"]');
+        for (let i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = source.checked;
+        }
+    }
+</script>
+{% endblock %}
 {% endblock %}
