@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "drf_spectacular",
+    "widget_tweaks",
+    "django_htmx",
     # Các app của hệ thống
     "apps.common",
     "apps.accounts",

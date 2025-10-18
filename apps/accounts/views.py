@@ -11,10 +11,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator, EmptyPage
+from django.template.loader import render_to_string
 from django.db.models import Q, Count
 from apps.centers.models import Center
 from .models import ParentStudentRelation
-from .forms import AdminUserCreateForm
+from .forms import AdminUserCreateForm, AdminUserUpdateForm
 
 User = get_user_model()
 
@@ -40,7 +41,9 @@ def login_view(request):
             if is_htmx_request(request):
                 resp = HttpResponse("", status=400)
                 resp["HX-Trigger"] = json.dumps({
-                    "modal": {"icon": "error", "title": "Số điện thoại không tồn tại"}
+                    "show-sweet-alert": {
+                        "icon": "error", "title": "Số điện thoại không tồn tại"
+                    }
                 })
                 return resp
             return redirect("accounts:login")
@@ -51,7 +54,9 @@ def login_view(request):
             if is_htmx_request(request):
                 resp = HttpResponse("", status=400)
                 resp["HX-Trigger"] = json.dumps({
-                    "modal": {"icon": "error", "title": "Mật khẩu không đúng"}
+                    "show-sweet-alert": {
+                        "icon": "error", "title": "Mật khẩu không đúng"
+                    }
                 })
                 return resp
             return redirect("accounts:login")
@@ -68,7 +73,7 @@ def login_view(request):
         if is_htmx_request(request):
             resp = HttpResponse("")
             resp["HX-Trigger"] = json.dumps({
-                "modal": {
+                "show-sweet-alert": {
                     "icon": "success",
                     "title": "Đăng nhập thành công!",
                     "redirect": "/"   # redirect sau khi modal đóng
@@ -89,7 +94,7 @@ def logout_view(request):
     if is_htmx_request(request):
         resp = HttpResponse("")
         resp["HX-Trigger"] = json.dumps({
-            "modal": {
+            "show-sweet-alert": {
                 "icon": "success",
                 "title": "Đăng xuất thành công!",
                 "redirect": "/"
@@ -251,80 +256,104 @@ def manage_accounts(request):
 @login_required
 def user_create_view(request):
     if request.method == 'POST':
-        form = AdminUserCreateForm(request.POST)
+        form = AdminUserCreateForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
-            response = HttpResponse(status=204) # 204 No Content
+            user = form.save()
+            response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "modal": {"icon": "success", "title": "Thành công!", "text": "Người dùng mới đã được tạo."},
-                "reloadTable": True,      # Lệnh tải lại bảng
-                "closeUserModal": True,   # Lệnh đóng form modal
+                "reloadTableEvent": True,
+                "closeUserModal": True,
+                "show-sweet-alert": {
+                    "icon": "success",
+                    "title": f"Đã tạo người dùng '{user.username}' thành công!"
+                }
             })
             return response
+        else:
+            # Nếu form không hợp lệ, render lại form với lỗi để HTMX cập nhật UI
+            context = {
+                'form': form,
+            }
+            return render(request, '_add_user_form.html', context, status=422) # status 422 để HTMX biết có lỗi
     else:
         form = AdminUserCreateForm()
     
-    return render(request, '_add_user_form.html', {'form': form})
-
+    # Thêm context `enctype` để template biết cần thêm thuộc tính cho form
+    context = {
+        'form': form,
+        'enctype': 'multipart/form-data'
+    }
+    return render(request, '_add_user_form.html', context)
 
 
 @require_POST
 @login_required
 def user_delete_view(request):
-    user_ids = request.POST.getlist('user_ids')
-    
+    # Hỗ trợ cả xóa đơn và xóa hàng loạt
+    user_ids = request.POST.getlist('user_ids[]') or request.POST.getlist('user_ids')
     original_count = len(user_ids)
-    if original_count == 0:
-        return HttpResponse(status=204)
 
-    current_user_id_str = str(request.user.id)
-    
-    # Lọc ra danh sách ID, không bao gồm ID của người dùng hiện tại
-    user_ids_to_delete = [uid for uid in user_ids if uid != current_user_id_str]
-    
-    count_deleted = 0
-    if user_ids_to_delete:
-        user_ids_int = [int(uid) for uid in user_ids_to_delete]
-        count_deleted, _ = User.objects.filter(id__in=user_ids_int).delete()
-    
-    # --- BẮT ĐẦU THAY ĐỔI ---
+    if not user_ids:
+        alert = {"icon": "info", "title": "Không có người dùng nào được chọn."}
+    else:
+        current_user_id_str = str(request.user.id)
+        user_ids_to_delete = [uid for uid in user_ids if uid != current_user_id_str]
+        deleted_users_info = []
+        
+        count_deleted = 0
+        if user_ids_to_delete:
+            user_ids_int = [int(uid) for uid in user_ids_to_delete]
+            users_to_delete_qs = User.objects.filter(id__in=user_ids_int)
+            # Lấy thông tin user trước khi xóa
+            if original_count == 1 and user_ids_to_delete:
+                user_instance = users_to_delete_qs.first()
+                if user_instance:
+                    deleted_users_info.append(user_instance.username)
 
-    toast = {} # Tạo một dictionary để chứa thông tin toast
+            count_deleted, _ = users_to_delete_qs.delete()
 
-    # Xây dựng nội dung thông báo dựa trên kết quả
-    if original_count > len(user_ids_to_delete): # Trường hợp người dùng cố gắng tự xóa
-        if count_deleted > 0:
-            toast = {
-                "type": "warning",
-                "message": f"Đã xóa {count_deleted} người dùng. Bạn không thể tự xóa chính mình."
-            }
+        # Logic thông báo
+        self_delete_attempt = original_count > len(user_ids_to_delete)
+        
+        if self_delete_attempt:
+            if count_deleted > 0:
+                alert = {
+                    "icon": "warning",
+                    "title": f"Đã xóa {count_deleted} người dùng.",
+                    "text": "Bạn không thể tự xóa chính mình."
+                }
+            else:
+                alert = {
+                    "icon": "error",
+                    "title": "Không thể xóa",
+                    "text": "Bạn không thể tự xóa chính mình."
+                }
+        elif count_deleted > 0:
+            if original_count == 1 and deleted_users_info:
+                alert = {
+                    "icon": "success",
+                    "title": f"Đã xóa người dùng '{deleted_users_info[0]}' thành công."
+                }
+            else:
+                alert = {
+                    "icon": "success",
+                    "title": f"Đã xóa {count_deleted} người dùng thành công."
+                }
         else:
-            toast = {
-                "type": "danger", # Dùng 'danger' cho Bootstrap
-                "message": "Không thể xóa, bạn không thể tự xóa chính mình."
+            # Trường hợp không có user nào bị xóa (có thể do ID không tồn tại hoặc chỉ có ý định tự xóa)
+            alert = {
+                "icon": "info",
+                "title": "Không có người dùng nào được xóa."
             }
-    else: # Trường hợp xóa bình thường
-        toast = {
-            "type": "success",
-            "message": f"Đã xóa {count_deleted} người dùng thành công."
-        }
 
-    response = HttpResponse(status=204) # Giữ nguyên status 204
-    # Gửi đúng trigger "showToast" mà base.html đang lắng nghe
-    triggers = {
-        "showToast": toast,
-        "reloadTable": True
-    }
-    response['HX-Trigger'] = json.dumps(triggers)
-    
-    # --- KẾT THÚC THAY ĐỔI ---
-    
+    # Gửi thông báo SweetAlert qua HX-Trigger
+    response = HttpResponse(status=200)
+    response['HX-Trigger'] = json.dumps({
+        "reloadTableEvent": True,
+        "closeUserModal": True, # Đóng modal chi tiết nếu xóa từ đó
+        "show-sweet-alert": alert
+    })
     return response
-
-@login_required
-def confirm_delete_view(request, user_id):
-    user = get_object_or_404(User, id=user_id)
-    return render(request, "_confirm_delete_modal.html", {"user": user})
 
 @login_required
 def user_detail_view(request, user_id):
@@ -334,19 +363,25 @@ def user_detail_view(request, user_id):
 @login_required
 def user_edit_view(request, user_id):
     user = get_object_or_404(User, id=user_id)
-
     if request.method == 'POST':
-        form = AdminUserCreateForm(request.POST, instance=user)
+        form = AdminUserUpdateForm(request.POST, request.FILES, instance=user)
         if form.is_valid():
             form.save()
-            response = HttpResponse(status=204)
+            # Trả về 200 OK với nội dung trống để đảm bảo HTMX xử lý trigger
+            response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "modal": {"icon": "success", "title": "Thành công!", "text": "Thông tin người dùng đã được cập nhật."},
-                "reloadTable": True,
+                "reloadTableEvent": True,
                 "closeUserModal": True,
+                "show-sweet-alert": {
+                    "icon": "success",
+                    "title": f"Cập nhật người dùng '{user.username}' thành công!"
+                }
             })
             return response
+        else:
+            # Nếu form không hợp lệ, render lại form với lỗi
+            return render(request, '_edit_user_form.html', {'form': form, 'user': user}, status=422)
     else:
-        form = AdminUserCreateForm(instance=user)
+        form = AdminUserUpdateForm(instance=user)
 
     return render(request, '_edit_user_form.html', {'form': form, 'user': user})

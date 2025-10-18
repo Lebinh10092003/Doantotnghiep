@@ -42,5 +42,21 @@
     <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">
         <span>Đóng</span>
     </button>
-    <a href="#" class="btn btn-primary">Chỉnh sửa</a>
+    <button type="button" class="btn btn-primary"
+        hx-get="{% url 'accounts:edit_user' user.id %}"
+        hx-target="#modal-content"
+        @click="modalTitle = 'Chỉnh sửa: {{ user.username|escapejs }}'">
+        <i class="bi bi-pencil-square"></i> Chỉnh sửa
+    </button>
+    <form hx-post="{% url 'accounts:delete_users' %}"
+          hx-swap="none"
+          class="d-inline"
+          data-confirm-title="Xác nhận xóa"
+          data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
+        {% csrf_token %}
+        <input type="hidden" name="user_ids" value="{{ user.id }}">
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Xóa
+        </button>
+    </form>
 </div>

@@ -84,11 +84,15 @@
                 <i class="bi bi-eye"></i>
             </button>
             
-            <button class="btn btn-danger btn-sm"
-                    hx-get="{% url 'accounts:confirm_delete' user.id %}"
-                    hx-target="body"
-                    hx-swap="beforeend">
-              <i class="bi bi-trash"></i></button>
+            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
+                  data-confirm-title="Xác nhận xóa"
+                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
+                {% csrf_token %}
+                <input type="hidden" name="user_ids" value="{{ user.id }}">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
         </td>
       </tr>
       {% endfor %}
@@ -163,11 +167,15 @@
                 <i class="bi bi-eye"></i>
             </button>
             
-            <button class="btn btn-danger btn-sm"
-                    hx-get="{% url 'accounts:confirm_delete' user.id %}"
-                    hx-target="body"
-                    hx-swap="beforeend">
-              <i class="bi bi-trash"></i></button>
+            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
+                  data-confirm-title="Xác nhận xóa"
+                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
+                {% csrf_token %}
+                <input type="hidden" name="user_ids" value="{{ user.id }}">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
         </td>
       </tr>
       {% endfor %}
@@ -242,11 +250,15 @@
                 <i class="bi bi-eye"></i>
             </button>
             
-            <button class="btn btn-danger btn-sm"
-                    hx-get="{% url 'accounts:confirm_delete' user.id %}"
-                    hx-target="body"
-                    hx-swap="beforeend">
-              <i class="bi bi-trash"></i></button>
+            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
+                  data-confirm-title="Xác nhận xóa"
+                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
+                {% csrf_token %}
+                <input type="hidden" name="user_ids" value="{{ user.id }}">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
         </td>
       </tr>
       {% endfor %}
@@ -315,11 +327,15 @@
                 <i class="bi bi-eye"></i>
             </button>
             
-            <button class="btn btn-danger btn-sm"
-                    hx-get="{% url 'accounts:confirm_delete' user.id %}"
-                    hx-target="body"
-                    hx-swap="beforeend">
-              <i class="bi bi-trash"></i></button>
+            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
+                  data-confirm-title="Xác nhận xóa"
+                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
+                {% csrf_token %}
+                <input type="hidden" name="user_ids" value="{{ user.id }}">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
         </td>
       </tr>
       {% empty %}

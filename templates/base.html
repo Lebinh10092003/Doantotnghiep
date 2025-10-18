@@ -38,31 +38,13 @@
     {% endblock %}
     <meta name="csrf-token" content="{{ csrf_token }}">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="{% static 'extensions/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-    <script src="{% static 'static/js/pages/component-toasts.js' %}"></script>
+    <script src="{% static 'static/js/custom-events.js' %}"></script>
 </head>
 
 <body>
-    <div id="toast-container" 
-         class="toast-container position-fixed bottom-0 end-0 p-3"
-         style="z-index: 1100"
-         x-data="{ toasts: [] }"
-         @htmx:after-swap.window="
-            if ($event.detail.xhr.getResponseHeader('HX-Trigger')) {
-                try {
-                    let triggers = JSON.parse($event.detail.xhr.getResponseHeader('HX-Trigger'));
-                    if (triggers.showToast) {
-                        toasts.push({ id: Date.now(), message: triggers.showToast.message, type: triggers.showToast.type });
-                        setTimeout(() => toasts.shift(), 4000); 
-                    }
-                } catch (e) {}
-            }
-         ">
-        <template x-for="toast in toasts" :key="toast.id">
-            {% include 'includes/toast.html' %}
-        </template>
-    </div>
     <div id="app">
         <div id="sidebar">
             <div class="sidebar-wrapper active">
@@ -271,8 +253,15 @@
     <script src="{% static 'static/js/components/dark.js' %}"></script>
     <script src="{% static 'extensions/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
     <script src="{% static 'compiled/js/app.js' %}"></script>
-    <script src="{% static 'static/js/pages/component-toasts.js' %}"></script>
-    <script src="{% static 'static/js/pages/toastify.js' %}"></script>
+
+    <script>
+        // Lắng nghe sự kiện HTMX trên toàn bộ trang
+        // và xử lý các trigger từ backend (ví dụ: show-sweet-alert)
+        document.body.addEventListener('htmx:afterRequest', handleHtmxTriggerEvents);
+
+        // Ghi đè sự kiện confirm mặc định của HTMX để dùng SweetAlert
+        document.body.addEventListener('htmx:confirm', handleHtmxConfirm);
+    </script>
 
     {% block extra_js %}
     {% endblock %}

@@ -1,6 +1,19 @@
-<div class="toast align-items-center text-bg-{{ type }} border-0 mb-2" role="alert">
-  <div class="d-flex">
+{% comment %}
+File: templates/includes/toast.html
+Context:
+- message: Nội dung thông báo.
+- type: 'success', 'danger', 'warning', 'info' (tương ứng với class của Bootstrap).
+- title: Tiêu đề (tùy chọn).
+{% endcomment %}
+<div class="toast" role="alert" aria-live="assertive" aria-atomic="true" 
+     x-data x-init="
+        const toast = new bootstrap.Toast($el, { delay: 5000 });
+        toast.show();
+        $el.addEventListener('hidden.bs.toast', () => $el.remove());
+     ">
+    <div class="toast-header bg-{{ type|default:'info' }} text-white">
+        <strong class="me-auto">{{ title|default:'Thông báo' }}</strong>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
     <div class="toast-body">{{ message }}</div>
-    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-  </div>
 </div>

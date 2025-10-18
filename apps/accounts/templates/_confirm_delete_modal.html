@@ -1,32 +1,23 @@
-<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title">Xác nhận xóa</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        Bạn có chắc muốn xóa người dùng <strong>{{ user.username }}</strong> không?
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-        <button class="btn btn-danger"
-                hx-post="{% url 'accounts:delete_users' %}"
-                hx-vals='{"user_ids": "{{ user.id }}", "csrfmiddlewaretoken": "{{ csrf_token }}"}'
-                hx-target="closest .modal"
-                hx-swap="outerHTML">
-          Xóa
-        </button>
-      </div>
-    </div>
-  </div>
+{# Đây là nội dung sẽ được chèn vào #modal-content #}
+<div class="modal-header bg-danger text-white">
+    <h5 class="modal-title">Xác nhận xóa</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-
-<script>
-  var modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-  modal.show();
-  
-  document.getElementById('confirmDeleteModal').addEventListener('hidden.bs.modal', function (event) {
-    this.remove();
-  });
-</script>
+<div class="modal-body">
+    <div class="d-flex align-items-center">
+        <div class="fs-1 text-danger me-3"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div>
+            <p class="mb-0">Bạn có chắc chắn muốn xóa người dùng <strong>{{ user.username }}</strong> không? Hành động này không thể hoàn tác.</p>
+        </div>
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">
+        <span>Hủy</span>
+    </button>
+    <button type="button" class="btn btn-danger"
+            hx-post="{% url 'accounts:delete_single_user' user.id %}"
+            hx-swap="none">
+        <span>Xóa</span>
+    </button>
+</div>
