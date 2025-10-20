@@ -3,21 +3,13 @@ from django.db import models
 from django.conf import settings
 
 
-ROLE_CHOICES = [
-    ("ADMIN", "Admin"),
-    ("CENTER_MANAGER", "Center Manager"),
-    ("TEACHER", "Teacher"),
-    ("ASSISTANT", "Assistant"),
-    ("PARENT", "Parent"),
-    ("STUDENT", "Student"),
-]
 
 
 GENDER_CHOICES = [("M", "Male"), ("F", "Female"), ("O", "Other")]
 
 
 class User(AbstractUser):
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="STUDENT")
+    role = models.CharField(max_length=20,default="STUDENT")
     center = models.ForeignKey(
         "centers.Center",
         null=True,

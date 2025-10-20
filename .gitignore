@@ -24,12 +24,6 @@ wheels/
 .installed.cfg
 *.egg
 
-# Environment variables
-.env
-
-# Django media files
-/media/
-
 # Databases
 *.sqlite3
 
