@@ -123,13 +123,17 @@ class SimpleGroupForm(forms.ModelForm):
             'content_type__app_label', 'codename'
         ),
         required=False,
-        widget=forms.SelectMultiple(attrs={'size': 12})
+        widget=forms.CheckboxSelectMultiple, 
+        label="Quyền hạn"
     )
-
     class Meta:
         model = Group
         fields = ['name', 'permissions']
 
-
+    # Thêm __init__ để tùy chỉnh label
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['name'].label = "Tên nhóm"
+    
 class ImportUserForm(forms.Form):
     file = forms.FileField(label="Chọn file Excel/CSV")

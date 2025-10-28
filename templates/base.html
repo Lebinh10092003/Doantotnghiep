@@ -89,7 +89,9 @@
                             </li>
                             {% if user.is_superuser or user|in_any_group:"ADMIN,CENTER_MANAGER" %}
                             {% url 'accounts:import_users' as import_users_url %}
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-shield-lock"></i><span>Quản lý nhóm & Roles</span></a></li>
+
+                                {% url 'accounts:manage_groups' as manage_groups_url %}
+                                <li class="submenu-item {% if request.path == manage_groups_url %}active{% endif %}"><a href="{{ manage_groups_url }}" class="submenu-link"><i class="bi bi-shield-lock"></i><span>Quản lý nhóm & Roles</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-badge"></i><span>Gán quyền & Vai trò</span></a></li>
                             {% endif %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-circle"></i><span>Hồ sơ cá nhân</span></a></li>

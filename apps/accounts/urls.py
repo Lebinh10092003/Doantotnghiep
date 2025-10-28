@@ -4,8 +4,10 @@ from . import views
 
 app_name = "accounts"
 urlpatterns = [
+    #Đăng nhập và đăng xuất
     path("login/", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),
+    #Quản lý người dùng
     path("manage/", views.manage_accounts, name="manage_accounts"),
     path("add/", views.user_create_view, name="add_user"),
     path("delete/", views.user_delete_view, name="delete_users"),
@@ -14,4 +16,9 @@ urlpatterns = [
     path("export/", views.export_users_view, name="export_users"),
     path("import/", views.import_users_view, name="import_users"),
     path("import/template/", views.export_import_template_view, name="import_template"),
+    #Quản lý nhóm người dùng
+    path("groups/", views.manage_groups, name="manage_groups"),
+    path("groups/create/", views.group_create_view, name="group_create"),
+    path("groups/edit/<int:group_id>/", views.group_edit_view, name="group_edit"),
+    path("groups/delete/", views.group_delete_view, name="group_delete"),
 ]

@@ -1,0 +1,84 @@
+<div class="dataTable-container table-responsive">
+  <table class="table table-striped dataTable-table" id="groups-table-content">
+    <thead>
+      <tr>
+        <th><input type="checkbox" onclick="toggleAllGroupCheckboxes(this)"></th>
+        <th>Tên nhóm (Role)</th>
+        <th>Số lượng người dùng</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for group in page_obj.object_list %}
+      <tr>
+        <td><input type="checkbox" name="group_ids[]" value="{{ group.id }}"></td>
+        <td>{{ group.name }}</td>
+        <td>{{ group.user_count }}</td>
+        <td>
+          <button type="button" class="btn btn-sm btn-warning" 
+                  hx-get="{% url 'accounts:group_edit' group.id %}"
+                  hx-target="#modal-content" 
+                  @click="modalTitle = 'Chỉnh sửa nhóm: {{ group.name|escapejs }}'"
+                  data-bs-toggle="modal" 
+                  data-bs-target="#group-modal">
+            <i class="bi bi-pencil-square"></i> Sửa
+          </button>
+          
+          <form hx-post="{% url 'accounts:group_delete' %}" hx-swap="none" class="d-inline"
+                data-confirm-title="Xác nhận xóa"
+                data-confirm-text="Bạn có chắc chắn muốn xóa nhóm '{{ group.name }}'?">
+            {% csrf_token %}
+            <input type="hidden" name="group_id_single" value="{{ group.id }}">
+            <button type="submit" class="btn btn-danger btn-sm">
+              <i class="bi bi-trash"></i> Xóa
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" class="text-center">Không tìm thấy nhóm nào.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="dataTable-bottom d-flex justify-content-between align-items-center">
+  <div class="dataTable-info">
+    Hiển thị {{ page_obj.start_index }} đến {{ page_obj.end_index }} trong tổng số {{ paginator.count }} mục
+  </div>
+
+  <nav class="dataTable-pagination">
+    <ul class="pagination">
+      {% if page_obj.number > 1 %}
+      <li class="page-item">
+        <a hx-get="{% url 'accounts:manage_groups' %}?page=1&per_page={{ per_page }}" 
+           hx-target="#groups-table" hx-swap="innerHTML" class="page-link">
+          Đầu
+        </a>
+      </li>
+      {% endif %}
+
+      {% for p in paginator.page_range %}
+        {% if p >= page_obj.number|add:-2 and p <= page_obj.number|add:2 %}
+        <li class="page-item {% if page_obj.number == p %}active{% endif %}">
+          <a hx-get="{% url 'accounts:manage_groups' %}?page={{ p }}&per_page={{ per_page }}"
+             hx-target="#groups-table" hx-swap="innerHTML" class="page-link">
+            {{ p }}
+          </a>
+        </li>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.number < paginator.num_pages %}
+      <li class="page-item">
+        <a hx-get="{% url 'accounts:manage_groups' %}?page={{ paginator.num_pages }}&per_page={{ per_page }}"
+           hx-target="#groups-table" hx-swap="innerHTML" class="page-link">
+          Cuối
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>

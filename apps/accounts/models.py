@@ -1,13 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
-
-
-
-
 GENDER_CHOICES = [("M", "Male"), ("F", "Female"), ("O", "Other")]
-
-
 class User(AbstractUser):
     role = models.CharField(max_length=20,default="STUDENT")
     center = models.ForeignKey(

@@ -18,10 +18,13 @@ from .models import ParentStudentRelation
 from .forms import AdminUserCreateForm, AdminUserUpdateForm, ImportUserForm
 from .resources import UserResource
 from tablib import Dataset
-
+from .forms import SimpleGroupForm
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from collections import defaultdict
 User = get_user_model()
 
-
+# 
 def is_htmx_request(request):
     return (
         request.headers.get("HX-Request") == "true"
@@ -29,7 +32,7 @@ def is_htmx_request(request):
         or bool(getattr(request, "htmx", False))
     )
 
-
+# Đăng nhập và đăng xuất
 @ensure_csrf_cookie
 def login_view(request):
     if request.method == "POST":
@@ -105,10 +108,10 @@ def logout_view(request):
         return resp
     return redirect("common:home")
 
-
+# Kiểm tra quyền admin
 def is_admin(user):
     return user.is_superuser or getattr(user, "role", None) == "ADMIN"
-
+# Lọc queryset người dùng dựa trên tham số request
 def _filter_users_queryset(request):
     qs = User.objects.all().select_related("center").prefetch_related("groups")
     
@@ -164,14 +167,14 @@ def _filter_users_queryset(request):
             pass
 
     # staff / superuser filters
-    if isinstance(is_staff, str) and is_staff:
+    if is_staff: # is_staff will be a string or None. If it's an empty string, it evaluates to False.
         v = is_staff.lower()
         if v in ("1", "true", "yes", "on"):
             qs = qs.filter(is_staff=True)
         elif v in ("0", "false", "no"):
             qs = qs.filter(is_staff=False)
 
-    if isinstance(is_superuser, str) and is_superuser:
+    if is_superuser: # Same logic for is_superuser
         v = is_superuser.lower()
         if v in ("1", "true", "yes", "on"):
             qs = qs.filter(is_superuser=True)
@@ -196,7 +199,7 @@ def _filter_users_queryset(request):
     
     return qs.distinct()
 
-
+# Quản lý người dùng
 @login_required
 def manage_accounts(request):
     qs = _filter_users_queryset(request)
@@ -528,4 +531,222 @@ def export_import_template_view(request):
     # Sử dụng phương thức export() để đảm bảo định dạng được xử lý đúng cách
     response = HttpResponse(dataset.export('xlsx'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="import_users_template.xlsx"'
+    return response
+
+
+# Quản lý nhóm người dùng
+def _group_permissions_by_functionality(permissions_qs):
+    """
+    Nhóm quyền theo chức năng dựa trên model và codename.
+    Trả về dict: {'Tên Chức Năng': [(permission_id, 'Label rõ ràng'), ...]}
+    """
+    grouped = {}
+    permissions = permissions_qs.select_related('content_type').order_by(
+        'content_type__app_label', 'content_type__model', 'codename'
+    )
+
+    functional_groups = {
+        "Quản lý Người dùng & Nhóm": ['user', 'group', 'parentstudentrelation', 'permission', 'contenttype'],
+        "Quản lý Trung tâm": ['center', 'room'],
+        "Quản lý Chương trình học": ['subject', 'module', 'lesson', 'lecture', 'exercise'],
+        "Quản lý Lớp học & Buổi học": ['class', 'classassistant', 'classsession'],
+        "Quản lý Tuyển sinh & Điểm danh": ['enrollment', 'attendance'],
+        "Quản lý Đánh giá": ['assessment'],
+        "Quản lý Điểm thưởng & Quà tặng": ['pointaccount', 'rewarditem', 'rewardtransaction'],
+        "Quản lý Sản phẩm Học sinh": ['studentproduct'],
+        "Quản lý Thông báo": ['notification'],
+        "Quản lý Tài chính (Billing)": [], # Thêm model khi có
+        "Quản lý Báo cáo": [], # Thêm model khi có
+        "Hệ thống & Admin": ['logentry', 'session'],
+    }
+
+    model_to_group = {}
+    for group_name, models in functional_groups.items():
+        for model_name in models:
+            model_to_group[model_name] = group_name
+
+    for perm in permissions:
+        model_name = perm.content_type.model
+        group_name = model_to_group.get(model_name, "Chức năng Khác")
+
+        if group_name not in grouped:
+            grouped[group_name] = []
+
+        action = ""
+        if perm.codename.startswith('add_'):
+            action = "Tạo mới"
+        elif perm.codename.startswith('change_'):
+            action = "Chỉnh sửa"
+        elif perm.codename.startswith('delete_'):
+            action = "Xóa"
+        elif perm.codename.startswith('view_'):
+            action = "Xem"
+        else:
+            action = perm.codename.replace('_', ' ').capitalize() # Xử lý codename tùy chỉnh
+
+        # Lấy tên model dễ đọc
+        try:
+             # Ưu tiên verbose_name nếu có
+            model_class = perm.content_type.model_class()
+            if model_class and hasattr(model_class._meta, 'verbose_name'):
+                 model_verbose_name = model_class._meta.verbose_name.title()
+            else:
+                 # Nếu không, dùng tên ContentType (thường là tên model viết thường)
+                 model_verbose_name = ContentType.objects.get_for_id(perm.content_type_id).name.title()
+        except Exception:
+             # Fallback nếu có lỗi
+             model_verbose_name = perm.content_type.model.replace('_', ' ').capitalize()
+
+
+        clear_label = f"{action} {model_verbose_name}"
+        grouped[group_name].append((perm.id, clear_label))
+
+    # Sắp xếp lại dict theo thứ tự functional_groups
+    ordered_grouped = {name: grouped.get(name, []) for name in functional_groups if name in grouped}
+    if "Chức năng Khác" in grouped:
+         ordered_grouped["Chức năng Khác"] = grouped["Chức năng Khác"]
+
+    return ordered_grouped
+
+
+@login_required
+def manage_groups(request):
+    groups_list = Group.objects.annotate(user_count=Count('user')).order_by('name')
+
+    try:
+        per_page = int(request.GET.get("per_page", 10))
+    except (TypeError, ValueError):
+        per_page = 10
+    try:
+        page = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+
+    paginator = Paginator(groups_list, per_page)
+    try:
+        page_obj = paginator.page(page)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
+    context = {
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "per_page": per_page,
+    }
+
+    if is_htmx_request(request):
+        return render(request, "_groups_table.html", context)
+
+    return render(request, "manage_groups.html", context)
+
+
+@login_required
+def group_create_view(request):
+    if request.method == 'POST':
+        form = SimpleGroupForm(request.POST)
+        if form.is_valid():
+            group = form.save()
+            response = HttpResponse(status=200)
+            response['HX-Trigger'] = json.dumps({
+                "reloadGroupsTable": True,
+                "closeGroupModal": True,
+                "show-sweet-alert": {
+                    "icon": "success",
+                    "title": f"Đã tạo nhóm '{group.name}' thành công!"
+                }
+            })
+            return response
+        else:
+            all_permissions = Permission.objects.all()
+            functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
+            context = {'form': form, 'functional_grouped_permissions': functional_grouped_permissions}
+            return render(request, '_group_form.html', context, status=422)
+    else: # GET
+        form = SimpleGroupForm()
+        all_permissions = Permission.objects.all()
+        functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
+        context = {'form': form, 'functional_grouped_permissions': functional_grouped_permissions}
+        return render(request, '_group_form.html', context)
+
+
+@login_required
+def group_edit_view(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    if request.method == 'POST':
+        form = SimpleGroupForm(request.POST, instance=group)
+        if form.is_valid():
+            form.save()
+            response = HttpResponse(status=200)
+            response['HX-Trigger'] = json.dumps({
+                "reloadGroupsTable": True,
+                "closeGroupModal": True,
+                "show-sweet-alert": {
+                    "icon": "success",
+                    "title": f"Cập nhật nhóm '{group.name}' thành công!"
+                }
+            })
+            return response
+        else:
+            all_permissions = Permission.objects.all()
+            functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
+            context = {'form': form, 'group': group, 'functional_grouped_permissions': functional_grouped_permissions}
+            return render(request, '_group_form.html', context, status=422)
+    else: # GET
+        form = SimpleGroupForm(instance=group)
+        all_permissions = Permission.objects.all()
+        functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
+        context = {'form': form, 'group': group, 'functional_grouped_permissions': functional_grouped_permissions}
+        return render(request, '_group_form.html', context)
+
+
+@require_POST
+@login_required
+def group_delete_view(request):
+    # Lấy ID từ cả xóa hàng loạt (checkbox) và xóa đơn (input ẩn)
+    group_ids = request.POST.getlist('group_ids[]') or request.POST.getlist('group_id_single')
+    # Loại bỏ các ID trùng lặp
+    unique_group_ids = list(set(group_ids))
+    alert = {} # Khởi tạo alert
+
+    if not unique_group_ids:
+        alert = {"icon": "info", "title": "Không có nhóm nào được chọn."}
+    else:
+        try:
+            group_ids_int = [int(gid) for gid in unique_group_ids]
+            groups_to_delete_qs = Group.objects.filter(id__in=group_ids_int)
+
+            # Lấy tên các nhóm TRƯỚC KHI xóa để hiển thị trong thông báo
+            deleted_names = []
+            for group in groups_to_delete_qs:
+                deleted_names.append(group.name)
+
+            deleted_count = len(deleted_names)
+            if deleted_count > 0:
+                groups_to_delete_qs.delete()
+
+            if deleted_count > 0:
+                if deleted_count == 1:
+                    alert = {"icon": "success", "title": f"Đã xóa nhóm '{deleted_names[0]}' thành công."}
+                else:
+                    # Tạo thông báo chi tiết
+                    deleted_list_str = ", ".join([f"'{name}'" for name in deleted_names])
+                    alert = {
+                        "icon": "success", 
+                        "title": f"Đã xóa {deleted_count} nhóm thành công.",
+                        "text": f"Các nhóm đã xóa: {deleted_list_str}"
+                    }
+            else:
+                alert = {"icon": "info", "title": "Không có nhóm nào được xóa."}
+
+        except ValueError:
+            alert = {"icon": "error", "title": "ID nhóm không hợp lệ."}
+        except Exception as e:
+            alert = {"icon": "error", "title": "Lỗi máy chủ", "text": str(e)}
+
+    response = HttpResponse(status=200)
+    response['HX-Trigger'] = json.dumps({
+        "reloadGroupsTable": True,
+        "closeGroupModal": True,
+        "show-sweet-alert": alert
+    })
     return response
