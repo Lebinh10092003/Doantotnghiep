@@ -5,7 +5,7 @@
       hx-target="this"
       hx-swap="outerHTML">
     {% csrf_token %}
-    <div class="modal-body">
+    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
         {% if form.non_field_errors %}
             <div class="alert alert-danger">
                 {% for error in form.non_field_errors %}
@@ -18,15 +18,19 @@
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }}</label>
-                    {% render_field form.first_name class="form-control" %}
-                    <div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>
+                    {% render_field form.first_name class+="form-control" %}
+                    {% for error in form.first_name.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }}</label>
-                    {% render_field form.last_name class="form-control" %}
-                    <div class="text-danger small mt-1">{{ form.last_name.errors|striptags }}</div>
+                    {% render_field form.last_name class+="form-control" %}
+                    {% for error in form.last_name.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -35,15 +39,19 @@
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
-                    {% render_field form.email class="form-control" type="email" %}
-                    <div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>
+                    {% render_field form.email class+="form-control" type="email" %}
+                    {% for error in form.email.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.phone.id_for_label }}" class="form-label">{{ form.phone.label }}</label>
-                    {% render_field form.phone class="form-control" %}
-                    <div class="text-danger small mt-1">{{ form.phone.errors|striptags }}</div>
+                    {% render_field form.phone class+="form-control" %}
+                    {% for error in form.phone.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -52,42 +60,96 @@
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.password1.id_for_label }}" class="form-label">{{ form.password1.label }}</label>
-                    {% render_field form.password1 class="form-control" %}
-                    <div class="text-danger small mt-1">{{ form.password1.errors|striptags }}</div>
+                    {% render_field form.password1 class+="form-control" %}
+                    {% for error in form.password1.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.password2.id_for_label }}" class="form-label">{{ form.password2.label }}</label>
-                    {% render_field form.password2 class="form-control" %}
-                    <div class="text-danger small mt-1">{{ form.password2.errors|striptags }}</div>
+                    {% render_field form.password2 class+="form-control" %}
+                    {% for error in form.password2.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.dob.id_for_label }}" class="form-label">{{ form.dob.label }}</label>
+                    {% render_field form.dob class+="form-control" %}
+                    {% for error in form.dob.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.gender.id_for_label }}" class="form-label">{{ form.gender.label }}</label>
+                    {% render_field form.gender class+="form-select" %}
+                    {% for error in form.gender.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.national_id.id_for_label }}" class="form-label">{{ form.national_id.label }}</label>
+                    {% render_field form.national_id class+="form-control" %}
+                    {% for error in form.national_id.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
 
         <div class="mb-3">
-            <label for="{{ form.avatar.id_for_label }}" class="form-label">{{ form.avatar.label }}</g></label>
-            {% render_field form.avatar class="form-control" %}
-            <div class="text-danger small mt-1">{{ form.avatar.errors|striptags }}</div>
+            <label for="{{ form.address.id_for_label }}" class="form-label">{{ form.address.label }}</label>
+            {% render_field form.address class+="form-control" %}
+            {% for error in form.address.errors %}
+                <div class="invalid-feedback d-block">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.avatar.id_for_label }}" class="form-label">{{ form.avatar.label }}</label>
+            {% render_field form.avatar class+="form-control" %}
+            {% for error in form.avatar.errors %}
+                <div class="invalid-feedback d-block">{{ error }}</div>
+            {% endfor %}
         </div>
 
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.center.id_for_label }}" class="form-label">{{ form.center.label }}</label>
-                    {% render_field form.center class="form-select" %}
-                    <div class="text-danger small mt-1">{{ form.center.errors|striptags }}</div>
+                    {% render_field form.center class+="form-select" %}
+                    {% for error in form.center.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label class="form-label">{{ form.groups.label }}</label>
-                    <div class="form-control" style="height: auto;">
+                    <div class="border rounded p-2" style="max-height: 120px; overflow-y: auto;">
                         {% for choice in form.groups %}
-                        <div class="form-check">{{ choice.tag }} <label for="{{ choice.id_for_label }}">{{ choice.choice_label }}</label></div>
+                            <div class="form-check">
+                                {{ choice.tag }}  {# KHÔNG dùng |add_class #}
+                                <label for="{{ choice.id_for_label }}" class="form-check-label">{{ choice.choice_label }}</label>
+                            </div>
                         {% endfor %}
                     </div>
-                    <div class="text-danger small mt-1">{{ form.groups.errors|striptags }}</div>
+                    {% for error in form.groups.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -95,12 +157,18 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="form-check form-switch mb-3">
-                    {% render_field form.is_active class="form-check-input" %}
+                    {% render_field form.is_active class+="form-check-input" %}
                     <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label>
+                    {% for error in form.is_active.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
                 <div class="form-check form-switch mb-3">
-                    {% render_field form.is_staff class="form-check-input" %}
+                    {% render_field form.is_staff class+="form-check-input" %}
                     <label class="form-check-label" for="{{ form.is_staff.id_for_label }}">{{ form.is_staff.label }}</label>
+                    {% for error in form.is_staff.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>

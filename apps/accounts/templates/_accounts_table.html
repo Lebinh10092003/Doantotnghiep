@@ -16,10 +16,10 @@
     <tbody>
       {# group_by role: theo trường User.role #}
       {% if group_by == "role" %}
-      {% regroup page_obj.object_list by role as role_list %}
+      {% regroup page_obj.object_list by groups.first.name as role_list %}
       {% for role_group in role_list %}
       <tr class="table-group">
-        <td colspan="9"><strong>{{ role_group.grouper|default:"(No role)" }}</strong></td>
+        <td colspan="9"><strong>{{ role_group.grouper|default:"(Chưa có vai trò)" }}</strong></td>
       </tr>
       {% for user in role_group.list %}
       <tr>

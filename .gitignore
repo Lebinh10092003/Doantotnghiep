@@ -31,3 +31,6 @@ wheels/
 .idea/
 .vscode/
 
+#History files
+.history/
+

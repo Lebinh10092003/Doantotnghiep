@@ -1,0 +1,73 @@
+<div class="card-body border-top p-3">
+    <div class="row">
+        <div class="col-sm-3">
+            <h6 class="mb-0">Họ và tên</h6>
+        </div>
+        <div class="col-sm-9 text-secondary">
+            {{ user.get_full_name|default:"Chưa cập nhật" }}
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-sm-3">
+            <h6 class="mb-0">Email</h6>
+        </div>
+        <div class="col-sm-9 text-secondary">
+            {{ user.email|default:"Chưa cập nhật" }}
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-sm-3">
+            <h6 class="mb-0">Số điện thoại</h6>
+        </div>
+        <div class="col-sm-9 text-secondary">
+            {{ user.phone|default:"Chưa cập nhật" }}
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-sm-3">
+            <h6 class="mb-0">Ngày sinh</h6>
+        </div>
+        <div class="col-sm-9 text-secondary">
+            {{ user.dob|date:"d/m/Y"|default:"Chưa cập nhật" }}
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-sm-3">
+            <h6 class="mb-0">Giới tính</h6>
+        </div>
+        <div class="col-sm-9 text-secondary">
+            {{ user.get_gender_display|default:"Chưa cập nhật" }}
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-sm-3">
+            <h6 class="mb-0">Số CCCD/CMND</h6>
+        </div>
+        <div class="col-sm-9 text-secondary">
+            {{ user.national_id|default:"Chưa cập nhật" }}
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-sm-3">
+            <h6 class="mb-0">Địa chỉ</h6>
+        </div>
+        <div class="col-sm-9 text-secondary">
+            {{ user.address|default:"Chưa cập nhật" }}
+        </div>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-sm-12">
+            <button class="btn btn-primary"
+                    hx-get="{% url 'accounts:profile_edit' %}"
+                    hx-target="#profile-form-wrapper"
+                    hx-swap="innerHTML">Chỉnh sửa</button>
+        </div>
+    </div>
+</div>

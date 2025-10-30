@@ -1,5 +1,3 @@
-// static/static/js/custom-events.js
-
 /**
  * Xử lý các sự kiện tùy chỉnh được gửi từ backend qua header HX-Trigger.
  * @param {Event} evt - Sự kiện HTMX (ví dụ: htmx:afterRequest).
@@ -29,16 +27,53 @@ function handleHtmxTriggerEvents(evt) {
             });
         }
 
-        // 2. Xử lý đóng modal chung
-        // Bất kỳ modal nào có id là 'user-modal' sẽ được đóng
+        // 2. Xử lý đóng modal chung (user-modal, group-modal, etc.) và dọn dẹp backdrop
         if (triggers.closeUserModal) {
-            const userModal = document.getElementById('user-modal');
-            if (userModal) {
-                bootstrap.Modal.getInstance(userModal)?.hide();
+            // Tìm modal đang hiển thị (có class 'show')
+            const openModal = document.querySelector('.modal.show');
+            if (openModal) {
+                // Lấy instance của modal và ẩn nó đi
+                const modalInstance = bootstrap.Modal.getInstance(openModal);
+                if (modalInstance) {
+                    modalInstance.hide();
+
+                    // Đảm bảo backdrop được gỡ bỏ sau khi modal đã ẩn
+                    openModal.addEventListener('hidden.bs.modal', () => {
+                        document.body.classList.remove('modal-open');
+                        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                    }, { once: true });
+                }
             }
         }
-        // Thêm các trình xử lý sự kiện khác ở đây nếu cần
-        // Ví dụ: if (triggers.anotherEvent) { ... }
+
+        // 3. Xử lý đóng modal đổi mật khẩu
+        if (triggers.closePasswordModal) {
+            const passwordModal = document.getElementById('passwordModal');
+            if (passwordModal) {
+                bootstrap.Modal.getInstance(passwordModal)?.hide();
+            }
+        }
+
+        // 4. Xử lý reset form đổi mật khẩu
+        if (triggers.resetPasswordForm) {
+            const passwordForm = document.querySelector('#password-modal-content form');
+            passwordForm?.reset();
+        }
+
+        // 5. Xử lý cập nhật header của trang profile sau khi sửa
+        if (triggers.updateProfileHeader) {
+            const data = triggers.updateProfileHeader;
+            const nameEl = document.getElementById('profile-header-name');
+            const avatarEl = document.getElementById('profile-header-avatar');
+
+            if (nameEl) {
+                nameEl.textContent = data.fullName;
+            }
+            if (avatarEl) {
+                // Nếu không có avatarUrl, dùng ảnh mặc định. Cần đảm bảo đường dẫn đúng.
+                avatarEl.src = data.avatarUrl || '/static/static/images/faces/1.jpg';
+            }
+        }
 
     } catch (e) {
         console.error('Lỗi xử lý HX-Trigger:', e, 'Header:', header);

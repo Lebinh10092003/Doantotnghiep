@@ -1,0 +1,74 @@
+{% load widget_tweaks %}
+
+<form hx-post="{% url 'accounts:profile' %}"
+      hx-encoding="multipart/form-data" {# Cần thiết cho upload avatar #}
+      {# hx-target và hx-swap đã được đặt ở div bao ngoài #}
+      >
+    {% csrf_token %}
+
+    {# Hiển thị lỗi non-field nếu có #}
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }}</label>
+            {% render_field form.first_name class="form-control" %}
+            <div class="text-danger small mt-1">{{ form.first_name.errors|striptags }}</div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }}</label>
+            {% render_field form.last_name class="form-control" %}
+            <div class="text-danger small mt-1">{{ form.last_name.errors|striptags }}</div>
+        </div>
+    </div>
+    <div class="row">
+         <div class="col-md-6 mb-3">
+            <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+            {% render_field form.email class="form-control" type="email" %}
+            <div class="text-danger small mt-1">{{ form.email.errors|striptags }}</div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.phone.id_for_label }}" class="form-label">{{ form.phone.label }}</label>
+            {% render_field form.phone class="form-control" %}
+            <div class="text-danger small mt-1">{{ form.phone.errors|striptags }}</div>
+        </div>
+    </div>
+    <div class="mb-3">
+         <label for="{{ form.avatar.id_for_label }}" class="form-label">{{ form.avatar.label }}</label>
+         {% if form.instance.avatar %}
+            <p><img src="{{ form.instance.avatar.url }}" alt="Avatar" style="max-height: 80px; border-radius: 5px;"></p>
+         {% endif %}
+         {% render_field form.avatar class="form-control" %}
+         <div class="text-danger small mt-1">{{ form.avatar.errors|striptags }}</div>
+    </div>
+     <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.dob.id_for_label }}" class="form-label">{{ form.dob.label }}</label>
+            {% render_field form.dob class="form-control" %}
+            <div class="text-danger small mt-1">{{ form.dob.errors|striptags }}</div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.gender.id_for_label }}" class="form-label">{{ form.gender.label }}</label>
+            {% render_field form.gender class="form-select" %}
+            <div class="text-danger small mt-1">{{ form.gender.errors|striptags }}</div>
+        </div>
+    </div>
+     <div class="mb-3">
+        <label for="{{ form.national_id.id_for_label }}" class="form-label">{{ form.national_id.label }}</label>
+        {% render_field form.national_id class="form-control" %}
+        <div class="text-danger small mt-1">{{ form.national_id.errors|striptags }}</div>
+    </div>
+     <div class="mb-3">
+        <label for="{{ form.address.id_for_label }}" class="form-label">{{ form.address.label }}</label>
+        {% render_field form.address class="form-control" %}
+        <div class="text-danger small mt-1">{{ form.address.errors|striptags }}</div>
+    </div>
+
+    <div class="col-12 d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary me-1 mb-1">Lưu thay đổi</button>
+    </div>
+</form>

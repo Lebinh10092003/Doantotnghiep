@@ -21,15 +21,15 @@ class UserResource(resources.ModelResource):
     class Meta:
         model = User
         # Các trường sẽ được import/export.
-        # Bỏ qua 'password' để không export hash password.
-        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'phone', 'is_active', 'is_staff', 'center', 'groups')
+        # Thêm 'role' vào danh sách các trường.
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'phone', 'role', 'is_active', 'is_staff', 'center', 'groups')
         # Các trường chỉ để export, không dùng để import
         export_order = fields
         # Khi import, nếu một dòng dữ liệu đã tồn tại, bỏ qua không cập nhật
         skip_unchanged = True
         # Báo cáo các dòng đã bỏ qua
         report_skipped = True
-        # Sử dụng 'username' làm khóa chính để tìm và cập nhật người dùng khi import
+        # Sử dụng 'username' để tìm và cập nhật người dùng khi import
         import_id_fields = ('username',)
 
     # Xử lý mật khẩu khi import
@@ -37,7 +37,3 @@ class UserResource(resources.ModelResource):
         # Nếu là người dùng mới (chưa có id), đặt mật khẩu mặc định.
         if not instance.pk:
             instance.set_password('123456') # Mật khẩu mặc định cho user mới
-        if hasattr(instance, '_m2m_data') and 'groups' in instance._m2m_data:
-            group_names = instance._m2m_data['groups']
-            if group_names:
-                instance.role = group_names[0]

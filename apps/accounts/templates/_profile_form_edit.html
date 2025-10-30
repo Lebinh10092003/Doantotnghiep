@@ -1,9 +1,9 @@
 {% load widget_tweaks %}
 
-<form hx-post="{% url 'accounts:edit_user' user.id %}"
+<form hx-post="{% url 'accounts:profile' %}"
       hx-encoding="multipart/form-data"
-      hx-target="this"
-      hx-swap="outerHTML">
+      hx-target="#profile-form-wrapper"
+      hx-swap="innerHTML">
     {% csrf_token %}
     <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
         {% for field in form %}
@@ -33,7 +33,7 @@
                     {% if field.field.widget.input_type == 'select' %}
                         {% render_field field class="form-select" %}
                     {% else %}
-                        {% render_field field class+="form-control" %}
+                        {% render_field field class="form-control" %}
                     {% endif %}
                     {% if field.help_text %}
                         <div class="form-text">{{ field.help_text }}</div>
@@ -46,7 +46,10 @@
         {% endfor %}
     </div>
     <div class="modal-footer">
-        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-light-secondary me-2"
+                hx-get="{% url 'accounts:profile' %}"
+                hx-target="#profile-form-wrapper"
+                hx-swap="innerHTML">Hủy</button>
         <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
     </div>
 </form>

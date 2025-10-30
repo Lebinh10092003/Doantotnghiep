@@ -28,51 +28,31 @@
         <div class="mb-3">
             <label class="form-label">{{ form.permissions.label }}</label>
             <p class="text-muted small">Chọn các quyền cho nhóm này.</p>
-
-            {# === SỬA LỖI CUỘN: Áp dụng style cuộn cho div bao ngoài accordion === #}
-            <div style="max-height: 350px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 1rem;">
-                <div class="accordion" id="permissionsAccordion">
-                    {# Lặp qua các nhóm chức năng từ context view #}
-                    {% for func_name, perms_list in functional_grouped_permissions.items %}
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="heading-{{ func_name|slugify }}">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ func_name|slugify }}" aria-expanded="false" aria-controls="collapse-{{ func_name|slugify }}">
-                                Chức năng: <strong>{{ func_name }}</strong>
-                            </button>
-                        </h2>
-                        <div id="collapse-{{ func_name|slugify }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ func_name|slugify }}" data-bs-parent="#permissionsAccordion">
-                            {# Bỏ style cuộn ở đây #}
-                            <div class="accordion-body">
-                                {# Lặp qua danh sách tuple (perm_id, clear_label) trong nhóm chức năng #}
-                                {% for perm_id, clear_label in perms_list %}
-                                    <div class="form-check">
-                                        <input class="form-check-input"
-                                               type="checkbox"
-                                               name="permissions" {# Tên input phải giống nhau #}
-                                               value="{{ perm_id }}"
-                                               id="perm_{{ perm_id }}"
-                                               {% if perm_id in form.permissions.value %}checked{% endif %}>
-                                        <label class="form-check-label" for="perm_{{ perm_id }}">
-                                            {{ clear_label }} {# Sử dụng label từ view #}
-                                        </label>
-                                    </div>
-                                {% endfor %}
-                                {% if not perms_list %}
-                                    <p class="text-muted small mb-0">Không có quyền nào trong nhóm này.</p>
-                                {% endif %}
+            <div class="border rounded p-2" style="max-height: 40vh; overflow-y: auto;">
+                {% for group_name, perms in functional_grouped_permissions.items %}
+                    <h6 class="mt-2">{{ group_name }}</h6>
+                    <div class="mb-2 ps-2">
+                        {% for perm_id, perm_label in perms %}
+                            <div class="form-check form-check-inline">
+                                <input type="checkbox" name="permissions" value="{{ perm_id }}" class="form-check-input" id="perm_{{ perm_id }}"
+                                    {% if perm_id in form.permissions.value %}checked{% endif %}>
+                                <label class="form-check-label" for="perm_{{ perm_id }}">{{ perm_label }}</label>
                             </div>
-                        </div>
+                        {% endfor %}
+                        {% if not perms %}
+                            <p class="text-muted small mb-0">Không có quyền nào trong nhóm này.</p>
+                        {% endif %}
                     </div>
-                    {% endfor %}
-                </div> {# Kết thúc accordion #}
-            </div> {# === Kết thúc div chứa style cuộn === #}
-
-            {# Hiển thị lỗi chung của trường permissions #}
-            <div class="text-danger small mt-1">{{ form.permissions.errors|striptags }}</div>
+                    {% if not forloop.last %}
+                        <hr class="my-1">
+                    {% endif %}
+                {% endfor %}
+                {% for error in form.permissions.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
+            </div>
         </div>
-
-    </div> {# Kết thúc modal-body #}
-
+    </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
         <button type="submit" class="btn btn-primary">Lưu</button>

@@ -12,10 +12,8 @@
             <img src="{% static 'static/images/faces/1.jpg' %}" class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px;" alt="Default Avatar">
             {% endif %}
             <h5 class="mb-1">{{ user.get_full_name|default:user.username }}</h5>
-            <p class="text-muted mb-0">{{ user.role|default:"Chưa có vai trò" }}</p>
-            {% if user.role == 'CENTER_MANAGER' and user.center %}
-                <span class="badge bg-info mt-1">Quản lý: {{ user.center.name }}</span>
-            {% endif %}
+            <p class="text-muted mb-0">@{{ user.username }}</p>
+            <span class="badge bg-info mt-2">{{ user.groups.first.name|default:"Chưa có vai trò" }}</span>
         </div>
         <div class="col-md-8">
             <table class="table table-borderless">
@@ -23,7 +21,7 @@
                     <tr><th style="width: 30%;">Username:</th><td>{{ user.username }}</td></tr>
                     <tr><th>Email:</th><td>{{ user.email }}</td></tr>
                     <tr><th>Số điện thoại:</th><td>{{ user.phone }}</td></tr>
-                    {% if user.role != 'CENTER_MANAGER' %}
+                    {% if user.groups.all|length == 0 %}
                     <tr><th>Trung tâm:</th><td>{{ user.center.name|default:"Chưa có" }}</td></tr>
                     {% endif %}
                     <tr><th>Nhóm:</th>
@@ -44,6 +42,22 @@
             </table>
         </div>
     </div>
+
+    <!-- Thông tin cá nhân bổ sung -->
+    <div class="mt-4 border-top pt-3">
+        <h6><i class="bi bi-person-vcard me-2"></i>Thông tin cá nhân</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-borderless">
+                <tbody>
+                    <tr><th style="width: 30%;">Ngày sinh:</th><td>{{ user.dob|date:"d/m/Y"|default:"Chưa có" }}</td></tr>
+                    <tr><th>Giới tính:</th><td>{{ user.get_gender_display|default:"Chưa có" }}</td></tr>
+                    <tr><th>Số CCCD/CMND:</th><td>{{ user.national_id|default:"Chưa có" }}</td></tr>
+                    <tr><th>Địa chỉ:</th><td>{{ user.address|default:"Chưa có" }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 
     <!-- Hiển thị danh sách con nếu là phụ huynh -->
     {% if children %}
@@ -155,21 +169,25 @@
     <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">
         <span>Đóng</span>
     </button>
-    <button type="button" class="btn btn-primary"
-        hx-get="{% url 'accounts:edit_user' user.id %}"
-        hx-target="#modal-content"
-        @click="modalTitle = 'Chỉnh sửa: {{ user.username|escapejs }}'">
-        <i class="bi bi-pencil-square"></i> Chỉnh sửa
-    </button>
-    <form hx-post="{% url 'accounts:delete_users' %}"
-          hx-swap="none"
-          class="d-inline"
-          data-confirm-title="Xác nhận xóa"
-          data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
-        {% csrf_token %}
-        <input type="hidden" name="user_ids" value="{{ user.id }}">
-        <button type="submit" class="btn btn-danger">
-            <i class="bi bi-trash"></i> Xóa
+    {% if perms.accounts.change_user %}
+        <button type="button" class="btn btn-primary"
+            hx-get="{% url 'accounts:edit_user' user.id %}"
+            hx-target="#modal-content"
+            @click="modalTitle = 'Chỉnh sửa: {{ user.username|escapejs }}'">
+            <i class="bi bi-pencil-square"></i> Chỉnh sửa
         </button>
-    </form>
+    {% endif %}
+    {% if perms.accounts.delete_user %}
+        <form hx-post="{% url 'accounts:delete_users' %}"
+            hx-swap="none"
+            class="d-inline"
+            data-confirm-title="Xác nhận xóa"
+            data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
+            {% csrf_token %}
+            <input type="hidden" name="user_ids" value="{{ user.id }}">
+            <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Xóa
+            </button>
+        </form>
+    {% endif %}
 </div>

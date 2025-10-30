@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Hồ sơ cá nhân{% endblock %}
+
+{% block content %}
+<div id="main">
+  <header class="mb-3">
+    <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+  </header>
+
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-12 col-md-6 order-md-1 order-last">
+          <h3>Hồ sơ cá nhân</h3>
+          <p class="text-subtitle text-muted">Xem và cập nhật thông tin của bạn.</p>
+        </div>
+        <div class="col-12 col-md-6 order-md-2 order-first">
+          <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item"><a href="{% url 'common:dashboard' %}">Tổng quan</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Hồ sơ cá nhân</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="card">
+        <div class="card-header">
+          <div class="d-flex align-items-center">
+            <div class="avatar avatar-xl me-3">
+              {% if user.avatar %}
+                <img id="profile-header-avatar" src="{{ user.avatar.url }}" alt="Avatar">
+              {% else %}
+                <img id="profile-header-avatar" src="{% static 'static/images/faces/1.jpg' %}" alt="Default Avatar">
+              {% endif %}
+            </div>
+            <div class="ms-3 name">
+              <h5 id="profile-header-name" class="font-bold">{{ user.get_full_name|default:user.username }}</h5>
+              <h6 class="text-muted mb-0">@{{ user.username }} - {{ user.role|default:"Thành viên" }}</h6>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <a class="nav-link active" id="profile-tab" data-bs-toggle="tab" href="#profile" role="tab" aria-controls="profile" aria-selected="true">Hồ sơ</a>
+            </li>
+            <li class="nav-item" role="presentation">
+              <a class="nav-link" id="security-tab" data-bs-toggle="tab" href="#security" role="tab" aria-controls="security" aria-selected="false">Bảo mật</a>
+            </li>
+          </ul>
+          <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+              {# Form thông tin cá nhân #}
+              <div class="p-3">
+                <div id="profile-form-wrapper">
+                  {% include '_profile_detail.html' with user=user %}
+                </div>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
+              {# Chức năng đổi mật khẩu #}
+              <div class="p-3">
+                <h5 class="mb-3">Thay đổi mật khẩu</h5>
+                <p>Để bảo vệ tài khoản, hãy đảm bảo bạn sử dụng mật khẩu mạnh và không chia sẻ cho người khác.</p>
+                <div>
+                  <button class="btn btn-primary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#passwordModal">
+                    <i class="bi bi-key-fill me-2"></i>Đổi mật khẩu
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- Modal đổi mật khẩu -->
+<div class="modal fade" id="passwordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Đổi mật khẩu</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div id="password-modal-content">
+        {% include '_password_change_form.html' with password_form=password_form %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

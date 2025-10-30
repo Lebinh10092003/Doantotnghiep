@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Group
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator, EmptyPage
@@ -15,13 +15,14 @@ from django.template.loader import render_to_string
 from django.db.models import Q, Count
 from apps.centers.models import Center
 from .models import ParentStudentRelation
-from .forms import AdminUserCreateForm, AdminUserUpdateForm, ImportUserForm
+from .forms import AdminUserCreateForm, AdminUserUpdateForm, ImportUserForm,UserProfileUpdateForm,UserPasswordChangeForm
 from .resources import UserResource
 from tablib import Dataset
 from .forms import SimpleGroupForm
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from collections import defaultdict
+from django.contrib.auth import update_session_auth_hash 
 User = get_user_model()
 
 # 
@@ -113,8 +114,24 @@ def is_admin(user):
     return user.is_superuser or getattr(user, "role", None) == "ADMIN"
 # Lọc queryset người dùng dựa trên tham số request
 def _filter_users_queryset(request):
-    qs = User.objects.all().select_related("center").prefetch_related("groups")
+    current_user = request.user
+    # Kiểm tra xem người dùng có thuộc các nhóm vai trò cụ thể hay không
+    is_parent = current_user.groups.filter(name='PARENT').exists()
+    is_student = current_user.groups.filter(name='STUDENT').exists()
+
+    # Bắt đầu với một queryset cơ sở dựa trên quyền của người dùng
+    if is_parent:
+        # Phụ huynh chỉ thấy danh sách con của mình
+        children_ids = ParentStudentRelation.objects.filter(parent=current_user).values_list('student_id', flat=True)
+        qs = User.objects.filter(id__in=list(children_ids))
+    elif is_student:
+        # Học sinh chỉ thấy chính mình
+        qs = User.objects.filter(pk=current_user.pk)
+    else:
+        # Các vai trò khác (Admin, Manager, Staff, Teacher,...) không bị giới hạn
+        qs = User.objects.all()
     
+    # Áp dụng các bộ lọc bổ sung trên queryset cơ sở
     # params
     q = request.GET.get("q", "").strip()
     status = request.GET.get("status", "")
@@ -197,10 +214,11 @@ def _filter_users_queryset(request):
     qs = apply_date_range(qs, "date_joined", date_from, date_to)
     qs = apply_date_range(qs, "last_login", last_login_from, last_login_to)
     
-    return qs.distinct()
+    return qs.select_related("center").prefetch_related("groups").distinct()
 
 # Quản lý người dùng
 @login_required
+@permission_required("accounts.view_user", raise_exception=True)
 def manage_accounts(request):
     qs = _filter_users_queryset(request)
     groups_for_dropdown = list(Group.objects.values_list("name", "name"))
@@ -219,8 +237,9 @@ def manage_accounts(request):
 
     # Ordering / grouping
     if group_by == "role":
-        qs = qs.order_by("role", "last_name", "first_name")
-    elif group_by == "group":
+        # Sắp xếp theo tên của nhóm đầu tiên để `regroup` hoạt động chính xác khi nhóm theo vai trò
+        qs = qs.order_by("groups__name", "last_name", "first_name").distinct()
+    elif group_by == "group": # group_by=group không được sử dụng trong template, nhưng để lại cho nhất quán
         qs = qs.order_by("groups__name", "last_name", "first_name")
     elif group_by == "center":
         qs = qs.order_by("center__name", "last_name", "first_name")
@@ -266,6 +285,7 @@ def manage_accounts(request):
     return render(request, "manage_accounts.html", context)
 
 @login_required
+@permission_required("accounts.add_user", raise_exception=True)
 def user_create_view(request):
     if request.method == 'POST':
         form = AdminUserCreateForm(request.POST, request.FILES)
@@ -300,6 +320,7 @@ def user_create_view(request):
 
 @require_POST
 @login_required
+@permission_required("accounts.delete_user", raise_exception=True)
 def user_delete_view(request):
     # Hỗ trợ cả xóa đơn và xóa hàng loạt
     user_ids = request.POST.getlist('user_ids[]') or request.POST.getlist('user_ids')
@@ -316,13 +337,18 @@ def user_delete_view(request):
         if user_ids_to_delete:
             user_ids_int = [int(uid) for uid in user_ids_to_delete]
             users_to_delete_qs = User.objects.filter(id__in=user_ids_int)
+            # Lấy số lượng user sẽ bị xóa TRƯỚC KHI thực hiện xóa
+            count_to_delete = users_to_delete_qs.count()
             # Lấy thông tin user trước khi xóa
             if original_count == 1 and user_ids_to_delete:
                 user_instance = users_to_delete_qs.first()
                 if user_instance:
                     deleted_users_info.append(user_instance.username)
 
-            count_deleted, _ = users_to_delete_qs.delete()
+            # THAY ĐỔI: Chuyển từ xóa cứng sang xóa mềm (đổi is_active = False)
+            # users_to_delete_qs.delete()
+            users_to_delete_qs.update(is_active=False)
+            count_deleted = count_to_delete # Gán số lượng đúng để hiển thị
 
         # Logic thông báo
         self_delete_attempt = original_count > len(user_ids_to_delete)
@@ -331,7 +357,7 @@ def user_delete_view(request):
             if count_deleted > 0:
                 alert = {
                     "icon": "warning",
-                    "title": f"Đã xóa {count_deleted} người dùng.",
+                    "title": f"Đã vô hiệu hóa {count_deleted} người dùng.",
                     "text": "Bạn không thể tự xóa chính mình."
                 }
             else:
@@ -344,12 +370,12 @@ def user_delete_view(request):
             if original_count == 1 and deleted_users_info:
                 alert = {
                     "icon": "success",
-                    "title": f"Đã xóa người dùng '{deleted_users_info[0]}' thành công."
+                    "title": f"Đã vô hiệu hóa người dùng '{deleted_users_info[0]}' thành công."
                 }
             else:
                 alert = {
                     "icon": "success",
-                    "title": f"Đã xóa {count_deleted} người dùng thành công."
+                    "title": f"Đã vô hiệu hóa {count_deleted} người dùng thành công."
                 }
         else:
             # Trường hợp không có user nào bị xóa (có thể do ID không tồn tại hoặc chỉ có ý định tự xóa)
@@ -368,6 +394,7 @@ def user_delete_view(request):
     return response
 
 @login_required
+@permission_required("accounts.view_user", raise_exception=True)
 def user_detail_view(request, user_id):
     # Tối ưu truy vấn bằng cách select_related và prefetch_related
     user = get_object_or_404(
@@ -380,16 +407,19 @@ def user_detail_view(request, user_id):
     enrolled_classes = None
     teaching_classes = None
 
+    # Lấy vai trò và chuyển thành chữ hoa để so sánh nhất quán
+    user_role_upper = user.role.upper() if user.role else ''
+
     # Kiểm tra vai trò của người dùng và lấy các mối quan hệ tương ứng
-    if user.role == 'PARENT':
+    if user_role_upper == 'PARENT':
         children = ParentStudentRelation.objects.filter(parent=user).select_related('student__center')
     
-    if user.role == 'STUDENT':
+    if user_role_upper == 'STUDENT':
         parents = ParentStudentRelation.objects.filter(student=user).select_related('parent__center')
         # Lấy các lớp học sinh đang ghi danh
         enrolled_classes = user.enrollments.select_related('klass__subject', 'klass__center').all()
 
-    if user.role == 'TEACHER':
+    if user_role_upper == 'TEACHER':
         # Lấy các lớp giáo viên đang dạy
         teaching_classes = user.taught_classes.select_related('subject', 'center').all()
 
@@ -403,6 +433,7 @@ def user_detail_view(request, user_id):
     return render(request, '_user_detail.html', context)
 
 @login_required
+@permission_required("accounts.change_user", raise_exception=True)
 def user_edit_view(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -429,6 +460,7 @@ def user_edit_view(request, user_id):
     return render(request, '_edit_user_form.html', {'form': form, 'user': user})
 
 @login_required
+@permission_required("accounts.view_user", raise_exception=True)
 def export_users_view(request):
     user_resource = UserResource()
     # Sử dụng hàm lọc đã được tái cấu trúc
@@ -450,6 +482,7 @@ def export_users_view(request):
     return response
 
 @login_required
+@permission_required("accounts.add_user", raise_exception=True)
 def import_users_view(request):
     if request.method == 'POST':
         user_resource = UserResource()
@@ -525,6 +558,7 @@ def import_users_view(request):
         return render(request, '_import_users_form.html', {'form': form})
 
 @login_required
+@permission_required("accounts.view_user", raise_exception=True)
 def export_import_template_view(request):
     user_resource = UserResource()
     dataset = Dataset(headers=user_resource.get_export_headers())
@@ -610,6 +644,7 @@ def _group_permissions_by_functionality(permissions_qs):
 
 
 @login_required
+@permission_required("auth.view_group", raise_exception=True)
 def manage_groups(request):
     groups_list = Group.objects.annotate(user_count=Count('user')).order_by('name')
 
@@ -641,6 +676,7 @@ def manage_groups(request):
 
 
 @login_required
+@permission_required("auth.add_group", raise_exception=True)
 def group_create_view(request):
     if request.method == 'POST':
         form = SimpleGroupForm(request.POST)
@@ -670,6 +706,7 @@ def group_create_view(request):
 
 
 @login_required
+@permission_required("auth.change_group", raise_exception=True)
 def group_edit_view(request, group_id):
     group = get_object_or_404(Group, id=group_id)
     if request.method == 'POST':
@@ -701,6 +738,7 @@ def group_edit_view(request, group_id):
 
 @require_POST
 @login_required
+@permission_required("auth.delete_group", raise_exception=True)
 def group_delete_view(request):
     # Lấy ID từ cả xóa hàng loạt (checkbox) và xóa đơn (input ẩn)
     group_ids = request.POST.getlist('group_ids[]') or request.POST.getlist('group_id_single')
@@ -750,3 +788,113 @@ def group_delete_view(request):
         "show-sweet-alert": alert
     })
     return response
+
+@login_required
+def profile_view(request):
+    user = request.user
+    # Xử lý khi người dùng submit form chỉnh sửa
+    if request.method == 'POST' and is_htmx_request(request):
+        form = UserProfileUpdateForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            form.save()
+            # Làm mới instance người dùng từ DB để lấy dữ liệu mới nhất
+            user.refresh_from_db()
+            response = render(request, '_profile_detail.html', {'user': user})
+            response['HX-Trigger'] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "success",
+                    "title": "Cập nhật hồ sơ thành công!",
+                },
+                "updateProfileHeader": {
+                    "fullName": user.get_full_name() or user.username,
+                    "avatarUrl": user.avatar.url if user.avatar else None
+                }
+            })
+            return response
+        else:
+            # Nếu form không hợp lệ, render lại form edit với lỗi
+            return render(request, '_profile_form_edit.html', {'form': form}, status=422)
+
+    # Xử lý GET request (tải trang lần đầu hoặc bấm nút "Hủy")
+    # Mặc định là hiển thị thông tin "chỉ xem"
+    if is_htmx_request(request):
+        return render(request, '_profile_detail.html', {'user': user})
+
+    context = {
+        'user': user,
+        'password_form': UserPasswordChangeForm(user=user),
+    }
+    return render(request, 'profile.html', context)
+
+@login_required
+def profile_edit_view(request):
+    # View này chỉ để trả về form chỉnh sửa khi người dùng bấm nút "Chỉnh sửa"
+    form = UserProfileUpdateForm(instance=request.user)
+    return render(request, '_profile_form_edit.html', {'form': form})
+
+@login_required
+@require_POST # Chỉ chấp nhận POST
+def change_password_view(request):
+    user = request.user
+    form = UserPasswordChangeForm(user=user, data=request.POST)
+    if form.is_valid():
+        user = form.save()
+        # Quan trọng: Cập nhật session auth hash để người dùng không bị logout
+        update_session_auth_hash(request, user)
+
+        # Gửi trigger thành công (ví dụ: reset form, hiển thị toast)
+        response = HttpResponse(status=200) 
+        response['HX-Trigger'] = json.dumps({
+            "resetPasswordForm": True, 
+            "closePasswordModal": True, 
+            "show-sweet-alert": {
+                "icon": "success",
+                "title": "Đổi mật khẩu thành công!",
+            },
+        })
+        return response
+    else:
+        # Trả về partial template của form mật khẩu với lỗi
+        # Đảm bảo template này chỉ chứa form đổi mật khẩu
+        response = render(request, '_password_change_form.html', {'password_form': form, 'user': user}, status=422) # Giữ nguyên status 422 cho HTMX
+        
+        error_messages_html_parts = []
+
+        # Xử lý lỗi mật khẩu cũ
+        # Kiểm tra nếu lỗi sai mật khẩu cũ (code: 'password_incorrect')
+        if 'old_password' in form.errors:
+            if any(e.code == 'password_incorrect' for e in form.errors.as_data()['old_password']):
+                # Lấy thông báo lỗi tùy chỉnh đã định nghĩa trong forms.py
+                error_messages_html_parts.append(f"{form.fields['old_password'].error_messages['password_incorrect']}")
+            # Xử lý lỗi mật khẩu cũ khác (ví dụ: trường bắt buộc)
+            elif form.fields['old_password'].error_messages.get('required') in form.errors['old_password']:
+                error_messages_html_parts.append(f"{form.fields['old_password'].error_messages['required']}")
+
+
+        # Lỗi không liên quan đến một trường cụ thể (ví dụ: mật khẩu xác nhận không khớp)
+        if form.non_field_errors():
+            for error in form.non_field_errors():
+                error_messages_html_parts.append(f"{error}")
+
+        # Lỗi của trường mật khẩu mới (new_password1)
+        if 'new_password1' in form.errors:
+            for error_msg in form.errors['new_password1']:
+                # Chỉ lấy thông báo lỗi, không thêm label trường
+                error_messages_html_parts.append(f"Mật khẩu mới: {error_msg}")
+        if 'new_password2' in form.errors:
+            for error_msg in form.errors['new_password2']:
+
+                if form.fields['new_password2'].error_messages.get('required') == error_msg:
+                    error_messages_html_parts.append(f"{error_msg}") 
+
+
+        final_error_text = "Đã có lỗi xảy ra. Vui lòng kiểm tra lại."
+        if error_messages_html_parts:
+            # Lọc các lỗi trùng lặp và tạo chuỗi HTML cuối cùng
+            unique_errors = list(dict.fromkeys(error_messages_html_parts))
+            final_error_text = "".join(unique_errors)
+
+        response['HX-Trigger'] = json.dumps({
+            "show-sweet-alert": {"icon": "error", "title": "Lỗi", "text": final_error_text}
+        })
+        return response

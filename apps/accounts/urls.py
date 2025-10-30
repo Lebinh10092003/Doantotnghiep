@@ -7,6 +7,10 @@ urlpatterns = [
     #Đăng nhập và đăng xuất
     path("login/", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),
+    # Quản lý hồ sơ cá nhân
+    path("profile/", views.profile_view, name="profile"),
+    path("profile/edit/", views.profile_edit_view, name="profile_edit"),
+    path("profile/change-password/", views.change_password_view, name="change_password"),
     #Quản lý người dùng
     path("manage/", views.manage_accounts, name="manage_accounts"),
     path("add/", views.user_create_view, name="add_user"),
