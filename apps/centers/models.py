@@ -7,10 +7,10 @@ class Center(NamedModel):
     phone = models.CharField(max_length=20, blank=True)
     avatar = models.ImageField(upload_to="center_avatars/", null=True, blank=True)
     description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
 
-
-def __str__(self):
-    return self.name
+    def __str__(self):
+        return self.name
 
 
 class Room(models.Model):
@@ -19,9 +19,9 @@ class Room(models.Model):
     note = models.CharField(max_length=255, blank=True)
 
 
-class Meta:
-    unique_together = (("center", "name"),)
+    class Meta:
+        unique_together = (("center", "name"),)
 
 
-def __str__(self):
-    return f"{self.center.name} - {self.name}"
+    def __str__(self):
+        return f"{self.center.name} - {self.name}"

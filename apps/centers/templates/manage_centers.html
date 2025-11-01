@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Quản lý cơ sở{% endblock %}
+{% block title %}Quản lý Trung tâm{% endblock %}
 
 {% block content %}
-<div id="main">
-  <header class="mb-3">
+{# Bọc toàn bộ #main trong một component Alpine.js để quản lý trạng thái modal #}
+<div x-data="{ modalTitle: 'Tiêu đề Modal' }">
+  <div id="main">
+    <header class="mb-3">
     <a href="#" class="burger-btn d-block d-xl-none">
       <i class="bi bi-justify fs-3"></i>
     </a>
@@ -14,13 +16,14 @@
     <div class="page-title">
       <div class="row">
         <div class="col-12 col-md-6 order-md-1 order-last">
-          <h3>Centers</h3>
-          <p class="text-subtitle text-muted">Centers management</p>
+          <h3>Trung tâm</h3>
+          <p class="text-subtitle text-muted">Quản lý các cơ sở/chi nhánh</p>
         </div>
         <div class="col-12 col-md-6 order-md-2 order-first">
           <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
             <ol class="breadcrumb">
-              <li class="breadcrumb-item"><a href="#">Centers</a></li>
+              <li class="breadcrumb-item"><a href="{% url 'centers:centers_manage' %}">Trung tâm</a></li>
+              <li class="breadcrumb-item active" aria-current="page">Danh sách</li>
             </ol>
           </nav>
         </div>
@@ -29,16 +32,128 @@
 
     <section class="section">
       <div class="card">
-        <div class="card-header">
-          <h5 class="card-title">Centers Table</h5>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Danh sách Trung tâm</h5>
+            <div class="d-flex gap-2">
+                {% if perms.centers.add_center %}
+                <button type="button" class="btn btn-primary btn-sm" 
+                        hx-get="{% url 'centers:center_add' %}"
+                        hx-target="#modal-content"
+                        @click="modalTitle = 'Thêm Trung tâm mới'"
+                        data-bs-toggle="modal"
+                        data-bs-target="#center-modal">
+                    <i class="bi bi-plus-lg"></i> Thêm mới
+                </button>
+                {% endif %}
+                {% if perms.centers.delete_center %}
+                <button type="button" class="btn btn-danger btn-sm"
+                        hx-post="{% url 'centers:center_delete' %}"
+                        hx-swap="none"
+                        hx-include="#centers-table-form"
+                        data-confirm-title="Xác nhận xóa hàng loạt"
+                        data-confirm-text="Bạn có chắc chắn muốn xóa những Trung tâm đã chọn?">
+                    <i class="bi bi-trash"></i> Xóa mục đã chọn
+                </button>
+                {% endif %}
+            </div>
         </div>
+
         <div class="card-body">
           <div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
+            <form id="filters-form" class="dataTable-top d-flex justify-content-between align-items-center flex-wrap">
+              
+              <!-- Left side: Search and filters -->
+              <div class="dataTable-left d-flex flex-wrap align-items-center gap-2">
+                  <div class="dataTable-search" style="min-width:250px;">
+                      <input name="q" value="{{ request.GET.q|default:'' }}" class="dataTable-input form-control form-control-sm"
+                             style="width:100%;"
+                             placeholder="Tìm kiếm theo tên, mã, địa chỉ"
+                             hx-get="{% url 'centers:centers_manage' %}"
+                             hx-target="#centers-table"
+                             hx-include="#filters-form"
+                             hx-trigger="keyup changed delay:300ms">
+                  </div>
+                  <div class="dataTable-filter" style="min-width:150px;">
+                      <select name="status"
+                              class="form-select form-select-sm"
+                              hx-get="{% url 'centers:centers_manage' %}"
+                              hx-target="#centers-table"
+                              hx-include="#filters-form"
+                              hx-trigger="change">
+                          <option value="">Tất cả trạng thái</option>
+                          <option value="active" {% if status == 'active' %}selected{% endif %}>Đang hoạt động</option>
+                          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Không hoạt động</option>
+                      </select>
+                  </div>
+              </div>
+
+              <!-- Right side: Per page selector -->
+              <div class="dataTable-right">
+                  <div class="dataTable-dropdown d-flex align-items-center gap-2">
+                      <select name="per_page" class="dataTable-selector form-select form-select-sm w-auto"
+                              hx-get="{% url 'centers:centers_manage' %}" hx-target="#centers-table" hx-include="#filters-form" hx-trigger="change">
+                          <option value="5" {% if request.GET.per_page == '5' %}selected{% endif %}>5</option>
+                          <option value="10" {% if request.GET.per_page == '10' or not request.GET.per_page %}selected{% endif %}>10</option>
+                          <option value="25" {% if request.GET.per_page == '25' %}selected{% endif %}>25</option>
+                      </select>
+                      <label class="mb-0">mục trên trang</label>
+                  </div>
+              </div>
+            </form>
             
+            <form id="centers-table-form" 
+                  hx-trigger="reloadCentersTable from:body" 
+                  hx-get="{% url 'centers:centers_manage' %}"
+                  hx-target="#centers-table"
+                  hx-swap="innerHTML"
+                  hx-include="#filters-form">
+              {% csrf_token %}
+              <div id="centers-table">
+                {# Initial load of the table content #}
+                {% include "_centers_table.html" %}
+              </div>
+            </form>
           </div>
         </div>
       </div>
     </section>
   </div>
+
+  <div class="modal fade" id="center-modal" tabindex="-1" aria-hidden="true"
+     x-init="new bootstrap.Modal($el)"
+     @close-center-modal.window="$el.bootstrap.Modal.getInstance($el).hide()">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+            </div>
+            <div id="modal-content">
+                <div class="modal-body">
+                    <p>Đang tải...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
 </div>
+
+{% block extra_js %}
+<script>
+    function toggleAllCenterCheckboxes(source) {
+        const checkboxes = document.querySelectorAll('input[name="center_ids"]');
+        for (let i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = source.checked;
+        }
+    }
+    
+    // Đóng modal khi nhận trigger
+    document.body.addEventListener('closeCenterModal', () => {
+        const modalEl = document.getElementById('center-modal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) {
+            modal.hide();
+        }
+    });
+</script>
+{% endblock %}
 {% endblock %}
