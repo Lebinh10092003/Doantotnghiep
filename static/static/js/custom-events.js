@@ -16,6 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const triggers = JSON.parse(header);
 
+            // Backward-compat mappings for legacy trigger keys
+            try {
+                if (triggers['reloadCentersTable'] && !triggers['reload-centers-table']) {
+                    triggers['reload-centers-table'] = true;
+                }
+            } catch (_) { /* noop */ }
+
             // --- HÀM HỖ TRỢ: Kích hoạt sự kiện tùy chỉnh trên body ---
             const dispatchCustomEvent = (eventName) => {
                 if (triggers[eventName]) {
@@ -146,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const modalEl = target.closest('.modal');
             if (modalEl) {
                 const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
-                if (!instance._isShown) {
+                if (!modalEl.classList.contains('show')) {
                     instance.show();
                 }
             }

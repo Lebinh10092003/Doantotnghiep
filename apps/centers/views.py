@@ -87,7 +87,7 @@ def center_create_view(request):
             center = form.save()
             response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "reloadCentersTable": True,
+                "reload-centers-table": True,
                 "closeCenterModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
@@ -118,7 +118,7 @@ def center_edit_view(request, center_id):
             center = form.save()
             response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "reloadCentersTable": True,
+                "reload-centers-table": True,
                 "closeCenterModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
@@ -178,7 +178,7 @@ def center_delete_view(request):
 
     response = HttpResponse(status=200)
     response['HX-Trigger'] = json.dumps({
-        "reloadCentersTable": True,
+        "reload-centers-table": True,
         "closeCenterModal": True, 
         "show-sweet-alert": alert
     })

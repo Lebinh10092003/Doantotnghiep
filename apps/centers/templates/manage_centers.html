@@ -39,9 +39,7 @@
                 <button type="button" class="btn btn-primary btn-sm" 
                         hx-get="{% url 'centers:center_add' %}"
                         hx-target="#modal-content"
-                        @click="modalTitle = 'Thêm Trung tâm mới'"
-                        data-bs-toggle="modal"
-                        data-bs-target="#center-modal">
+                        @click="modalTitle = 'Thêm Trung tâm mới'">
                     <i class="bi bi-plus-lg"></i> Thêm mới
                 </button>
                 {% endif %}
@@ -102,7 +100,7 @@
             </form>
             
             <form id="centers-table-form" 
-                  hx-trigger="reloadCentersTable from:body" 
+                  hx-trigger="reload-centers-table from:body" 
                   hx-get="{% url 'centers:centers_manage' %}"
                   hx-target="#centers-table"
                   hx-swap="innerHTML"
@@ -120,8 +118,7 @@
   </div>
 
   <div class="modal fade" id="center-modal" tabindex="-1" aria-hidden="true"
-     x-init="new bootstrap.Modal($el)"
-     @close-center-modal.window="$el.bootstrap.Modal.getInstance($el).hide()">
+     x-init="new bootstrap.Modal($el)">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
@@ -146,14 +143,6 @@
         }
     }
     
-    // Đóng modal khi nhận trigger
-    document.body.addEventListener('closeCenterModal', () => {
-        const modalEl = document.getElementById('center-modal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) {
-            modal.hide();
-        }
-    });
 </script>
 {% endblock %}
 {% endblock %}
