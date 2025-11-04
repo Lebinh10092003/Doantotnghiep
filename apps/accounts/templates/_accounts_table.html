@@ -69,30 +69,43 @@
 
         <td>
           {% if user.is_active %}
-          <span class="badge bg-success">Active</span>
+          <span class="badge bg-success">Hoạt động</span>
           {% else %}
-          <span class="badge bg-danger">Inactive</span>
+          <span class="badge bg-danger">Không hoạt động</span>
           {% endif %}
         </td>
-        <td>
-            <button type="button" class="btn btn-sm btn-info"
+        <td class="text-nowrap">
+            {# Nhóm các nút Xem chi tiết và Chỉnh sửa lại với nhau #}
+            <div class="btn-group btn-group-sm" role="group">
+                {# Nút Xem chi tiết - mở modal bằng Bootstrap và nạp nội dung bằng HTMX #}
+                <button type="button" class="btn btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
-                    hx-target="#modal-content"
+                    hx-target="#user-modal #modal-content"
                     @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
-                    data-bs-toggle="modal"
-                    data-bs-target="#user-modal">
-                <i class="bi bi-eye"></i>
-            </button>
-            
-            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
-                  data-confirm-title="Xác nhận xóa"
-                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
-                {% csrf_token %}
-                <input type="hidden" name="user_ids" value="{{ user.id }}">
-                <button type="submit" class="btn btn-danger btn-sm">
-                    <i class="bi bi-trash"></i>
+                    title="Xem chi tiết">
+                    <i class="bi bi-eye"></i>
                 </button>
-            </form>
+                
+                {# Nút Chỉnh sửa - mở modal bằng Bootstrap và nạp nội dung bằng HTMX #}
+                <button type="button" class="btn btn-warning"
+                    hx-get="{% url 'accounts:edit_user' user.id %}"
+                    hx-target="#user-modal #modal-content"
+                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"
+                    title="Chỉnh sửa">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+            </div>
+            
+            {# Nút Vô hiệu hóa (Soft Delete) - Đã thêm ms-1 để tách khỏi btn-group #}
+            <button class="btn btn-danger btn-sm ms-1"
+                    hx-post="{% url 'accounts:delete_users' %}"
+                    hx-swap="none"
+                    hx-vals='{"user_ids":["{{ user.id }}"]}'
+                    data-confirm-title="Xác nhận vô hiệu hóa"
+                    data-confirm-text="Bạn có chắc chắn muốn vô hiệu hóa người dùng '{{ user.username }}'?"
+                    title="Vô hiệu hóa">
+                <i class="bi bi-slash-circle"></i>
+            </button>
         </td>
       </tr>
       {% endfor %}
@@ -152,21 +165,26 @@
 
         <td>
           {% if user.is_active %}
-          <span class="badge bg-success">Active</span>
+          <span class="badge bg-success">Hoạt động</span>
           {% else %}
-          <span class="badge bg-danger">Inactive</span>
+          <span class="badge bg-danger">Không hoạt động</span>
           {% endif %}
         </td>
         <td>
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
-                    hx-target="#modal-content"
-                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
-                    data-bs-toggle="modal"
-                    data-bs-target="#user-modal">
+                    hx-target="#user-modal #modal-content"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
-            
+
+            <button type="button" class="btn btn-sm btn-warning"
+                    hx-get="{% url 'accounts:edit_user' user.id %}"
+                    hx-target="#user-modal #modal-content"
+                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"                    title="Chỉnh sửa">
+                <i class="bi bi-pencil-square"></i>
+            </button>
+
             <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
                   data-confirm-title="Xác nhận xóa"
                   data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
@@ -235,21 +253,26 @@
 
         <td>
           {% if user.is_active %}
-          <span class="badge bg-success">Active</span>
+          <span class="badge bg-success">Hoạt động</span>
           {% else %}
-          <span class="badge bg-danger">Inactive</span>
+          <span class="badge bg-danger">Không hoạt động</span>
           {% endif %}
         </td>
         <td>
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
-                    hx-target="#modal-content"
-                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
-                    data-bs-toggle="modal"
-                    data-bs-target="#user-modal">
+                    hx-target="#user-modal #modal-content"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
-            
+
+            <button type="button" class="btn btn-sm btn-warning"
+                    hx-get="{% url 'accounts:edit_user' user.id %}"
+                    hx-target="#user-modal #modal-content"
+                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"                    title="Chỉnh sửa">
+                <i class="bi bi-pencil-square"></i>
+            </button>
+
             <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
                   data-confirm-title="Xác nhận xóa"
                   data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
@@ -312,21 +335,26 @@
 
         <td>
           {% if user.is_active %}
-          <span class="badge bg-success">Active</span>
+          <span class="badge bg-success">Hoạt động</span>
           {% else %}
-          <span class="badge bg-danger">Inactive</span>
+          <span class="badge bg-danger">Không hoạt động</span>
           {% endif %}
         </td>
         <td>
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
-                    hx-target="#modal-content"
-                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
-                    data-bs-toggle="modal"
-                    data-bs-target="#user-modal">
+                    hx-target="#user-modal #modal-content"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
-            
+
+            <button type="button" class="btn btn-sm btn-warning"
+                    hx-get="{% url 'accounts:edit_user' user.id %}"
+                    hx-target="#user-modal #modal-content"
+                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"                    title="Chỉnh sửa">
+                <i class="bi bi-pencil-square"></i>
+            </button>
+
             <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
                   data-confirm-title="Xác nhận xóa"
                   data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">

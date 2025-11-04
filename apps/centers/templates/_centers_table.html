@@ -34,9 +34,7 @@
           <button type="button" class="btn btn-sm btn-warning" 
                   hx-get="{% url 'centers:center_edit' center.id %}"
                   hx-target="#modal-content" 
-                  @click="modalTitle = 'Chỉnh sửa Trung tâm: {{ center.name|escapejs }}'"
-                  data-bs-toggle="modal" 
-                  data-bs-target="#center-modal">
+                  @click="modalTitle = 'Chỉnh sửa Trung tâm: {{ center.name|escapejs }}'">
             <i class="bi bi-pencil-square"></i> Sửa
           </button>
           {% endif %}

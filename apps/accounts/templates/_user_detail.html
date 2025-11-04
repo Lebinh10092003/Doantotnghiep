@@ -1,8 +1,4 @@
 {% load static %}
-<div class="modal-header">
-    <h5 class="modal-title">Chi tiết: {{ user.get_full_name|default:user.username }}</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-</div>
 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
     <div class="row">
         <div class="col-md-4 text-center">
@@ -26,7 +22,11 @@
                     {% endif %}
                     <tr><th>Nhóm:</th>
                         <td>
-                            {% for group in user.groups.all %}<span class="badge bg-primary me-1">{{ group.name }}</span>{% empty %}<span class="text-muted">Không thuộc nhóm nào</span>{% endfor %}
+                            {% for group in user.groups.all %}
+                                {% with color_class=group.profile.color_class|default:"bg-secondary" %}
+                                    <span class="badge {{ color_class }} me-1">{{ group.name }}</span>
+                                {% endwith %}
+                            {% empty %}<span class="text-muted">Không thuộc nhóm nào</span>{% endfor %}
                         </td>
                     </tr>
                     <tr><th>Trạng thái:</th>
@@ -172,7 +172,7 @@
     {% if perms.accounts.change_user %}
         <button type="button" class="btn btn-primary"
             hx-get="{% url 'accounts:edit_user' user.id %}"
-            hx-target="#modal-content"
+            hx-target="#user-modal #modal-content"
             @click="modalTitle = 'Chỉnh sửa: {{ user.username|escapejs }}'">
             <i class="bi bi-pencil-square"></i> Chỉnh sửa
         </button>

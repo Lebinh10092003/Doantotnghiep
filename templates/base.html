@@ -8,7 +8,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content="{{ csrf_token }}">
     <script>
-        document.body.addEventListener('htmx:configRequest', function(evt) {
+        // Đăng ký cấu hình HTMX an toàn ngay cả khi body chưa sẵn sàng
+        document.addEventListener('htmx:configRequest', function(evt) {
             const cookie = document.cookie
                 .split('; ')
                 .find(row => row.startsWith('csrftoken='));
@@ -91,7 +92,7 @@
                             </li>
                             {% if perms.auth.view_group %}
                             {% url 'accounts:import_users' as import_users_url %}
-
+ 
                                 {% url 'accounts:manage_groups' as manage_groups_url %}
                                 <li class="submenu-item {% if request.path == manage_groups_url %}active{% endif %}"><a href="{{ manage_groups_url }}" class="submenu-link"><i class="bi bi-shield-lock"></i><span>Quản lý nhóm & Roles</span></a></li>
                                 {% endif %}
@@ -109,7 +110,7 @@
                             <li class="submenu-item {% if request.path == centers_manage_url %}active{% endif %}">
                                 <a href="{{ centers_manage_url }}" class="submenu-link"><i class="bi bi-house"></i><span>Quản lý trung tâm</span></a>
                             </li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-graph-up"></i><span>Báo cáo doanh thu</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-graph-up"></i><span>Báo cáo</span></a></li>
                         </ul>
                     </li>
                     {% endif %}
@@ -118,11 +119,11 @@
                     <li class="sidebar-item has-sub {% if '/curriculum/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link"><i class="bi bi-book"></i><span>Khóa học</span></a>
                         <ul class="submenu">
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-journal-bookmark"></i><span>Danh sách môn</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-grid-1x2-fill"></i><span>Học phần (Module)</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-text"></i><span>Bài học (Lesson)</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-play-btn"></i><span>Bài giảng (Lecture)</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-puzzle"></i><span>Bài tập (Exercise)</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-journal-bookmark"></i><span>Môn học</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-grid-1x2-fill"></i><span>Học phần</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-text"></i><span>Bài học</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-play-btn"></i><span>Bài giảng</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-puzzle"></i><span>Bài tập</span></a></li>
                         </ul>
                     </li>
                     {% endif %}
@@ -133,11 +134,11 @@
                         <ul class="submenu">
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-list-ul"></i><span>Danh sách lớp</span></a></li>
                             {% if perms.classes.add_class %}
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-plus-square"></i><span>Tạo lớp</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-plus-square"></i><span>Tạo lớp mới</span></a></li>
                             {% endif %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-calendar-event"></i><span>Danh sách buổi học</span></a></li>
                             {% if perms.classes.change_classassistant %}
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-workspace"></i><span>Phân công GV / Trợ giảng</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-workspace"></i><span>Phân công</span></a></li>
                             {% endif %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-people-fill"></i><span>Danh sách HS theo lớp</span></a></li>
                         </ul>
@@ -149,7 +150,7 @@
                         <ul class="submenu">
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-calendar3"></i><span>Lịch buổi học</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-check2-square"></i><span>Điểm danh</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-card-image"></i><span>Sản phẩm buổi học</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-card-image"></i><span>Sản phẩm</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-chat-left-text"></i><span>Ghi chú & Phản hồi</span></a></li>
                         </ul>
                     </li>
@@ -159,7 +160,7 @@
                         <a href="#" class="sidebar-link"><i class="bi bi-clipboard-check"></i><span>Đánh giá</span></a>
                         <ul class="submenu">
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-list-check"></i><span>Danh sách bài đánh giá</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-bar-chart"></i><span>Kết quả HS</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-bar-chart"></i><span>Kết quả học sinh</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-file-earmark-bar-graph"></i><span>Báo cáo tổng hợp</span></a></li>
                         </ul>
                     </li>
@@ -167,7 +168,7 @@
 
                     {% if user.is_authenticated %}
                     <li class="sidebar-item has-sub {% if '/student_products/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link"><i class="bi bi-images"></i><span>Sản phẩm HS</span></a>
+                        <a href="#" class="sidebar-link"><i class="bi bi-images"></i><span>Sản phẩm học sinh</span></a>
                         <ul class="submenu">
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-card-image"></i><span>Danh sách sản phẩm</span></a></li>
                             {% if user|in_group:"STUDENT" %}
@@ -184,7 +185,7 @@
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-coin"></i><span>Tài khoản điểm</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-gift"></i><span>Đổi thưởng</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-receipt"></i><span>Lịch sử đổi thưởng</span></a></li>
-                            {% if perms.rewards.view_rewarditem %} 
+                            {% if perms.rewards.view_rewarditem %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-receipt"></i><span>Danh sách phần quà</span></a></li>
                             {% endif %}
                         </ul>
@@ -207,7 +208,7 @@
 
                     {% if perms.billing %} {# Giả định có app 'billing' #}
                     <li class="sidebar-item has-sub {% if '/billing/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link"><i class="bi bi-wallet2"></i><span>Tài chính / Học phí</span></a>
+                        <a href="#" class="sidebar-link"><i class="bi bi-wallet2"></i><span>Tài chính</span></a>
                         <ul class="submenu">
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-receipt-cutoff"></i><span>Hóa đơn</span></a></li>
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-credit-card"></i><span>Thanh toán</span></a></li>
@@ -229,7 +230,7 @@
                         <ul class="submenu">
                             {% if user|in_group:"PARENT" %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-people"></i><span>Kết quả của con</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-images"></i><span>Ảnh buổi học & Đánh giá</span></a></li>
+                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-images"></i><span>Ảnh & Đánh giá</span></a></li>
                             {% endif %}
                             {% if user|in_group:"STUDENT" %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-card-image"></i><span>Sản phẩm của tôi</span></a></li>
@@ -264,9 +265,6 @@
         // Ghi đè sự kiện confirm mặc định của HTMX để dùng SweetAlert
         document.body.addEventListener('htmx:confirm', handleHtmxConfirm);
     </script>
-
-    {% block extra_js %}
-    {% endblock %}
 </body>
 
 </html>

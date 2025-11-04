@@ -18,9 +18,7 @@
           <button type="button" class="btn btn-sm btn-warning" 
                   hx-get="{% url 'accounts:group_edit' group.id %}"
                   hx-target="#modal-content" 
-                  @click="modalTitle = 'Chỉnh sửa nhóm: {{ group.name|escapejs }}'"
-                  data-bs-toggle="modal" 
-                  data-bs-target="#group-modal">
+                  @click="modalTitle = 'Chỉnh sửa nhóm: {{ group.name|escapejs }}'">
             <i class="bi bi-pencil-square"></i> Sửa
           </button>
           

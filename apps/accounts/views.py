@@ -293,7 +293,7 @@ def user_create_view(request):
             user = form.save()
             response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "reloadTableEvent": True,
+                "reload-accounts-table": True,
                 "closeUserModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
@@ -387,7 +387,7 @@ def user_delete_view(request):
     # Gửi thông báo SweetAlert qua HX-Trigger
     response = HttpResponse(status=200)
     response['HX-Trigger'] = json.dumps({
-        "reloadTableEvent": True,
+        "reload-accounts-table": True,
         "closeUserModal": True, # Đóng modal chi tiết nếu xóa từ đó
         "show-sweet-alert": alert
     })
@@ -443,7 +443,7 @@ def user_edit_view(request, user_id):
             # Trả về 200 OK với nội dung trống để đảm bảo HTMX xử lý trigger
             response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "reloadTableEvent": True,
+                "reload-accounts-table": True,
                 "closeUserModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
@@ -517,7 +517,7 @@ def import_users_view(request):
             user_resource.import_data(dataset, dry_run=False)
             response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "reloadTableEvent": True,
+                "reload-accounts-table": True,
                 "closeUserModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
@@ -684,7 +684,7 @@ def group_create_view(request):
             group = form.save()
             response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "reloadGroupsTable": True,
+                "reload-groups-table": True,
                 "closeGroupModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
@@ -715,7 +715,7 @@ def group_edit_view(request, group_id):
             form.save()
             response = HttpResponse(status=200)
             response['HX-Trigger'] = json.dumps({
-                "reloadGroupsTable": True,
+                "reload-groups-table": True,
                 "closeGroupModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
@@ -783,7 +783,7 @@ def group_delete_view(request):
 
     response = HttpResponse(status=200)
     response['HX-Trigger'] = json.dumps({
-        "reloadGroupsTable": True,
+        "reload-groups-table": True,
         "closeGroupModal": True,
         "show-sweet-alert": alert
     })

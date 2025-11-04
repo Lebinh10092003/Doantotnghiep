@@ -57,7 +57,7 @@
           <div class="card-body">
             <div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
               <form id="groups-table-form" 
-                    hx-trigger="reloadGroupsTable from:body" 
+                    hx-trigger="reload-groups-table from:body" 
                     hx-get="{% url 'accounts:manage_groups' %}"
                     hx-target="#groups-table" 
                     hx-swap="innerHTML">
@@ -74,7 +74,7 @@
   </div>
 
   <div class="modal fade" id="group-modal" tabindex="-1" aria-hidden="true" 
-       x-init="new bootstrap.Modal($el)"
+       x-init="bootstrap.Modal.getOrCreateInstance($el)"
        @close-group-modal.window="$el.bootstrap.Modal.getInstance($el).hide()">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
