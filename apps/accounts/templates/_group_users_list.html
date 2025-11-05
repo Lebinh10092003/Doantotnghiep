@@ -1,0 +1,103 @@
+{% load static %}
+<div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
+  <div class="dataTable-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="dataTable-dropdown d-flex align-items-center gap-2">
+      <select name="per_page_group"
+              class="dataTable-selector form-select form-select-sm w-auto"
+              hx-get="{% url 'accounts:group_users' group.id %}"
+              hx-target="#group-users-tab-content"
+              hx-include="closest .dataTable-wrapper"
+              hx-trigger="change">
+        <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+      </select>
+      <label class="mb-0">mục/trang</label>
+    </div>
+    <div class="text-muted small">Tổng: {{ paginator.count }}</div>
+  </div>
+
+  <div class="dataTable-container table-responsive">
+    <table class="table table-striped dataTable-table" style="width:100%;">
+      <thead>
+        <tr>
+          <th style="width:50%;">Người dùng</th>
+          <th>Trung tâm</th>
+          <th style="width:1%; white-space:nowrap;">Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in page_obj.object_list %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center">
+              {% if u.avatar %}
+                <img src="{{ u.avatar.url }}" class="rounded-circle me-2" style="width:32px; height:32px; object-fit:cover;" alt="Avatar">
+              {% else %}
+                <img src="{% static 'static/images/faces/1.jpg' %}" class="rounded-circle me-2" style="width:32px; height:32px;" alt="Avatar">
+              {% endif %}
+              <div>
+                <div class="fw-semibold">{{ u.get_full_name|default:u.username }}</div>
+                <div class="text-muted small">@{{ u.username }}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ u.center.name|default:"—" }}</td>
+          <td class="text-nowrap">
+            <button type="button" class="btn btn-info btn-sm"
+                    hx-get="{% url 'accounts:user_detail' u.id %}?from_group=1"
+                    hx-target="#user-modal #modal-content"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ u.username|escapejs }}'"
+                    title="Xem chi tiết">
+              <i class="bi bi-eye"></i>
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" class="text-center text-muted">Không có người dùng trong nhóm này.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="dataTable-bottom d-flex justify-content-between align-items-center">
+    <div class="dataTable-info">
+      Hiển thị {{ page_obj.start_index }} đến {{ page_obj.end_index }} trong tổng số {{ paginator.count }} mục
+    </div>
+    <nav class="dataTable-pagination">
+      <ul class="pagination mb-0">
+        {% if page_obj.number > 1 %}
+        <li class="page-item">
+          <a hx-get="{% url 'accounts:group_users' group.id %}?page_group=1&per_page_group={{ per_page }}"
+             hx-target="#group-users-tab-content" hx-swap="innerHTML" class="page-link">
+            Đầu
+          </a>
+        </li>
+        {% endif %}
+
+        {% for p in paginator.page_range %}
+          {% if p >= page_obj.number|add:-2 and p <= page_obj.number|add:2 %}
+          <li class="page-item {% if page_obj.number == p %}active{% endif %}">
+            <a hx-get="{% url 'accounts:group_users' group.id %}?page_group={{ p }}&per_page_group={{ per_page }}"
+               hx-target="#group-users-tab-content" hx-swap="innerHTML" class="page-link">
+              {{ p }}
+            </a>
+          </li>
+          {% endif %}
+        {% endfor %}
+
+        {% if page_obj.number < paginator.num_pages %}
+        <li class="page-item">
+          <a hx-get="{% url 'accounts:group_users' group.id %}?page_group={{ paginator.num_pages }}&per_page_group={{ per_page }}"
+             hx-target="#group-users-tab-content" hx-swap="innerHTML" class="page-link">
+            Cuối
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+</div>
+

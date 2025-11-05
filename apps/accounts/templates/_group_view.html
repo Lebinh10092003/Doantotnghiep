@@ -1,0 +1,59 @@
+{% load static %}
+<div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+  <div class="mb-3">
+    <h5 class="mb-1"><i class="bi bi-people me-2"></i>Nhóm: {{ group.name }}</h5>
+  </div>
+
+  <ul class="nav nav-tabs" id="groupViewTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="permissions-tab" data-bs-toggle="tab" data-bs-target="#permissions-pane" type="button" role="tab" aria-controls="permissions-pane" aria-selected="true">
+        <i class="bi bi-shield-lock me-1"></i> Danh sách quyền
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button" role="tab" aria-controls="users-pane" aria-selected="false">
+        <i class="bi bi-people-fill me-1"></i> Danh sách người dùng
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content pt-3">
+    <div class="tab-pane fade show active" id="permissions-pane" role="tabpanel" aria-labelledby="permissions-tab">
+      <div class="border rounded p-2" style="max-height: 40vh; overflow-y: auto;">
+        {% if functional_grouped_permissions %}
+          {% for group_name, perms in functional_grouped_permissions.items %}
+            <h6 class="mt-2">{{ group_name }}</h6>
+            <div class="mb-2 ps-2">
+              {% if perms %}
+                {% for perm_id, perm_label in perms %}
+                  <span class="badge bg-light-secondary text-dark me-1 mb-1">{{ perm_label }}</span>
+                {% endfor %}
+              {% else %}
+                <p class="text-muted small mb-0">Không có quyền trong nhóm này.</p>
+              {% endif %}
+            </div>
+            {% if not forloop.last %}
+              <hr class="my-1">
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          <p class="text-muted">Nhóm này chưa được gán quyền nào.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="users-pane" role="tabpanel" aria-labelledby="users-tab">
+      <div id="group-users-tab-content"
+           hx-get="{% url 'accounts:group_users' group.id %}?per_page_group=5"
+           hx-trigger="load"
+           hx-target="this"
+           hx-swap="innerHTML">
+        <div class="text-center text-muted py-3">Đang tải danh sách người dùng...</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+</div>
+

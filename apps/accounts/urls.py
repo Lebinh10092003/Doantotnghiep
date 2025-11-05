@@ -22,7 +22,10 @@ urlpatterns = [
     path("import/template/", views.export_import_template_view, name="import_template"),
     #Quản lý nhóm người dùng
     path("groups/", views.manage_groups, name="manage_groups"),
+    path("groups/view/<int:group_id>/", views.group_view, name="group_view"),
+    path("groups/<int:group_id>/users/", views.group_users_view, name="group_users"),
     path("groups/create/", views.group_create_view, name="group_create"),
     path("groups/edit/<int:group_id>/", views.group_edit_view, name="group_edit"),
     path("groups/delete/", views.group_delete_view, name="group_delete"),
+    
 ]

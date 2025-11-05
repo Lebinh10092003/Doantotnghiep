@@ -47,9 +47,9 @@
                       hx-post="{% url 'accounts:group_delete' %}"
                       hx-swap="none" 
                       hx-include="#groups-table-form" 
-                      data-confirm-title="Xác nhận vô hiệu hóa hàng loạt"
-                      data-confirm-text="Bạn có chắc chắn muốn vô hiệu hóa những nhóm đã chọn?">
-               <i class="bi bi-slash-circle"></i> Vô hiệu hóa mục đã chọn
+                      data-confirm-title="Xác nhận xóa hàng loạt"
+                      data-confirm-text="Bạn có chắc chắn muốn xóa những nhóm đã chọn?">
+               <i class="bi bi-trash"></i> Xóa các nhóm đã chọn
               </button>
             </div>
           </div>
@@ -80,6 +80,23 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+        </div>
+        <div id="modal-content">
+          <div class="modal-body">
+            <p>Đang tải...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  {# Modal hiển thị chi tiết/chỉnh sửa người dùng khi mở từ nhóm #}
+  <div class="modal fade" id="user-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div id="modal-content">
           <div class="modal-body">

@@ -12,7 +12,7 @@
     </thead>
     <tbody>
       {% for group in page_obj.object_list %}
-      {% with is_protected=group.name|is_protected_group %} {# Sử dụng templatetag mới #}
+      {% with is_protected=group.name|is_protected_group %}
       <tr>
         <td>
           <input type="checkbox" name="group_ids[]" value="{{ group.id }}" 
@@ -27,7 +27,6 @@
           {% endif %}
         </td>
         
-        {# Cập nhật: Biến số lượng thành liên kết #}
         <td>
           {% if group.user_count > 0 %}
             <a href="{% url 'accounts:manage_accounts' %}?role={{ group.name|urlencode }}&group_by=role"
@@ -40,17 +39,22 @@
         </td>
         
         <td>
+          <button type="button" class="btn btn-sm btn-info"
+                  hx-get="{% url 'accounts:group_view' group.id %}"
+                  hx-target="#modal-content"
+                  @click="modalTitle = 'Chi tiết nhóm: {{ group.name|escapejs }}'">
+            <i class="bi bi-eye"></i>
+          </button>
           <button type="button" class="btn btn-sm btn-warning" 
                   hx-get="{% url 'accounts:group_edit' group.id %}"
                   hx-target="#modal-content" 
                   @click="modalTitle = 'Chỉnh sửa nhóm: {{ group.name|escapejs }}'">
-            <i class="bi bi-pencil-square"></i> Sửa
+            <i class="bi bi-pencil-square"></i>
           </button>
           
-          {# Cập nhật: Thay đổi text/icon và logic disable #}
           <form hx-post="{% url 'accounts:group_delete' %}" hx-swap="none" class="d-inline"
                 data-confirm-title="Xác nhận xóa"
-                data-confirm-text="Bạn có chắc chắn muốn xóa nhóm '{{ group.name }}'? (Chỉ xóa được nếu nhóm trống và không phải nhóm hệ thống)">
+                data-confirm-text="Bạn chắc chắn muốn xóa nhóm '{{ group.name }}'? (Chỉ xóa được nếu nhóm trống và không phải nhóm hệ thống)">
             {% csrf_token %}
             <input type="hidden" name="group_id_single" value="{{ group.id }}">
             <button type="submit" class="btn btn-danger btn-sm"
@@ -59,7 +63,7 @@
                     {% elif group.user_count > 0 %}
                       disabled title="Không thể xóa nhóm đang có người dùng"
                     {% endif %}>
-              <i class="bi bi-trash"></i> Xóa
+              <i class="bi bi-trash"></i>
             </button>
           </form>
         </td>
@@ -112,3 +116,4 @@
     </ul>
   </nav>
 </div>
+

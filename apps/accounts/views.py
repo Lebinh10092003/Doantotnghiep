@@ -487,7 +487,17 @@ def user_detail_view(request, user_id):
         'teaching_classes': teaching_classes,
         'assisting_classes': assisting_classes,
     }
-    return render(request, '_user_detail.html', context)
+    response = render(request, '_user_detail.html', context)
+    # If opened from the group modal, trigger closing it before showing user modal
+    if is_htmx_request(request) and request.GET.get('from_group'):
+        try:
+            triggers = {
+                "closeGroupModal": True
+            }
+            response["HX-Trigger"] = json.dumps(triggers)
+        except Exception:
+            pass
+    return response
 
 @login_required
 @permission_required("accounts.change_user", raise_exception=True)
@@ -808,17 +818,9 @@ def group_edit_view(request, group_id):
 @login_required
 @permission_required("auth.delete_group", raise_exception=True)
 def group_delete_view(request):
-    """
-    Xử lý yêu cầu xóa nhóm.
-    - Hỗ trợ xóa đơn và xóa hàng loạt.
-    - Tiêu chí 1: Ngăn chặn việc xóa các nhóm trong danh sách PROTECTED_GROUPS.
-    - Tiêu chí 2: Ngăn chặn việc xóa nhóm đang có người dùng (user_count > 0).
-    - Trả về thông báo SweetAlert qua HTMX trigger.
-    """
     group_ids = request.POST.getlist('group_ids[]') or request.POST.getlist('group_id_single')
     unique_group_ids = list(set(group_ids))
     alert = {} 
-    
     deleted_names = []
     protected_names = []
     in_use_names = []
@@ -899,6 +901,58 @@ def group_delete_view(request):
         "show-sweet-alert": alert
     })
     return response
+
+@login_required
+@permission_required("accounts.view_user", raise_exception=True)
+def group_users_view(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    
+    # Lấy query cơ sở từ hàm filter
+    qs = _filter_users_queryset(request)
+    
+    # Lọc thêm theo nhóm này
+    qs = qs.filter(groups=group).order_by('last_name', 'first_name')
+    
+    # Phân trang
+    try:
+        per_page = int(request.GET.get("per_page_group", 5)) # Dùng 1 param khác
+    except (TypeError, ValueError):
+        per_page = 5
+    try:
+        page = int(request.GET.get("page_group", 1)) # Dùng 1 param khác
+    except (TypeError, ValueError):
+        page = 1
+
+    paginator = Paginator(qs, per_page)
+    try:
+        page_obj = paginator.page(page)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
+    context = {
+        "group": group,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "per_page": per_page,
+    }
+    
+    # Trả về partial mới
+    return render(request, '_group_users_list.html', context)
+
+
+@login_required
+@permission_required("auth.view_group", raise_exception=True)
+def group_view(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    # Build grouped, readable permission list for this group
+    group_permissions = group.permissions.select_related('content_type').all()
+    functional_grouped_permissions = _group_permissions_by_functionality(group_permissions)
+
+    context = {
+        'group': group,
+        'functional_grouped_permissions': functional_grouped_permissions,
+    }
+    return render(request, '_group_view.html', context)
 
 @login_required
 def profile_view(request):
