@@ -1,6 +1,24 @@
 // static/js/custom-events.js
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Utilities to aggressively clean up modal side-effects,
+    // but only when there is no modal currently shown.
+    const forceModalCleanup = () => {
+        try {
+            // If any modal is visible, skip cleanup to avoid racing with a new open.
+            const anyOpen = document.querySelector('.modal.show');
+            if (anyOpen) return;
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        } catch (_) { /* noop */ }
+    };
+
+    // Defensive: after a modal is fully hidden, ensure cleanup
+    document.addEventListener('hidden.bs.modal', () => {
+        setTimeout(forceModalCleanup, 0);
+    });
     /**
      * Xử lý các tác vụ sau khi HTMX request hoàn thành, bao gồm:
      * 1. Hiển thị thông báo SweetAlert.
@@ -68,14 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Đóng modal chung và dọn dẹp backdrop
             if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal) {
                 try {
-                    const openModals = document.querySelectorAll('.modal.show');
+                    // Prefer closing the modal that initiated the request
+                    const sourceEl = evt.detail.elt;
+                    const scopedModal = sourceEl?.closest ? sourceEl.closest('.modal') : null;
+                    const openModals = scopedModal ? [scopedModal] : document.querySelectorAll('.modal.show');
 
-                    const cleanup = () => {
-                        document.body.classList.remove('modal-open');
-                        document.body.style.overflow = '';
-                        document.body.style.paddingRight = '';
-                        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                    };
+                    const cleanup = forceModalCleanup;
 
                     const hidePromises = Array.from(openModals).map(m => {
                         const inst = bootstrap.Modal.getInstance(m);
@@ -131,6 +147,39 @@ document.addEventListener('DOMContentLoaded', () => {
             // console.error('Lỗi xử lý HX-Trigger:', e, 'Header:', header);
         }
     }
+
+    // Trước khi swap: nếu response rỗng vào #modal-content, huỷ swap và đóng modal
+    document.body.addEventListener('htmx:beforeSwap', function (evt) {
+        const target = evt.detail.target;
+        if (!target) return;
+        const isModalTarget = target.id === 'modal-content' || (target.closest && target.closest('#modal-content'));
+        if (!isModalTarget) return;
+
+        const xhr = evt.detail.xhr;
+        try {
+            const status = xhr?.status;
+            let text = '';
+            try { text = xhr?.responseText ?? ''; } catch (_) { /* noop */ }
+            const isEmpty = (text === undefined || text === null || String(text).trim() === '');
+
+            if (status === 204 || (status === 200 && isEmpty)) {
+                // Không có nội dung để hiển thị trong modal => không swap, đóng modal & dọn dẹp
+                evt.detail.shouldSwap = false;
+                try {
+                    const openModals = document.querySelectorAll('.modal.show');
+                    openModals.forEach(m => {
+                        const inst = bootstrap.Modal.getOrCreateInstance(m);
+                        if (inst) inst.hide();
+                        // Fallback hard hide in case no instance
+                        m.classList.remove('show');
+                        m.setAttribute('aria-hidden', 'true');
+                        m.style.display = 'none';
+                    });
+                } catch (_) { /* noop */ }
+                setTimeout(forceModalCleanup, 0);
+            }
+        } catch (_) { /* noop */ }
+    });
     
     /**
      * Xử lý sự kiện htmx:confirm để hiển thị hộp thoại xác nhận tùy chỉnh bằng SweetAlert2.
@@ -174,15 +223,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.addEventListener('htmx:afterSwap', function (evt) {
         const target = evt.detail.target;
 
-        // Chỉ xử lý khi nội dung được swap vào một phần tử có ID là 'modal-content'
-        // hoặc là một form bên trong modal (trường hợp trả về lỗi validation)
-        const isModalContent = target.id === 'modal-content' || target.closest('#modal-content');
+        // Chỉ auto-show khi swap trực tiếp vào #modal-content
+        if (target.id === 'modal-content') {
+            // Nếu server yêu cầu đóng modal (sau POST thành công), không mở lại
+            let shouldShow = true;
+            try {
+                const header = evt.detail?.xhr?.getResponseHeader('HX-Trigger');
+                if (header) {
+                    const triggers = JSON.parse(header);
+                    if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal) {
+                        shouldShow = false;
+                    }
+                }
+            } catch (_) { /* noop */ }
 
-        if (isModalContent) {
-            const modalEl = target.closest('.modal');
-            if (modalEl) {
-                const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
-                if (!modalEl.classList.contains('show')) {
+            if (shouldShow) {
+                const modalEl = target.closest('.modal');
+                if (modalEl && !modalEl.classList.contains('show')) {
+                    const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
                     instance.show();
                 }
             }
