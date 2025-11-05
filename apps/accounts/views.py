@@ -14,6 +14,7 @@ from django.core.paginator import Paginator, EmptyPage
 from django.template.loader import render_to_string
 from django.db.models import Q, Count
 from apps.centers.models import Center
+from apps.classes.models import Class
 from .models import ParentStudentRelation
 from .forms import AdminUserCreateForm, AdminUserUpdateForm, ImportUserForm,UserProfileUpdateForm,UserPasswordChangeForm
 from .resources import UserResource
@@ -406,6 +407,8 @@ def user_detail_view(request, user_id):
     parents = None
     enrolled_classes = None
     teaching_classes = None
+    assisting_classes = None
+    
 
     # Lấy vai trò và chuyển thành chữ hoa để so sánh nhất quán
     user_role_upper = user.role.upper() if user.role else ''
@@ -419,9 +422,18 @@ def user_detail_view(request, user_id):
         # Lấy các lớp học sinh đang ghi danh
         enrolled_classes = user.enrollments.select_related('klass__subject', 'klass__center').all()
 
-    if user_role_upper == 'TEACHER':
-        # Lấy các lớp giáo viên đang dạy
-        teaching_classes = user.taught_classes.select_related('subject', 'center').all()
+    if user_role_upper == 'TEACHER' or user_role_upper == 'ASSISTANT':
+        # Lấy các lớp giáo viên đang dạy (giáo viên chính)
+        if hasattr(user, 'main_classes'):
+            teaching_classes = user.main_classes.select_related('subject', 'center').all()
+        else:
+            teaching_classes = Class.objects.filter(main_teacher=user).select_related('subject', 'center')
+
+        # Lấy các lớp trợ giảng
+        if hasattr(user, 'assist_classes'):
+            assisting_classes = user.assist_classes.select_related('subject', 'center').all()
+        else:
+            assisting_classes = Class.objects.filter(assistants=user).select_related('subject', 'center')
 
     context = {
         'user': user,
@@ -429,6 +441,7 @@ def user_detail_view(request, user_id):
         'parents': parents,
         'enrolled_classes': enrolled_classes,
         'teaching_classes': teaching_classes,
+        'assisting_classes': assisting_classes,
     }
     return render(request, '_user_detail.html', context)
 

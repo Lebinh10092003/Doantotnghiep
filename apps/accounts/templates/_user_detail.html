@@ -108,7 +108,7 @@
     {% endif %}
 
     <!-- Hiển thị lớp học đang tham gia nếu là học sinh -->
-    {% if enrolled_classes %}
+    {% if enrolled_classes != None %}
     <div class="mt-4 border-top pt-3">
         <h6><i class="bi bi-journal-bookmark me-2"></i>Lớp học đang tham gia</h6>
         <div class="table-responsive">
@@ -137,7 +137,7 @@
     {% endif %}
 
     <!-- Hiển thị lớp học đang dạy nếu là giáo viên -->
-    {% if teaching_classes %}
+    {% if teaching_classes != None %}
     <div class="mt-4 border-top pt-3">
         <h6><i class="bi bi-easel-fill me-2"></i>Lớp học đang giảng dạy</h6>
         <div class="table-responsive">
@@ -158,6 +158,35 @@
                     </tr>
                     {% empty %}
                     <tr><td colspan="3" class="text-center text-muted">Chưa được phân công lớp nào.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Hiển thị lớp đang trợ giảng nếu là trợ giảng/giáo viên -->
+    {% if assisting_classes != None %}
+    <div class="mt-4 border-top pt-3">
+        <h6><i class="bi bi-people me-2"></i>Lớp đang trợ giảng</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover table-bordered">
+                <thead class="table-light">
+                    <tr>
+                        <th>Tên lớp</th>
+                        <th>Môn học</th>
+                        <th>Trung tâm</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for klass in assisting_classes %}
+                    <tr>
+                        <td>{{ klass.name }}</td>
+                        <td>{{ klass.subject.name }}</td>
+                        <td>{{ klass.center.name|default:"N/A" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted">Chưa là trợ giảng lớp nào.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
