@@ -158,17 +158,17 @@ def center_delete_view(request):
             deleted_count = len(deleted_names)
 
             if deleted_count > 0:
-                centers_to_delete_qs.delete()
+                centers_to_delete_qs.update(is_active=False)
 
             if deleted_count > 0:
                 if deleted_count == 1:
-                    alert = {"icon": "success", "title": f"Đã xóa Trung tâm '{deleted_names[0]}' thành công."}
+                    alert = {"icon": "success", "title": f"Đã vô hiệu hóa Trung tâm '{deleted_names[0]}' thành công."}
                 else:
                     deleted_list_str = ", ".join([f"'{name}'" for name in deleted_names])
                     alert = {
                         "icon": "success", 
-                        "title": f"Đã xóa {deleted_count} Trung tâm thành công.",
-                        "text": f"Các trung tâm đã xóa: {deleted_list_str}"
+                        "title": f"Đã vô hiệu hóa {deleted_count} Trung tâm thành công.",
+                        "text": f"Các trung tâm đã vô hiệu hóa: {deleted_list_str}"
                     }
             else:
                 alert = {"icon": "info", "title": "Không có Trung tâm nào được xóa."}

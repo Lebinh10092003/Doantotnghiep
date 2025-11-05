@@ -24,6 +24,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from collections import defaultdict
 from django.contrib.auth import update_session_auth_hash 
+from django import forms as dj_forms
 User = get_user_model()
 
 # 
@@ -285,38 +286,67 @@ def manage_accounts(request):
 
     return render(request, "manage_accounts.html", context)
 
+
+def _form_errors_as_text(form) -> str:
+    """
+    Trả lỗi dạng text, mỗi lỗi một dòng.
+    Hỗ trợ cả field errors và non-field errors.
+    """
+    parts = []
+
+    # Field errors
+    for field_name, error_list in form.errors.items():  # error_list là ErrorList
+        if field_name == dj_forms.forms.NON_FIELD_ERRORS:
+            continue
+        label = getattr(form.fields.get(field_name), "label", field_name)
+        for err in error_list:  # ErrorList có thể lặp
+            parts.append(f"{label}: {err}")
+
+    # Non-field errors
+    for err in form.non_field_errors():
+        parts.append(str(err))
+
+    # Loại bỏ trùng lặp, giữ thứ tự
+    uniq = list(dict.fromkeys(parts))
+    return "\n".join(uniq) if uniq else "Dữ liệu không hợp lệ."
 @login_required
 @permission_required("accounts.add_user", raise_exception=True)
 def user_create_view(request):
-    if request.method == 'POST':
-        form = AdminUserCreateForm(request.POST, request.FILES)
-        if form.is_valid():
-            user = form.save()
-            response = HttpResponse(status=200)
-            response['HX-Trigger'] = json.dumps({
-                "reload-accounts-table": True,
-                "closeUserModal": True,
-                "show-sweet-alert": {
-                    "icon": "success",
-                    "title": f"Đã tạo người dùng '{user.username}' thành công!"
-                }
-            })
-            return response
-        else:
-            # Nếu form không hợp lệ, render lại form với lỗi để HTMX cập nhật UI
-            context = {
-                'form': form,
-            }
-            return render(request, '_add_user_form.html', context, status=422) # status 422 để HTMX biết có lỗi
-    else:
+    if request.method == "GET":
         form = AdminUserCreateForm()
-    
-    # Thêm context `enctype` để template biết cần thêm thuộc tính cho form
-    context = {
-        'form': form,
-        'enctype': 'multipart/form-data'
-    }
-    return render(request, '_add_user_form.html', context)
+        return render(request, "_add_user_form.html", {"form": form})
+
+    form = AdminUserCreateForm(request.POST, request.FILES)
+    if form.is_valid():
+        user = form.save()
+        # GIỐNG change_password_view: dùng show-sweet-alert + đóng modal + reload bảng
+        resp = HttpResponse(status=200)
+        resp["HX-Trigger"] = json.dumps({
+            "reload-accounts-table": True,
+            "closeUserModal": True,
+            "show-sweet-alert": {
+                "icon": "success",
+                "title": "Thành công",
+                "text": f"Đã tạo tài khoản: {user.username}",
+                "timer": 1500,
+                "showConfirmButton": False
+            }
+        })
+        return resp
+
+    # LỖI: trả 400 + form có lỗi + thông báo lỗi qua show-sweet-alert (dùng text)
+    html = render_to_string("_add_user_form.html", {"form": form}, request=request)
+    resp = HttpResponse(html, status=400)
+    resp["HX-Trigger"] = json.dumps({
+        "show-sweet-alert": {
+            "icon": "error",
+            "title": "Không thể tạo tài khoản",
+            "text": _form_errors_as_text(form),
+            "showConfirmButton": True
+        }
+    })
+    return resp
+
 
 
 @require_POST
@@ -346,7 +376,6 @@ def user_delete_view(request):
                 if user_instance:
                     deleted_users_info.append(user_instance.username)
 
-            # THAY ĐỔI: Chuyển từ xóa cứng sang xóa mềm (đổi is_active = False)
             # users_to_delete_qs.delete()
             users_to_delete_qs.update(is_active=False)
             count_deleted = count_to_delete # Gán số lượng đúng để hiển thị
@@ -448,29 +477,40 @@ def user_detail_view(request, user_id):
 @login_required
 @permission_required("accounts.change_user", raise_exception=True)
 def user_edit_view(request, user_id):
-    user = get_object_or_404(User, id=user_id)
-    if request.method == 'POST':
-        form = AdminUserUpdateForm(request.POST, request.FILES, instance=user)
-        if form.is_valid():
-            form.save()
-            # Trả về 200 OK với nội dung trống để đảm bảo HTMX xử lý trigger
-            response = HttpResponse(status=200)
-            response['HX-Trigger'] = json.dumps({
-                "reload-accounts-table": True,
-                "closeUserModal": True,
-                "show-sweet-alert": {
-                    "icon": "success",
-                    "title": f"Cập nhật người dùng '{user.username}' thành công!"
-                }
-            })
-            return response
-        else:
-            # Nếu form không hợp lệ, render lại form với lỗi
-            return render(request, '_edit_user_form.html', {'form': form, 'user': user}, status=422)
-    else:
-        form = AdminUserUpdateForm(instance=user)
+    u = get_object_or_404(User, id=user_id)
+    if request.method == "GET":
+        form = AdminUserUpdateForm(instance=u)
+        return render(request, "_edit_user_form.html", {"form": form, "user": u})
 
-    return render(request, '_edit_user_form.html', {'form': form, 'user': user})
+    form = AdminUserUpdateForm(request.POST, request.FILES, instance=u)
+    if form.is_valid():
+        form.save()
+        resp = HttpResponse(status=200)
+        resp["HX-Trigger"] = json.dumps({
+            "reload-accounts-table": True,
+            "closeUserModal": True,
+            "show-sweet-alert": {
+                "icon": "success",
+                "title": "Thành công",
+                "text": f"Đã cập nhật: {u.username}",
+                "timer": 1500,
+                "showConfirmButton": False
+            }
+        })
+        return resp
+
+    html = render_to_string("_edit_user_form.html", {"form": form, "user": u}, request=request)
+    resp = HttpResponse(html, status=400)
+    resp["HX-Trigger"] = json.dumps({
+        "show-sweet-alert": {
+            "icon": "error",
+            "title": "Không thể cập nhật",
+            "text": _form_errors_as_text(form),
+            "showConfirmButton": True
+        }
+    })
+    return resp
+
 
 @login_required
 @permission_required("accounts.view_user", raise_exception=True)

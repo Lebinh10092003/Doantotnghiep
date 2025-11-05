@@ -4,12 +4,31 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.forms import PasswordChangeForm as DjangoPasswordChangeForm
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
-from apps.centers.models import Center
-import re
+from django.core.validators import RegexValidator
 from django.utils.text import slugify
-import random
+
+from apps.centers.models import Center
 
 User = get_user_model()
+
+
+# ===== Helpers =====
+cccd_validator = RegexValidator(
+    regex=r"^\d{12}$",
+    message="CCCD phải gồm đúng 12 chữ số."
+)
+
+def detect_prefix_from_groups(groups_qs) -> str:
+    if not groups_qs:
+        return "US"
+    name = groups_qs.first().name.upper()
+    if name in {"TEACHER", "ADMIN", "ASSISTANT", "STAFF", "CENTER_MANAGER"}:
+        return "EDS"
+    if name == "PARENT":
+        return "PR"
+    if name == "STUDENT":
+        return "ST"
+    return "US"
 
 
 class CenterModelChoiceField(forms.ModelChoiceField):
@@ -58,6 +77,16 @@ class AdminUserCreateForm(forms.ModelForm):
         self.fields['address'].label = "Địa chỉ"
         self.fields['avatar'].label = "Ảnh đại diện"
 
+    # --- validators ---
+    def clean_national_id(self):
+        nid = (self.cleaned_data.get("national_id") or "").strip()
+        if not nid:
+            return nid  # cho phép để trống
+        cccd_validator(nid)
+        if User.objects.filter(national_id=nid).exists():
+            raise ValidationError("CCCD đã tồn tại trong hệ thống.")
+        return nid
+
     def clean(self):
         cleaned = super().clean()
         p1 = cleaned.get('password1')
@@ -67,31 +96,31 @@ class AdminUserCreateForm(forms.ModelForm):
         return cleaned
 
     def save(self, commit=True):
+        # import tại đây để tránh vòng lặp import
+        from .models import UserCodeCounter
+
         user = super().save(commit=False)
         user.set_password(self.cleaned_data['password1'])
 
-        # Tự động tạo username duy nhất
-        first_name = self.cleaned_data.get('first_name', '')
-        last_name = self.cleaned_data.get('last_name', '')
-        
-        # Tạo username cơ bản từ tên
-        base_username = slugify(f"{first_name} {last_name}") or "user"
-        username = base_username
-        counter = 1
-        # Đảm bảo username là duy nhất
+        # username duy nhất từ họ tên
+        base = slugify(f"{self.cleaned_data.get('first_name','')} {self.cleaned_data.get('last_name','')}") or "user"
+        username = base
+        i = 1
         while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
+            i += 1
+            username = f"{base}{i}"
         user.username = username
 
-        if commit:
-            user.save() # Lưu người dùng trước để có ID
-            self.save_m2m() # Lưu các quan hệ ManyToMany (groups)
+        # sinh user_code theo nhóm đã chọn trong form
+        groups = self.cleaned_data.get('groups')
+        prefix = detect_prefix_from_groups(groups)
+        user.user_code = UserCodeCounter.next_code(prefix)
 
-            # Sau khi groups đã được lưu, gán giá trị cho trường role
-            groups = self.cleaned_data.get('groups')
+        if commit:
+            user.save()
+            self.save_m2m()
             user.role = groups.first().name if groups else None
-            user.save(update_fields=['role']) # Chỉ cập nhật trường 'role'
+            user.save(update_fields=['role'])
 
         return user
 
@@ -116,7 +145,8 @@ class AdminUserUpdateForm(forms.ModelForm):
         fields = [
             'avatar', 'email', 'phone',
             'first_name', 'last_name',
-            'is_active', 'center', 'is_staff', 'groups'
+            'is_active', 'center', 'is_staff', 'groups',
+            'national_id', 'address'
         ]
 
     def __init__(self, *args, **kwargs):
@@ -128,25 +158,30 @@ class AdminUserUpdateForm(forms.ModelForm):
         self.fields['is_active'].label = "Kích hoạt"
         self.fields['is_staff'].label = "Quản trị viên"
         self.fields['avatar'].label = "Ảnh đại diện"
+        self.fields['national_id'].label = "Số CCCD/CMND"
+        self.fields['address'].label = "Địa chỉ"
+
+    def clean_national_id(self):
+        nid = (self.cleaned_data.get("national_id") or "").strip()
+        if not nid:
+            return nid
+        cccd_validator(nid)
+        if User.objects.filter(national_id=nid).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("CCCD đã tồn tại trong hệ thống.")
+        return nid
 
     def save(self, commit=True):
         user = super().save(commit=False)
         password = self.cleaned_data.get('password')
-
-        # Chỉ đặt mật khẩu mới nếu người dùng nhập vào trường password
         if password:
             user.set_password(password)
 
         if commit:
             user.save()
-            # Lưu các quan hệ ManyToMany (bao gồm cả groups)
             self.save_m2m()
-
-            # Sau khi groups đã được lưu, cập nhật lại trường `role`
             groups = self.cleaned_data.get('groups')
-            user.role = groups.first().name if groups.exists() else None
+            user.role = groups.first().name if groups and groups.exists() else None
             user.save(update_fields=['role'])
-
         return user
 
 
@@ -195,6 +230,15 @@ class UserProfileUpdateForm(forms.ModelForm):
         self.fields['address'].label = "Địa chỉ"
         self.fields['address'].widget = forms.Textarea(attrs={'rows': 3})
 
+    def clean_national_id(self):
+        nid = (self.cleaned_data.get("national_id") or "").strip()
+        if not nid:
+            return nid
+        cccd_validator(nid)
+        if User.objects.filter(national_id=nid).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("CCCD đã tồn tại trong hệ thống.")
+        return nid
+
 
 class UserPasswordChangeForm(DjangoPasswordChangeForm):
     def __init__(self, user, *args, **kwargs):
@@ -224,10 +268,8 @@ class UserPasswordChangeForm(DjangoPasswordChangeForm):
             "</ul>"
         )
 
-        # Ghi đè thông báo lỗi non-field error cho trường hợp mật khẩu không khớp
         self.error_messages['password_mismatch'] = "Mật khẩu xác nhận không khớp. Vui lòng nhập lại."
 
-        # Ghi đè thông báo lỗi của các validators mặc định
         for validator in self.fields['new_password1'].validators:
             if isinstance(validator, password_validation.MinimumLengthValidator):
                 validator.message = 'Mật khẩu phải chứa ít nhất %(min_length)d ký tự.'

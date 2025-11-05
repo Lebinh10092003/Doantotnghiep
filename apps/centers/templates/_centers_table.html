@@ -42,12 +42,12 @@
           {# Form XÓA ĐƠN #}
           {% if perms.centers.delete_center %}
           <form hx-post="{% url 'centers:center_delete' %}" hx-swap="none" class="d-inline"
-                data-confirm-title="Xác nhận xóa"
-                data-confirm-text="Bạn có chắc chắn muốn xóa Trung tâm '{{ center.name }}'?">
+                data-confirm-title="Xác nhận vô hiệu hóa"
+                data-confirm-text="Bạn có chắc chắn muốn vô hiệu hóa Trung tâm '{{ center.name }}'?">
             {% csrf_token %}
             <input type="hidden" name="center_ids" value="{{ center.id }}">
             <button type="submit" class="btn btn-danger btn-sm">
-              <i class="bi bi-trash"></i> Xóa
+              <i class="bi bi-slash-circle"></i> Vô hiệu hóa
             </button>
           </form>
           {% endif %}
