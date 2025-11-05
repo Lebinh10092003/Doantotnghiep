@@ -74,8 +74,7 @@
   </div>
 
   <div class="modal fade" id="group-modal" tabindex="-1" aria-hidden="true" 
-       x-init="bootstrap.Modal.getOrCreateInstance($el)"
-       @close-group-modal.window="$el.bootstrap.Modal.getInstance($el).hide()">
+       x-init="bootstrap.Modal.getOrCreateInstance($el)">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
@@ -118,14 +117,5 @@
       checkboxes[i].checked = source.checked;
     }
   }
-
-  // Đóng modal khi nhận trigger (được gọi từ custom-events.js của bạn)
-  document.body.addEventListener('closeGroupModal', () => {
-      const modalEl = document.getElementById('group-modal');
-      const modal = bootstrap.Modal.getInstance(modalEl);
-      if (modal) {
-          modal.hide();
-      }
-  });
 </script>
 {% endblock %}

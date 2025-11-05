@@ -1,12 +1,14 @@
 import json
 from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator, EmptyPage
 from django.db.models import Q
-from .models import Center
-from .forms import CenterForm
+from .models import Center, Room
+from .forms import CenterForm, RoomForm
+
 # Create your views here.
 def is_htmx_request(request):
     return (
@@ -30,6 +32,28 @@ def _filter_centers_queryset(request):
         qs = qs.filter(is_active=True)
     elif status == "inactive":
         qs = qs.filter(is_active=False)
+
+    return qs
+
+
+def _filter_rooms_queryset(request):
+    qs = Room.objects.select_related("center").all()
+    q = request.GET.get("q", "").strip()
+    center_id = request.GET.get("center", "").strip()
+
+    if q:
+        qs = qs.filter(
+            Q(name__icontains=q)
+            | Q(note__icontains=q)
+            | Q(center__name__icontains=q)
+            | Q(center__code__icontains=q)
+        )
+
+    if center_id:
+        try:
+            qs = qs.filter(center_id=int(center_id))
+        except (TypeError, ValueError):
+            pass
 
     return qs
 # Quanr lý trung tâm 
@@ -77,6 +101,224 @@ def centers_manage(request):
 
     return render(request, "manage_centers.html", context)
 
+
+@login_required
+@permission_required("centers.view_center", raise_exception=True)
+def center_detail_view(request, center_id: int):
+    center = get_object_or_404(Center, id=center_id)
+
+    qs = center.rooms.all()
+    q = request.GET.get("q", "").strip()
+    sort_by = request.GET.get("sort_by", "name")
+    try:
+        per_page = int(request.GET.get("per_page", 10))
+    except (TypeError, ValueError):
+        per_page = 10
+    try:
+        page = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+
+    if q:
+        qs = qs.filter(Q(name__icontains=q) | Q(note__icontains=q))
+
+    valid_sort_fields = ["name", "-name"]
+    if sort_by in valid_sort_fields:
+        qs = qs.order_by(sort_by)
+    else:
+        qs = qs.order_by("name")
+
+    paginator = Paginator(qs, per_page)
+    try:
+        page_obj = paginator.page(page)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
+    context = {
+        "center": center,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "q": q,
+        "per_page": per_page,
+        "sort_by": sort_by,
+    }
+
+    if is_htmx_request(request):
+        # If requesting rooms table fragment (from detail page filters/pagination)
+        if request.GET.get("fragment") == "rooms_table":
+            return render(request, "_center_rooms_table.html", context)
+        # If requesting modal content from list page
+        if request.GET.get("as") == "modal":
+            return render(request, "_center_detail_modal.html", context)
+
+    return render(request, "center_detail.html", context)
+
+
+# Quan ly phong hoc
+@login_required
+@permission_required("centers.view_room", raise_exception=True)
+def rooms_manage(request):
+    qs = _filter_rooms_queryset(request)
+
+    sort_by = request.GET.get("sort_by", "center__name")
+    try:
+        per_page = int(request.GET.get("per_page", 10))
+    except (TypeError, ValueError):
+        per_page = 10
+    try:
+        page = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+
+    valid_sort_fields = [
+        "name",
+        "-name",
+        "center__name",
+        "-center__name",
+        "center__code",
+        "-center__code",
+    ]
+    if sort_by in valid_sort_fields:
+        qs = qs.order_by(sort_by)
+    else:
+        qs = qs.order_by("center__name", "name")
+
+    paginator = Paginator(qs, per_page)
+    try:
+        page_obj = paginator.page(page)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
+    centers = Center.objects.order_by("name").all()
+
+    context = {
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "q": request.GET.get("q", "").strip(),
+        "per_page": per_page,
+        "sort_by": sort_by,
+        "centers": centers,
+        "selected_center": request.GET.get("center", ""),
+    }
+
+    if is_htmx_request(request):
+        return render(request, "_rooms_table.html", context)
+
+    return render(request, "manage_rooms.html", context)
+
+
+@login_required
+@permission_required("centers.add_room", raise_exception=True)
+def room_create_view(request):
+    if request.method == "POST":
+        form = RoomForm(request.POST)
+        if form.is_valid():
+            room = form.save()
+            response = HttpResponse(status=200)
+            response["HX-Trigger"] = json.dumps(
+                {
+                    "reload-rooms-table": True,
+                    "closeRoomModal": True,
+                    "show-sweet-alert": {
+                        "icon": "success",
+                        "title": f"Tạo Phòng học '{room.name}' thành công!",
+                    },
+                }
+            )
+            return response
+        return render(
+            request,
+            "_room_form.html",
+            {"form": form, "is_create": True},
+            status=422,
+        )
+    else:
+        initial = {}
+        center_id = request.GET.get("center")
+        if center_id:
+            try:
+                initial["center"] = int(center_id)
+            except (TypeError, ValueError):
+                pass
+        form = RoomForm(initial=initial)
+
+    return render(request, "_room_form.html", {"form": form, "is_create": True})
+
+
+@login_required
+@permission_required("centers.change_room", raise_exception=True)
+def room_edit_view(request, room_id: int):
+    room = get_object_or_404(Room, id=room_id)
+    if request.method == "POST":
+        form = RoomForm(request.POST, instance=room)
+        if form.is_valid():
+            room = form.save()
+            # Áp dụng Pattern 1: Đóng modal và tải lại bảng
+            response = HttpResponse(status=200)
+            response["HX-Trigger"] = json.dumps(
+                {
+                    "closeRoomModal": True, # Lệnh đóng modal đang mở
+                    "reload-rooms-table": True, # Lệnh tải lại bảng phòng học (trên trang chi tiết trung tâm)
+                    "show-sweet-alert": {
+                        "icon": "success",
+                        "title": f"Cập nhật Phòng học '{room.name}' thành công!",
+                    },
+                }
+            )
+            return response
+        return render(
+            request, "_room_form.html", {"form": form, "room": room}, status=422
+        )
+    else:
+        form = RoomForm(instance=room)
+
+    return render(request, "_room_form.html", {"form": form, "room": room})
+
+
+@require_POST
+@login_required
+@permission_required("centers.delete_room", raise_exception=True)
+def room_delete_view(request):
+    room_ids = request.POST.getlist("room_ids[]") or request.POST.getlist("room_ids")
+    unique_ids = list(set(room_ids))
+    alert = {}
+
+    if not unique_ids:
+        alert = {"icon": "info", "title": "Không có Phòng học nào được chọn."}
+    else:
+        try:
+            ids_int = [int(rid) for rid in unique_ids]
+            qs = Room.objects.filter(id__in=ids_int)
+            deleted_names = [str(r) for r in qs]
+            deleted_count = len(deleted_names)
+
+            if deleted_count > 0:
+                qs.delete()
+
+            if deleted_count > 0:
+                if deleted_count == 1:
+                    alert = {
+                        "icon": "success",
+                        "title": f"Đã xóa Phòng học '{deleted_names[0]}' thành công.",
+                    }
+                else:
+                    deleted_list_str = ", ".join([f"'{name}'" for name in deleted_names])
+                    alert = {
+                        "icon": "success",
+                        "title": f"Đã xóa {deleted_count} Phòng học thành công.",
+                        "text": f"Các phòng đã xóa: {deleted_list_str}",
+                    }
+            else:
+                alert = {"icon": "info", "title": "Không có Phòng học nào bị xóa."}
+        except Exception as e:
+            alert = {"icon": "error", "title": "Lỗi hệ thống", "text": str(e)}
+
+    response = HttpResponse(status=200)
+    response["HX-Trigger"] = json.dumps(
+        {"reload-rooms-table": True, "closeRoomModal": True, "show-sweet-alert": alert}
+    )
+    return response
+
 # Create Center
 @login_required
 @permission_required("centers.add_center", raise_exception=True)
@@ -97,7 +339,15 @@ def center_create_view(request):
             return response
         else:
             # Nếu form không hợp lệ, render lại form với lỗi
-            return render(request, '_center_form.html', {'form': form, 'is_create': True}, status=422)
+            response = render(request, '_center_form.html', {'form': form, 'is_create': True}, status=422)
+            response['HX-Trigger'] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Invalid data",
+                    "text": "Please check the errors in the form."
+                }
+            })
+            return response
     else:
         form = CenterForm()
 
@@ -128,7 +378,15 @@ def center_edit_view(request, center_id):
             return response
         else:
             # Nếu form không hợp lệ, render lại form với lỗi
-            return render(request, '_center_form.html', {'form': form, 'center': center}, status=422)
+            response = render(request, '_center_form.html', {'form': form, 'center': center, 'is_create': False}, status=422)
+            response['HX-Trigger'] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Invalid data",
+                    "text": "Please check the errors in the form."
+                }
+            })
+            return response
     else:
         form = CenterForm(instance=center)
 

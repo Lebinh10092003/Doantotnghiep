@@ -31,6 +31,15 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             // 1. Xử lý SweetAlert (luôn được xử lý)
+            const clearModalBody = () => {
+                try {
+                    const openModals = document.querySelectorAll('.modal.show #modal-content');
+                    openModals.forEach(el => {
+                        el.innerHTML = '';
+                    });
+                } catch (_) { /* noop */ }
+            };
+
             if (triggers['show-sweet-alert']) {
                 const alertData = triggers['show-sweet-alert'];
                 const options = {
@@ -46,29 +55,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (alertData.redirect) {
                         window.location.href = alertData.redirect;
                     }
+                    if (triggers.clearRoomModalBody) {
+                        clearModalBody();
+                    }
                 });
+            }
+            else if (triggers.clearRoomModalBody) {
+                // No alert; clear immediately
+                clearModalBody();
             }
 
             // 2. Đóng modal chung và dọn dẹp backdrop
-            if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal) {
+            if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal) {
                 try {
+                    const openModals = document.querySelectorAll('.modal.show');
+
                     const cleanup = () => {
                         document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                        document.body.style.paddingRight = '';
                         document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                     };
 
-                    const openModals = document.querySelectorAll('.modal.show');
-                    openModals.forEach(m => {
+                    const hidePromises = Array.from(openModals).map(m => {
                         const inst = bootstrap.Modal.getInstance(m);
                         if (inst) {
-                            m.addEventListener('hidden.bs.modal', cleanup, { once: true });
-                            inst.hide();
+                            return new Promise(resolve => {
+                                m.addEventListener('hidden.bs.modal', resolve, { once: true });
+                                inst.hide();
+                            });
                         } else {
+                            // Fallback: if no instance, force-hide classes so cleanup can proceed
                             m.classList.remove('show');
+                            m.setAttribute('aria-hidden', 'true');
+                            m.style.display = 'none';
+                            return Promise.resolve();
                         }
                     });
-
-                    if (openModals.length === 0) cleanup();
+                    // Always cleanup, even if no open modals found
+                    Promise.all(hidePromises).then(() => {
+                        // Small delay allows Bootstrap to remove transition classes
+                        setTimeout(cleanup, 0);
+                    });
                 } catch (_) { /* noop */ }
             }
 
@@ -98,6 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dispatchCustomEvent('reload-accounts-table');
             dispatchCustomEvent('reload-groups-table');
             dispatchCustomEvent('reload-centers-table');
+            dispatchCustomEvent('reload-rooms-table');
         } catch (e) {
             // console.error('Lỗi xử lý HX-Trigger:', e, 'Header:', header);
         }

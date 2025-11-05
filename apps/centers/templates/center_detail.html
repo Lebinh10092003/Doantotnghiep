@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Chi tiết Trung tâm{% endblock %}
+
+{% block content %}
+<div x-data="{ modalTitle: 'Tiêu đề Modal' }">
+  <div id="main">
+    <header class="mb-3">
+      <a href="#" class="burger-btn d-block d-xl-none">
+        <i class="bi bi-justify fs-3"></i>
+      </a>
+    </header>
+
+    <div class="page-heading">
+      <div class="page-title">
+        <div class="row">
+          <div class="col-12 col-md-6 order-md-1 order-last">
+            <h3>Trung tâm: {{ center.name }}</h3>
+            <p class="text-subtitle text-muted">Mã: {{ center.code }}</p>
+          </div>
+          <div class="col-12 col-md-6 order-md-2 order-first">
+            <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'centers:centers_manage' %}">Trung tâm</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Chi tiết</li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="row">
+          <div class="col-lg-4">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Thông tin Trung tâm</h5>
+                {% if perms.centers.change_center %}
+                <button type="button" class="btn btn-sm btn-warning"
+                        hx-get="{% url 'centers:center_edit' center.id %}" 
+                        hx-target="#modal-content"
+                        @click="modalTitle = 'Chỉnh sửa Trung tâm: {{ center.name|escapejs }}'">
+                  <i class="bi bi-pencil-square"></i> Sửa
+                </button>
+                {% endif %}
+              </div>
+              <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                  {% if center.avatar %}
+                  <img src="{{ center.avatar.url }}" alt="Avatar trung tâm" class="rounded" style="width:80px;height:80px;object-fit:cover;">
+                  {% endif %}
+                  <div>
+                    <div><strong>Địa chỉ:</strong> {{ center.address|default:"-" }}</div>
+                    <div><strong>Điện thoại:</strong> {{ center.phone|default:"-" }}</div>
+                    <div><strong>Trạng thái:</strong> {% if center.is_active %}<span class="badge bg-success">Hoạt động</span>{% else %}<span class="badge bg-danger">Không hoạt động</span>{% endif %}</div>
+                  </div>
+                </div>
+                {% if center.description %}
+                <hr>
+                <div><strong>Mô tả:</strong><br>{{ center.description|linebreaksbr }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Danh sách Phòng học</h5>
+                <div class="d-flex gap-2">
+                  {% if perms.centers.add_room %}
+                  <button type="button" class="btn btn-primary btn-sm"
+                          hx-get="{% url 'centers:room_add' %}?center={{ center.id }}" 
+                          hx-target="#modal-content"
+                          @click="modalTitle = 'Thêm Phòng học mới'">
+                    <i class="bi bi-plus-lg"></i> Thêm phòng
+                  </button>
+                  {% endif %}
+                  {% if perms.centers.delete_room %}
+                  <button type="button" class="btn btn-danger btn-sm"
+                          hx-post="{% url 'centers:room_delete' %}"
+                          hx-swap="none"
+                          hx-include="#center-rooms-table-form"
+                          data-confirm-title="Xác nhận xóa hàng loạt"
+                          data-confirm-text="Bạn chắc chắn muốn xóa các Phòng học đã chọn?">
+                    <i class="bi bi-trash"></i> Xóa đã chọn
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
+                  <form id="filters-form" class="dataTable-top d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="dataTable-left d-flex flex-wrap align-items-center gap-2">
+                      <div class="dataTable-search" style="min-width:250px;">
+                        <input name="q" value="{{ q|default:'' }}" class="dataTable-input form-control form-control-sm"
+                               style="width:100%;"
+                               placeholder="Tìm theo tên phòng, ghi chú"
+                               hx-get="{% url 'centers:center_detail' center.id %}?fragment=rooms_table"
+                               hx-target="#center-rooms-table"
+                               hx-include="#filters-form"
+                               hx-trigger="keyup changed delay:300ms">
+                      </div>
+                    </div>
+
+                    <div class="dataTable-right">
+                      <div class="dataTable-dropdown d-flex align-items-center gap-2">
+                        <select name="per_page" class="dataTable-selector form-select form-select-sm w-auto"
+                                hx-get="{% url 'centers:center_detail' center.id %}?fragment=rooms_table" hx-target="#center-rooms-table" hx-include="#filters-form" hx-trigger="change">
+                          <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+                          <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                          <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                        </select>
+                        <label class="mb-0">mục/trang</label>
+                      </div>
+                    </div>
+                  </form>
+
+                  <form id="center-rooms-table-form"
+                        hx-trigger="reload-rooms-table from:body"
+                        hx-get="{% url 'centers:center_detail' center.id %}"
+                        hx-target="#center-rooms-table"
+                        hx-swap="innerHTML"
+                        hx-include="#filters-form">
+                    {% csrf_token %}
+                    <div id="center-rooms-table">
+                      {% include "_center_rooms_table.html" %}
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal fade" id="center-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+          </div>
+          <div id="modal-content">
+            <div class="modal-body">
+              <p>Đang tải...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+  function toggleAllRoomCheckboxes(source) {
+    const checkboxes = document.querySelectorAll('input[name="room_ids"]');
+    for (let i = 0; i < checkboxes.length; i++) {
+      checkboxes[i].checked = source.checked;
+    }
+  }
+</script>
+{% endblock %}
+{% endblock %}

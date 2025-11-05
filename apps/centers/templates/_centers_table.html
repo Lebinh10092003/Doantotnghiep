@@ -16,7 +16,7 @@
       {% for center in page_obj.object_list %}
       <tr>
         <td><input type="checkbox" name="center_ids" value="{{ center.id }}"></td>
-        <td>{{ center.name }}</td>
+        <td><a href="{% url 'centers:center_detail' center.id %}">{{ center.name }}</a></td>
         <td>{{ center.code }}</td>
         <td>{{ center.address|default:"-" }}</td>
         <td>{{ center.phone|default:"-" }}</td>
@@ -29,13 +29,16 @@
           {% endif %}
         </td>
         <td>
+          <button type="button" class="btn btn-info btn-sm" hx-get="{% url 'centers:center_detail' center.id %}?as=modal" hx-target="#modal-content" data-bs-toggle="modal" data-bs-target="#center-modal" @click="modalTitle = 'Chi tiết Trung tâm: {{ center.name|escapejs }}'">
+            <i class="bi bi-eye"></i>
+          </button>
           {# Nút SỬA #}
           {% if perms.centers.change_center %}
           <button type="button" class="btn btn-sm btn-warning" 
                   hx-get="{% url 'centers:center_edit' center.id %}"
-                  hx-target="#modal-content" 
+                  hx-target="#modal-content" data-bs-toggle="modal" data-bs-target="#center-modal"
                   @click="modalTitle = 'Chỉnh sửa Trung tâm: {{ center.name|escapejs }}'">
-            <i class="bi bi-pencil-square"></i> Sửa
+            <i class="bi bi-pencil-square"></i>
           </button>
           {% endif %}
           
@@ -47,7 +50,7 @@
             {% csrf_token %}
             <input type="hidden" name="center_ids" value="{{ center.id }}">
             <button type="submit" class="btn btn-danger btn-sm">
-              <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+              <i class="bi bi-slash-circle"></i>
             </button>
           </form>
           {% endif %}

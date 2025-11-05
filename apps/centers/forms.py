@@ -1,5 +1,5 @@
 from django import forms 
-from ..centers.models import Center
+from ..centers.models import Center, Room
 from ..common.models import NamedModel
 import json 
 
@@ -19,13 +19,13 @@ class CenterForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields['name'].label = "Center Name"
-        self.fields['code'].label = "Center Code"
-        self.fields['address'].label = "Center Address"
-        self.fields['phone'].label = "Center Phone"
-        self.fields['description'].label = "Center Description"
-        self.fields['avatar'].label = "Center Avatar"
-        self.fields['is_active'].label = "Is Active"
+        self.fields['name'].label = "Tên Trung tâm"
+        self.fields['code'].label = "Mã Trung tâm"
+        self.fields['address'].label = "Địa chỉ Trung tâm"
+        self.fields['phone'].label = "Điện thoại Trung tâm"
+        self.fields['description'].label = "Mô tả Trung tâm"
+        self.fields['avatar'].label = "Ảnh đại diện Trung tâm"
+        self.fields['is_active'].label = "Hoạt động"
     
     def clean_code(self):
         code = self.cleaned_data['code']
@@ -39,5 +39,20 @@ class CenterForm(forms.ModelForm):
         return code
     
 
-    
+class RoomForm(forms.ModelForm):
+    class Meta:
+        model = Room
+        fields = ["center", "name", "note"]
+        widgets = {
+            "center": forms.Select(attrs={"class": "form-select"}),
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "note": forms.TextInput(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["center"].label = "Trung tâm"
+        self.fields["name"].label = "Tên phòng"
+        self.fields["note"].label = "Ghi chú"
+
 
