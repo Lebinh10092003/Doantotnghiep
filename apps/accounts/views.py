@@ -12,7 +12,7 @@ from django.contrib.auth.models import Group
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator, EmptyPage
 from django.template.loader import render_to_string
-from django.db.models import Q, Count
+from django.db.models import Q, Count, ProtectedError 
 from apps.centers.models import Center
 from apps.classes.models import Class
 from .models import ParentStudentRelation
@@ -26,8 +26,23 @@ from collections import defaultdict
 from django.contrib.auth import update_session_auth_hash 
 from django import forms as dj_forms
 User = get_user_model()
-
-# 
+# Định nghĩa các nhóm không được phép xóa
+PROTECTED_GROUPS = [
+    'Admin', 
+    'Teacher', 
+    'Student', 
+    'Parent', 
+    'Center Manager', 
+    'Assistant',
+    'Staff',
+    'ADMIN',
+    'TEACHER',
+    'STUDENT',
+    'PARENT',
+    'CENTER_MANAGER',
+    'ASSISTANT'
+]
+# Kiểm tra request HTMX
 def is_htmx_request(request):
     return (
         request.headers.get("HX-Request") == "true"
@@ -793,47 +808,90 @@ def group_edit_view(request, group_id):
 @login_required
 @permission_required("auth.delete_group", raise_exception=True)
 def group_delete_view(request):
-    # Lấy ID từ cả xóa hàng loạt (checkbox) và xóa đơn (input ẩn)
+    """
+    Xử lý yêu cầu xóa nhóm.
+    - Hỗ trợ xóa đơn và xóa hàng loạt.
+    - Tiêu chí 1: Ngăn chặn việc xóa các nhóm trong danh sách PROTECTED_GROUPS.
+    - Tiêu chí 2: Ngăn chặn việc xóa nhóm đang có người dùng (user_count > 0).
+    - Trả về thông báo SweetAlert qua HTMX trigger.
+    """
     group_ids = request.POST.getlist('group_ids[]') or request.POST.getlist('group_id_single')
-    # Loại bỏ các ID trùng lặp
     unique_group_ids = list(set(group_ids))
-    alert = {} # Khởi tạo alert
-
+    alert = {} 
+    
+    deleted_names = []
+    protected_names = []
+    in_use_names = []
+    
     if not unique_group_ids:
         alert = {"icon": "info", "title": "Không có nhóm nào được chọn."}
     else:
         try:
             group_ids_int = [int(gid) for gid in unique_group_ids]
-            groups_to_delete_qs = Group.objects.filter(id__in=group_ids_int)
-
-            # Lấy tên các nhóm TRƯỚC KHI xóa để hiển thị trong thông báo
-            deleted_names = []
-            for group in groups_to_delete_qs:
-                deleted_names.append(group.name)
-
-            deleted_count = len(deleted_names)
-            if deleted_count > 0:
-                groups_to_delete_qs.delete()
-
-            if deleted_count > 0:
-                if deleted_count == 1:
-                    alert = {"icon": "success", "title": f"Đã xóa nhóm '{deleted_names[0]}' thành công."}
+            
+            # Lấy tất cả các nhóm được chọn VÀ đếm số lượng người dùng của mỗi nhóm
+            selected_groups_qs = Group.objects.filter(id__in=group_ids_int).annotate(user_count_agg=Count('user'))
+            
+            groups_to_delete = []
+            
+            # Phân loại các nhóm dựa trên tiêu chí xóa
+            for group in selected_groups_qs:
+                # Tiêu chí 1: Không phải nhóm được bảo vệ
+                if group.name in PROTECTED_GROUPS:
+                    protected_names.append(group.name)
+                # Tiêu chí 2: Không có người dùng nào (an toàn để xóa)
+                elif group.user_count_agg > 0:
+                    in_use_names.append(group.name)
+                # Đủ điều kiện xóa
                 else:
-                    # Tạo thông báo chi tiết
-                    deleted_list_str = ", ".join([f"'{name}'" for name in deleted_names])
-                    alert = {
-                        "icon": "success", 
-                        "title": f"Đã xóa {deleted_count} nhóm thành công.",
-                        "text": f"Các nhóm đã xóa: {deleted_list_str}"
-                    }
+                    groups_to_delete.append(group)
+            
+            deleted_count = len(groups_to_delete)
+            if deleted_count > 0:
+                for group in groups_to_delete:
+                    deleted_names.append(group.name)
+                
+                # Thực hiện xóa chỉ các nhóm đủ điều kiện
+                Group.objects.filter(id__in=[g.id for g in groups_to_delete]).delete()
+
+            # --- Xây dựng thông báo phản hồi ---
+            if deleted_count > 0:
+                alert = {
+                    "icon": "success", 
+                    "title": f"Đã xóa {deleted_count} nhóm thành công.",
+                    # SỬA LỖI CÚ PHÁP: Bỏ dấu \
+                    "text": f"Các nhóm đã xóa: {', '.join([f"'{n}'" for n in deleted_names])}"
+                }
             else:
-                alert = {"icon": "info", "title": "Không có nhóm nào được xóa."}
+                 alert = {"icon": "info", "title": "Không có nhóm nào được xóa."}
+            
+            # Bổ sung thông tin lỗi (nếu có)
+            error_details = []
+            if protected_names:
+                # SỬA LỖI CÚ PHÁP: Bỏ dấu \
+                error_details.append(f"Không thể xóa nhóm hệ thống: {', '.join([f"'{n}'" for n in protected_names])}.")
+            if in_use_names:
+                # SỬA LỖI CÚ PHÁP: Bỏ dấu \
+                error_details.append(f"Không thể xóa nhóm đang có người dùng: {', '.join([f"'{n}'" for n in in_use_names])}.")
+            
+            if error_details:
+                if deleted_count > 0: # Đã xóa 1 số, 1 số lỗi
+                     alert["icon"] = "warning" # Đổi thành Warning
+                     alert["title"] = f"Đã xóa {deleted_count} nhóm, tuy nhiên:"
+                     alert["text"] = " ".join(error_details)
+                else: # Không xóa được gì
+                    alert["icon"] = "error"
+                    alert["title"] = "Không thể xóa"
+                    alert["text"] = " ".join(error_details)
 
         except ValueError:
             alert = {"icon": "error", "title": "ID nhóm không hợp lệ."}
+        except ProtectedError as e: # Bắt lỗi nếu có quan hệ không xóa được
+             alert = {"icon": "error", "title": "Lỗi ràng buộc", "text": "Không thể xóa nhóm vì có các đối tượng khác đang tham chiếu đến nó."}
         except Exception as e:
             alert = {"icon": "error", "title": "Lỗi máy chủ", "text": str(e)}
 
+    # Trả về response cho HTMX
     response = HttpResponse(status=200)
     response['HX-Trigger'] = json.dumps({
         "reload-groups-table": True,

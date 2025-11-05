@@ -1,3 +1,4 @@
+# apps/accounts/forms.py
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
@@ -200,8 +201,42 @@ class SimpleGroupForm(forms.ModelForm):
         fields = ['name', 'permissions']
 
     def __init__(self, *args, **kwargs):
+        # Import local để tránh lỗi Circular Import
+        from apps.accounts.views import PROTECTED_GROUPS 
+        
         super().__init__(*args, **kwargs)
         self.fields['name'].label = "Tên nhóm"
+
+        # --- LOGIC NGĂN SỬA TÊN NHÓM HỆ THỐNG ---
+        # Kiểm tra xem form có đang edit 1 instance (1 nhóm) đã tồn tại không
+        if self.instance and self.instance.pk:
+            # Nếu tên của nhóm này nằm trong danh sách được bảo vệ
+            if self.instance.name in PROTECTED_GROUPS:
+                # Đặt trường 'name' thành chỉ đọc (readonly)
+                self.fields['name'].widget.attrs['readonly'] = True
+        # ------------------------------------------
+
+    def clean_name(self):
+        """
+        Thêm validation ở backend để đảm bảo tên nhóm hệ thống không bị đổi,
+        ngay cả khi ai đó cố tình bypass thuộc tính 'readonly' ở frontend.
+        """
+        # Import local để tránh lỗi Circular Import
+        from apps.accounts.views import PROTECTED_GROUPS 
+
+        name = self.cleaned_data.get('name')
+        
+        # Chỉ kiểm tra khi đang edit (self.instance.pk tồn tại)
+        if self.instance and self.instance.pk:
+            # Kiểm tra xem tên *gốc* của nhóm có được bảo vệ không
+            if self.instance.name in PROTECTED_GROUPS:
+                # Nếu tên mới không khớp với tên gốc (nghĩa là người dùng cố tình đổi)
+                if name != self.instance.name:
+                    raise forms.ValidationError(
+                        f"Không thể đổi tên nhóm hệ thống '{self.instance.name}'."
+                    )
+        
+        return name
 
 
 class ImportUserForm(forms.Form):

@@ -1,3 +1,5 @@
+{% load group_tags %}
+
 <div class="dataTable-container table-responsive">
   <table class="table table-striped dataTable-table" id="groups-table-content">
     <thead>
@@ -10,10 +12,33 @@
     </thead>
     <tbody>
       {% for group in page_obj.object_list %}
+      {% with is_protected=group.name|is_protected_group %} {# Sử dụng templatetag mới #}
       <tr>
-        <td><input type="checkbox" name="group_ids[]" value="{{ group.id }}"></td>
-        <td>{{ group.name }}</td>
-        <td>{{ group.user_count }}</td>
+        <td>
+          <input type="checkbox" name="group_ids[]" value="{{ group.id }}" 
+                 {% if is_protected %}disabled{% endif %}>
+        </td>
+        <td>
+          {{ group.name }}
+          {% if is_protected %}
+            <span class="badge bg-light-info text-info ms-2" title="Nhóm hệ thống, không thể xóa">
+              <i class="bi bi-shield-check"></i> Hệ thống
+            </span>
+          {% endif %}
+        </td>
+        
+        {# Cập nhật: Biến số lượng thành liên kết #}
+        <td>
+          {% if group.user_count > 0 %}
+            <a href="{% url 'accounts:manage_accounts' %}?role={{ group.name|urlencode }}&group_by=role"
+               title="Xem danh sách {{ group.user_count }} người dùng trong nhóm này">
+              {{ group.user_count }}
+            </a>
+          {% else %}
+            0
+          {% endif %}
+        </td>
+        
         <td>
           <button type="button" class="btn btn-sm btn-warning" 
                   hx-get="{% url 'accounts:group_edit' group.id %}"
@@ -22,17 +47,24 @@
             <i class="bi bi-pencil-square"></i> Sửa
           </button>
           
+          {# Cập nhật: Thay đổi text/icon và logic disable #}
           <form hx-post="{% url 'accounts:group_delete' %}" hx-swap="none" class="d-inline"
                 data-confirm-title="Xác nhận xóa"
-                data-confirm-text="Bạn có chắc chắn muốn xóa nhóm '{{ group.name }}'?">
+                data-confirm-text="Bạn có chắc chắn muốn xóa nhóm '{{ group.name }}'? (Chỉ xóa được nếu nhóm trống và không phải nhóm hệ thống)">
             {% csrf_token %}
             <input type="hidden" name="group_id_single" value="{{ group.id }}">
-            <button type="submit" class="btn btn-danger btn-sm">
-              <i class="bi bi-slash-circle"></i> Vô hiệu hóa
+            <button type="submit" class="btn btn-danger btn-sm"
+                    {% if is_protected %}
+                      disabled title="Không thể xóa nhóm hệ thống"
+                    {% elif group.user_count > 0 %}
+                      disabled title="Không thể xóa nhóm đang có người dùng"
+                    {% endif %}>
+              <i class="bi bi-trash"></i> Xóa
             </button>
           </form>
         </td>
       </tr>
+      {% endwith %}
       {% empty %}
       <tr>
         <td colspan="4" class="text-center">Không tìm thấy nhóm nào.</td>

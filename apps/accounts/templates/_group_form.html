@@ -1,7 +1,5 @@
 {% load widget_tweaks %}
-{% load group_tags %}
-
-{# {% load get_item_filter %} - Bạn không cần filter này nếu dùng view nhóm theo chức năng lớn #}
+{% load group_tags %} 
 
 <form hx-post="{% if group %}{% url 'accounts:group_edit' group.id %}{% else %}{% url 'accounts:group_create' %}{% endif %}"
       hx-target="this"
@@ -17,12 +15,29 @@
         </div>
         {% endif %}
 
-        {# Trường Tên Nhóm #}
+        {# --- TRƯỜNG TÊN NHÓM (ĐÃ SỬA) --- #}
+        {% comment %} 
+            Chúng ta không cần logic 'readonly' ở đây nữa.
+            File forms.py đã tự động thêm 'readonly' vào widget 
+            nếu đó là nhóm hệ thống đang được chỉnh sửa.
+        {% endcomment %}
         <div class="mb-3">
             <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+            
+            {# SỬA: Đã xóa 'readonly=is_protected' #}
             {% render_field form.name class="form-control" %}
+            
+            {# Hiển thị giải thích (nếu trường bị readonly từ form) #}
+            {% if form.name.field.widget.attrs.readonly %}
+            <div class="form-text">
+                <i class="bi bi-shield-check"></i> Không thể thay đổi tên của nhóm hệ thống.
+            </div>
+            {% endif %}
+            
             <div class="text-danger small mt-1">{{ form.name.errors|striptags }}</div>
         </div>
+        {# --- KẾT THÚC SỬA --- #}
+
 
         {# Trường Quyền hạn - Hiển thị theo Accordion chức năng #}
         <div class="mb-3">
