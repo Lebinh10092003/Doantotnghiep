@@ -83,7 +83,7 @@ class ExerciseForm(forms.ModelForm):
 
     class Meta:
         model = Exercise
-        fields = ["description", "file", "difficulty"]
+        fields = ["lesson", "description", "file", "difficulty"]
         widgets = {
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),

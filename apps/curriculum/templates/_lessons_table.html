@@ -21,12 +21,12 @@
         <td>{{ l.order }}</td>
         <td>{{ l.title }}</td>
         <td class="text-center">
-          {% if l.lecture %}
+          {% if l.lecture_id %}
             <span class="text-success fw-bold">✓</span>
           {% endif %}
         </td>
         <td class="text-center">
-          {% if l.exercises.all %}
+          {% if l.exercise_id %}
             <span class="text-success fw-bold">✓</span>
           {% endif %}
         </td>
@@ -44,16 +44,11 @@
                   @click="modalTitle = 'Chỉnh sửa Bài học: {{ l.title|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
           </button>
-          <button type="button" class="btn btn-sm {% if l.lecture %}btn-primary{% else %}btn-outline-primary{% endif %}"
-                  hx-get="{% url 'curriculum:lecture_edit' l.id %}"
+          <button type="button" class="btn btn-sm {% if l.lecture_id or l.exercise_id %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                  hx-get="{% url 'curriculum:lesson_content_edit' l.id %}"
                   hx-target="#modal-content"
-                  @click="modalTitle = 'Bài giảng: {{ l.title|escapejs }}'">
-          </button>
-          <button type="button" class="btn btn-sm {% if l.exercises.all %}btn-success{% else %}btn-outline-success{% endif %}"
-                  hx-get="{% url 'curriculum:lesson_exercises_manage' l.id %}"
-                  hx-target="#modal-content"
-                  @click="modalTitle = 'Quản lý Bài tập: {{ l.title|escapejs }}'">
-            <i class="bi bi-puzzle"></i> Bài tập
+                  @click="modalTitle = 'Nội dung Bài học: {{ l.title|escapejs }}'">
+            <i class="bi bi-file-earmark-richtext"></i> Nội dung
           </button>
           {% endif %}
           {% if perms.curriculum.delete_lesson %}

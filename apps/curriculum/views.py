@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.paginator import Paginator, EmptyPage
 from django.db.models import Q
+from django import forms
 
 from .models import Subject, Module, Lesson, Lecture, Exercise
 from .forms import SubjectForm, ModuleForm, LessonForm, LectureForm, ExerciseForm
@@ -240,6 +241,14 @@ def module_edit_view(request, module_id: int):
 
 
 @login_required
+@permission_required("curriculum.view_module", raise_exception=True)
+def module_detail_view(request, module_id: int):
+    module = get_object_or_404(Module.objects.select_related('subject').prefetch_related('lessons'), id=module_id)
+    context = {"module": module}
+    return render(request, "_module_detail.html", context)
+
+
+@login_required
 @permission_required("curriculum.delete_module", raise_exception=True)
 def module_delete_view(request):
     ids = request.POST.getlist("module_ids[]") or request.POST.getlist("module_ids")
@@ -284,7 +293,7 @@ def lessons_manage(request):
     except (TypeError, ValueError):
         page = 1
 
-    qs = Lesson.objects.select_related("module", "module__subject").prefetch_related("lecture", "exercises").all()
+    qs = Lesson.objects.select_related("module", "module__subject", "lecture", "exercise").all()
     if q:
         qs = qs.filter(Q(title__icontains=q) | Q(module__title__icontains=q) | Q(module__subject__name__icontains=q) | Q(module__subject__code__icontains=q))
     if subject_id:
@@ -373,7 +382,7 @@ def lesson_edit_view(request, lesson_id: int):
 @login_required
 @permission_required("curriculum.view_lesson", raise_exception=True)
 def lesson_detail_view(request, lesson_id: int):
-    lesson = get_object_or_404(Lesson.objects.select_related('module', 'module__subject').prefetch_related('lecture', 'exercises'), id=lesson_id)
+    lesson = get_object_or_404(Lesson.objects.select_related('module', 'module__subject', 'lecture', 'exercise'), id=lesson_id)
     context = {"lesson": lesson}
     return render(request, "_lesson_detail.html", context)
 
@@ -427,117 +436,49 @@ def lesson_delete_single_view(request, lesson_id: int):
 
 
 @login_required
-@permission_required("curriculum.change_lesson", raise_exception=True)
-def lecture_edit_view(request, lesson_id: int):
+@permission_required("curriculum.change_lesson", raise_exception=True) # Uses change_lesson perm
+def lesson_content_edit_view(request, lesson_id: int):
     lesson = get_object_or_404(Lesson, id=lesson_id)
     lecture = getattr(lesson, "lecture", None)
+    exercise = getattr(lesson, "exercise", None)
+
     if request.method == "POST":
-        form = LectureForm(request.POST, request.FILES, instance=lecture)
-        if form.is_valid():
-            obj = form.save(commit=False)
-            obj.lesson = lesson
-            obj.save()
+        # 'form_type' is a hidden input in the template to know which form was submitted
+        form_type = request.POST.get("form_type")
+
+        lecture_form = LectureForm(request.POST, request.FILES, instance=lecture, prefix="lecture")
+        exercise_form = ExerciseForm(request.POST, request.FILES, instance=exercise, prefix="exercise")
+
+        forms_are_valid = False
+        if form_type == "lecture" and lecture_form.is_valid():
+            lecture_instance = lecture_form.save(commit=False)
+            lecture_instance.lesson = lesson
+            lecture_instance.save()
+            forms_are_valid = True
+        elif form_type == "exercise" and exercise_form.is_valid():
+            exercise_instance = exercise_form.save(commit=False)
+            exercise_instance.lesson = lesson
+            exercise_instance.save()
+            forms_are_valid = True
+
+        if forms_are_valid:
             resp = HttpResponse(status=200)
             resp["HX-Trigger"] = json.dumps({
                 "reload-lessons-table": True,
                 "closeSubjectModal": True,
-                "show-sweet-alert": {"icon": "success", "title": f"Đã lưu Bài giảng cho '{lesson.title}'"}
+                "show-sweet-alert": {"icon": "success", "title": f"Đã cập nhật nội dung cho '{lesson.title}'"}
             })
             return resp
-        return render(request, "_lecture_form.html", {"form": form, "lesson": lesson}, status=422)
 
-    form = LectureForm(instance=lecture)
-    return render(request, "_lecture_form.html", {"form": form, "lesson": lesson})
+    # GET request or invalid POST
+    lecture_form = LectureForm(instance=lecture, prefix="lecture")
+    exercise_form = ExerciseForm(instance=exercise, prefix="exercise", initial={'lesson': lesson})
+    # Hide the lesson field in the form as it's already known
+    exercise_form.fields['lesson'].widget = forms.HiddenInput()
 
-
-@login_required
-@permission_required("curriculum.change_lesson", raise_exception=True)
-def lesson_exercises_manage(request, lesson_id: int):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
-    exercises = lesson.exercises.all().order_by('id')
-    context = {"lesson": lesson, "exercises": exercises}
-
-    if is_htmx_request(request):
-        return render(request, "_lesson_exercises_list.html", context)
-
-    return render(request, "_lesson_exercises_manage.html", context)
-
-
-@login_required
-@permission_required("curriculum.change_lesson", raise_exception=True)
-def lesson_exercises_manage(request, lesson_id: int):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
-    exercises = lesson.exercises.all().order_by('id')
-    context = {"lesson": lesson, "exercises": exercises}
-
-    if is_htmx_request(request):
-        return render(request, "_lesson_exercises_list.html", context)
-
-    return render(request, "_lesson_exercises_manage.html", context)
-
-
-@login_required
-@permission_required("curriculum.add_exercise", raise_exception=True)
-def exercise_create_view(request, lesson_id: int):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
-    if request.method == "POST":
-        form = ExerciseForm(request.POST, request.FILES)
-        if form.is_valid():
-            exercise = form.save(commit=False)
-            exercise.lesson = lesson
-            exercise.save()
-            resp = HttpResponse(status=204) # No Content
-            resp["HX-Trigger"] = json.dumps({
-                f"reload-exercises-list-{lesson.id}": True,
-                "reload-lessons-table": True,
-                "show-sweet-alert": {"icon": "success", "title": "Đã thêm bài tập"}
-            })
-            return resp
-        return render(request, "_exercise_form.html", {"form": form, "lesson": lesson, "is_create": True}, status=422)
-
-    form = ExerciseForm()
-    return render(request, "_exercise_form.html", {"form": form, "lesson": lesson, "is_create": True})
-
-
-@login_required
-@permission_required("curriculum.change_exercise", raise_exception=True)
-def exercise_edit_view(request, exercise_id: int):
-    exercise = get_object_or_404(Exercise, id=exercise_id)
-    lesson = exercise.lesson
-    if request.method == "POST":
-        form = ExerciseForm(request.POST, request.FILES, instance=exercise)
-        if form.is_valid():
-            form.save()
-            resp = HttpResponse(status=204) # No Content
-            resp["HX-Trigger"] = json.dumps({
-                f"reload-exercises-list-{lesson.id}": True,
-                "show-sweet-alert": {"icon": "success", "title": "Đã cập nhật bài tập"}
-            })
-            return resp
-        return render(request, "_exercise_form.html", {"form": form, "lesson": lesson, "exercise": exercise}, status=422)
-
-    form = ExerciseForm(instance=exercise)
-    return render(request, "_exercise_form.html", {"form": form, "lesson": lesson, "exercise": exercise})
-
-
-@login_required
-@permission_required("curriculum.delete_exercise", raise_exception=True)
-def exercise_delete_view(request, exercise_id: int):
-    exercise = get_object_or_404(Exercise, id=exercise_id)
-    lesson_id = exercise.lesson.id
-    if request.method == "POST":
-        exercise.delete()
-        resp = HttpResponse(status=204)
-        resp["HX-Trigger"] = json.dumps({
-            f"reload-exercises-list-{lesson_id}": True,
-            "reload-lessons-table": True,
-            "show-sweet-alert": {"icon": "success", "title": "Đã xóa bài tập"}
-        })
-        return resp
-
-    # Should not be reached for POST-only view but good practice
-    resp = HttpResponse(status=405) # Method not allowed
-    resp["HX-Trigger"] = json.dumps({
-        "show-sweet-alert": {"icon": "error", "title": "Phương thức không hợp lệ"}
-    })
-    return resp
+    context = {
+        "lesson": lesson,
+        "lecture_form": lecture_form,
+        "exercise_form": exercise_form,
+    }
+    return render(request, "_lesson_content_form.html", context, status=422 if request.method == "POST" else 200)

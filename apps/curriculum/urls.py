@@ -14,6 +14,7 @@ urlpatterns = [
     path("modules/", views.modules_manage, name="modules_manage"),
     path("modules/add/", views.module_create_view, name="module_add"),
     path("modules/<int:module_id>/edit/", views.module_edit_view, name="module_edit"),
+    path("modules/<int:module_id>/detail/", views.module_detail_view, name="module_detail"),
     path("modules/delete/", views.module_delete_view, name="module_delete"),
 
     path("lessons/", views.lessons_manage, name="lessons_manage"),
@@ -23,9 +24,5 @@ urlpatterns = [
     path("lessons/<int:lesson_id>/delete/", views.lesson_delete_single_view, name="lesson_delete_single"),
     path("lessons/delete/", views.lesson_delete_view, name="lesson_delete"),
 
-    path("lessons/<int:lesson_id>/lecture/", views.lecture_edit_view, name="lecture_edit"),
-    path("lessons/<int:lesson_id>/exercises/", views.lesson_exercises_manage, name="lesson_exercises_manage"),
-    path("lessons/<int:lesson_id>/exercises/add/", views.exercise_create_view, name="exercise_add"),
-    path("exercises/<int:exercise_id>/edit/", views.exercise_edit_view, name="exercise_edit"),
-    path("exercises/<int:exercise_id>/delete/", views.exercise_delete_view, name="exercise_delete"),
+    path("lessons/<int:lesson_id>/content/", views.lesson_content_edit_view, name="lesson_content_edit"),
 ]

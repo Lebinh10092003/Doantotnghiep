@@ -1,0 +1,28 @@
+<div class="modal-body">
+  <div class="row">
+    <div class="col-md-6">
+      <p><strong>Môn học:</strong> {{ module.subject.name }} ({{ module.subject.code }})</p>
+      <p><strong>Thứ tự:</strong> {{ module.order }}</p>
+    </div>
+    <div class="col-md-6">
+      <p><strong>Tiêu đề:</strong> {{ module.title }}</p>
+    </div>
+  </div>
+  <p><strong>Mô tả:</strong> {{ module.description|default:"Không có mô tả." }}</p>
+
+  <hr>
+
+  <h6>Các bài học ({{ module.lessons.count }})</h6>
+  {% if module.lessons.all %}
+    <ul class="list-group list-group-flush">
+    {% for lesson in module.lessons.all %}
+      <li class="list-group-item ps-0">Bài {{ lesson.order }}: {{ lesson.title }}</li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">Chưa có bài học nào trong học phần này.</p>
+  {% endif %}
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+</div>

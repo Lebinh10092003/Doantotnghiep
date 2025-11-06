@@ -57,8 +57,8 @@ class Lecture(models.Model):
 
 
 class Exercise(models.Model):
-    lesson = models.ForeignKey(
-        Lesson, on_delete=models.CASCADE, related_name="exercises"
+    lesson = models.OneToOneField(
+        Lesson, on_delete=models.CASCADE, related_name="exercise"
     )
     description = models.TextField(blank=True)
     file = models.FileField(upload_to="exercises/", blank=True, null=True)
@@ -70,4 +70,4 @@ class Exercise(models.Model):
 
 
     def __str__(self):
-        return f"Bài tập của {self.lesson.title}"
+        return f"Bài tập cho {self.lesson.title}"
