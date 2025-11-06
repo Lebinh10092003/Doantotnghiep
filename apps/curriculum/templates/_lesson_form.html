@@ -1,0 +1,27 @@
+<div class="modal-body">
+  <form hx-post="{% if is_create %}{% url 'curriculum:lesson_add' %}{% else %}{% url 'curriculum:lesson_edit' lesson.id %}{% endif %}"
+        hx-target="#modal-content" hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">Học phần</label>
+      {{ form.module }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Thứ tự</label>
+      {{ form.order }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Tiêu đề</label>
+      {{ form.title }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Mục tiêu</label>
+      {{ form.objectives }}
+    </div>
+    <div class="modal-footer px-0">
+      <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+      <button type="submit" class="btn btn-primary">Lưu</button>
+    </div>
+  </form>
+</div>
+

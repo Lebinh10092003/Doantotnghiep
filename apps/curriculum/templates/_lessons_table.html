@@ -1,0 +1,108 @@
+<div class="dataTable-container table-responsive">
+  <table class="table table-striped dataTable-table">
+    <thead>
+      <tr>
+        <th><input type="checkbox" onclick="document.querySelectorAll('input[name=lesson_ids]').forEach(cb=>cb.checked=this.checked)"></th>
+        <th>Môn</th>
+        <th>Học phần</th>
+        <th>Thứ tự</th>
+        <th>Tiêu đề</th>
+        <th>Bài giảng</th>
+        <th>Bài tập</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in page_obj.object_list %}
+      <tr>
+        <td><input type="checkbox" name="lesson_ids" value="{{ l.id }}"></td>
+        <td>{{ l.module.subject.name }} ({{ l.module.subject.code }})</td>
+        <td>{{ l.module.title }}</td>
+        <td>{{ l.order }}</td>
+        <td>{{ l.title }}</td>
+        <td class="text-center">
+          {% if l.lecture %}
+            <span class="text-success fw-bold">✓</span>
+          {% endif %}
+        </td>
+        <td class="text-center">
+          {% if l.exercises.all %}
+            <span class="text-success fw-bold">✓</span>
+          {% endif %}
+        </td>
+        <td class="d-flex flex-wrap gap-1">
+          <button type="button" class="btn btn-sm btn-info"
+                  hx-get="{% url 'curriculum:lesson_detail' l.id %}"
+                  hx-target="#modal-content"
+                  @click="modalTitle = 'Chi tiết Bài học: {{ l.title|escapejs }}'">
+            <i class="bi bi-eye"></i>
+          </button>
+          {% if perms.curriculum.change_lesson %}
+          <button type="button" class="btn btn-sm btn-warning"
+                  hx-get="{% url 'curriculum:lesson_edit' l.id %}"
+                  hx-target="#modal-content"
+                  @click="modalTitle = 'Chỉnh sửa Bài học: {{ l.title|escapejs }}'">
+            <i class="bi bi-pencil-square"></i>
+          </button>
+          <button type="button" class="btn btn-sm {% if l.lecture %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                  hx-get="{% url 'curriculum:lecture_edit' l.id %}"
+                  hx-target="#modal-content"
+                  @click="modalTitle = 'Bài giảng: {{ l.title|escapejs }}'">
+          </button>
+          <button type="button" class="btn btn-sm {% if l.exercises.all %}btn-success{% else %}btn-outline-success{% endif %}"
+                  hx-get="{% url 'curriculum:lesson_exercises_manage' l.id %}"
+                  hx-target="#modal-content"
+                  @click="modalTitle = 'Quản lý Bài tập: {{ l.title|escapejs }}'">
+            <i class="bi bi-puzzle"></i> Bài tập
+          </button>
+          {% endif %}
+          {% if perms.curriculum.delete_lesson %}
+          <button type="button" class="btn btn-sm btn-danger"
+                  hx-post="{% url 'curriculum:lesson_delete_single' l.id %}"
+                  hx-swap="none"
+                  data-confirm-title="Xác nhận xóa"
+                  data-confirm-text="Bạn chắc chắn muốn xóa bài học '{{ l.title|escapejs }}'?">
+            <i class="bi bi-trash"></i>
+          </button>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center">Chưa có bài học.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="dataTable-bottom d-flex justify-content-between align-items-center">
+  <div class="dataTable-info">
+    Hiển thị {{ page_obj.start_index }} đến {{ page_obj.end_index }} trong tổng số {{ paginator.count }} mục
+  </div>
+
+  <nav class="dataTable-pagination">
+    <ul class="pagination">
+      {% if page_obj.number > 1 %}
+      <li class="page-item">
+        <a hx-get="{% url 'curriculum:lessons_manage' %}?page=1&per_page={{ per_page }}&q={{ q|urlencode }}&subject={{ selected_subject|urlencode }}&module={{ selected_module|urlencode }}"
+           hx-target="#lessons-table" hx-swap="innerHTML" class="page-link">Đầu</a>
+      </li>
+      {% endif %}
+
+      {% for p in paginator.page_range %}
+        {% if p >= page_obj.number|add:-2 and p <= page_obj.number|add:2 %}
+        <li class="page-item {% if page_obj.number == p %}active{% endif %}">
+          <a hx-get="{% url 'curriculum:lessons_manage' %}?page={{ p }}&per_page={{ per_page }}&q={{ q|urlencode }}&subject={{ selected_subject|urlencode }}&module={{ selected_module|urlencode }}"
+             hx-target="#lessons-table" hx-swap="innerHTML" class="page-link">{{ p }}</a>
+        </li>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.number < paginator.num_pages %}
+      <li class="page-item">
+        <a hx-get="{% url 'curriculum:lessons_manage' %}?page={{ paginator.num_pages }}&per_page={{ per_page }}&q={{ q|urlencode }}&subject={{ selected_subject|urlencode }}&module={{ selected_module|urlencode }}"
+           hx-target="#lessons-table" hx-swap="innerHTML" class="page-link">Cuối</a>
+      </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>

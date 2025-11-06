@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 2. Đóng modal chung và dọn dẹp backdrop
-            if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal) {
+            if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal || triggers.closeSubjectModal) {
                 try {
                     // Prefer closing the modal that initiated the request
                     const sourceEl = evt.detail.elt;
@@ -150,6 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
             dispatchCustomEvent('reload-groups-table');
             dispatchCustomEvent('reload-centers-table');
             dispatchCustomEvent('reload-rooms-table');
+            dispatchCustomEvent('reload-subjects-table');
+            dispatchCustomEvent('reload-modules-table');
+            dispatchCustomEvent('reload-lessons-table');
         } catch (e) {
             // console.error('Lỗi xử lý HX-Trigger:', e, 'Header:', header);
         }
@@ -238,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const header = evt.detail?.xhr?.getResponseHeader('HX-Trigger');
                 if (header) {
                     const triggers = JSON.parse(header);
-                    if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal) {
+                    if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal || triggers.closeSubjectModal) {
                         shouldShow = false;
                     }
                 }

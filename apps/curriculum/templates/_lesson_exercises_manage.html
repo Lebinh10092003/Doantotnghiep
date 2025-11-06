@@ -1,0 +1,17 @@
+<div class="modal-body">
+  <div class="d-flex justify-content-end mb-3">
+    <button type="button" class="btn btn-primary btn-sm"
+            hx-get="{% url 'curriculum:exercise_add' lesson.id %}"
+            hx-target="#exercise-form-container"
+            hx-swap="innerHTML">
+      <i class="bi bi-plus-lg"></i> Thêm bài tập
+    </button>
+  </div>
+  <div id="exercise-form-container" class="mb-3"></div>
+  <div id="exercises-list"
+       hx-get="{% url 'curriculum:lesson_exercises_manage' lesson.id %}"
+       hx-trigger="reload-exercises-list-{{ lesson.id }} from:body"
+       hx-swap="innerHTML">
+    {% include "_lesson_exercises_list.html" %}
+  </div>
+</div>

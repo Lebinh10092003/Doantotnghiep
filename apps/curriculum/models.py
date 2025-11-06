@@ -57,8 +57,8 @@ class Lecture(models.Model):
 
 
 class Exercise(models.Model):
-    lesson = models.OneToOneField(
-        Lesson, on_delete=models.CASCADE, related_name="exercise"
+    lesson = models.ForeignKey(
+        Lesson, on_delete=models.CASCADE, related_name="exercises"
     )
     description = models.TextField(blank=True)
     file = models.FileField(upload_to="exercises/", blank=True, null=True)

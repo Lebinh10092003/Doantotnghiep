@@ -1,0 +1,25 @@
+{% load widget_tweaks %}
+<form method="post"
+      {% if is_create %}
+        hx-post="{% url 'curriculum:exercise_add' lesson.id %}"
+      {% else %}
+        hx-post="{% url 'curriculum:exercise_edit' exercise.id %}"
+      {% endif %}
+      hx-target="#exercise-form-container"
+      hx-swap="outerHTML"
+      enctype="multipart/form-data"
+      class="border rounded p-3 bg-light mb-3">
+  {% csrf_token %}
+  <h6 class="mb-3">{% if is_create %}Thêm bài tập mới{% else %}Chỉnh sửa bài tập{% endif %}</h6>
+  {% for field in form %}
+  <div class="mb-3">
+    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+    {{ field }}
+    {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|first }}</div>{% endif %}
+  </div>
+  {% endfor %}
+  <div class="d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary btn-sm" @click="document.getElementById('exercise-form-container').innerHTML = ''">Hủy</button>
+    <button type="submit" class="btn btn-primary btn-sm">Lưu</button>
+  </div>
+</form>

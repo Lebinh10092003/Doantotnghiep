@@ -1,0 +1,24 @@
+<div class="modal-body">
+  <form hx-post="{% url 'curriculum:lecture_edit' lesson.id %}"
+        hx-encoding="multipart/form-data"
+        hx-target="#modal-content" hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label">Nội dung</label>
+      {{ form.content }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Tệp đính kèm (PDF/Doc...)</label>
+      {{ form.file }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Video URL</label>
+      {{ form.video_url }}
+    </div>
+    <div class="modal-footer px-0">
+      <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+      <button type="submit" class="btn btn-primary">Lưu</button>
+    </div>
+  </form>
+</div>
+
