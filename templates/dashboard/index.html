@@ -1,13 +1,199 @@
 {% extends "base.html" %}
 {% load static %}
+
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="main">
-    <div class="container">
-        <h1>Welcome to the Dashboard</h1>
-        <p>This is a protected dashboard area.</p>
+<div id="main">
+  <header class="mb-3">
+    <a href="#" class="burger-btn d-block d-xl-none">
+      <i class="bi bi-justify fs-3"></i>
+    </a>
+  </header>
+
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-12 col-md-6 order-md-1 order-last">
+          <h3>Dashboard</h3>
+          <p class="text-subtitle text-muted">Tổng quan & truy cập nhanh</p>
+        </div>
+        <div class="col-12 col-md-6 order-md-2 order-first">
+          <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
+            <ol class="breadcrumb">
+              <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
     </div>
+
+    {% if user.is_authenticated %}
+    <section class="section">
+      <div class="row">
+        <!-- Cards theo vai trò -->
+        <div class="col-12 col-lg-8">
+          {% if dashboard_role == 'admin' %}
+          <div class="row g-3">
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Trung tâm</h6>
+                    <h3 class="mb-0">{{ centers_count|default:"-" }}</h3>
+                  </div>
+                  <div class="text-primary fs-3"><i class="bi bi-building"></i></div>
+                </div>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Phòng học</h6>
+                    <h3 class="mb-0">{{ rooms_count|default:"-" }}</h3>
+                  </div>
+                  <div class="text-warning fs-3"><i class="bi bi-door-closed"></i></div>
+                </div>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Người dùng</h6>
+                    <h3 class="mb-0">{{ users_count|default:"-" }}</h3>
+                  </div>
+                  <div class="text-success fs-3"><i class="bi bi-people"></i></div>
+                </div>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Nhóm</h6>
+                    <h3 class="mb-0">{{ groups_count|default:"-" }}</h3>
+                  </div>
+                  <div class="text-danger fs-3"><i class="bi bi-shield-lock"></i></div>
+                </div>
+              </div></div>
+            </div>
+          </div>
+          {% elif dashboard_role == 'center_manager' %}
+          <div class="row g-3">
+            <div class="col-12"><h6 class="text-muted">Trung tâm: {{ center.name|default:"(chưa gán)" }}</h6></div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Người dùng</h6>
+                    <h3 class="mb-0">{{ cm_users_count|default:"-" }}</h3>
+                  </div>
+                  <div class="text-success fs-3"><i class="bi bi-people"></i></div>
+                </div>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Lớp học</h6>
+                    <h3 class="mb-0">{{ cm_classes_count|default:"-" }}</h3>
+                  </div>
+                  <div class="text-primary fs-3"><i class="bi bi-journal-bookmark"></i></div>
+                </div>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Phòng học</h6>
+                    <h3 class="mb-0">{{ cm_rooms_count|default:"-" }}</h3>
+                  </div>
+                  <div class="text-warning fs-3"><i class="bi bi-door-closed"></i></div>
+                </div>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="text-muted mb-1">Giáo viên</h6>
+                    <h3 class="mb-0">{{ cm_teachers_count|default:"-" }}</h3>
+                  </div>
+                  <div class="text-info fs-3"><i class="bi bi-person-badge"></i></div>
+                </div>
+              </div></div>
+            </div>
+          </div>
+          {% else %}
+          <div class="alert alert-info">Chào mừng! Vui lòng dùng menu để bắt đầu.</div>
+          {% endif %}
+        </div>
+
+        <!-- Hành động nhanh -->
+        <div class="col-12 col-lg-4">
+          <div class="card h-100">
+            <div class="card-header">
+              <h5 class="card-title mb-0">Hành động nhanh</h5>
+            </div>
+            <div class="card-body d-grid gap-2">
+              {% if perms.centers.view_center %}
+              <a class="btn btn-outline-primary" href="{% url 'centers:centers_manage' %}"><i class="bi bi-building me-2"></i>Quản lý Trung tâm</a>
+              {% endif %}
+              {% if perms.centers.view_room %}
+              <a class="btn btn-outline-warning" href="{% url 'centers:rooms_manage' %}"><i class="bi bi-door-closed me-2"></i>Quản lý Phòng học</a>
+              {% endif %}
+              {% if perms.accounts.view_user %}
+              <a class="btn btn-outline-success" href="{% url 'accounts:manage_accounts' %}"><i class="bi bi-people me-2"></i>Quản lý Tài khoản</a>
+              {% endif %}
+              {% if perms.auth.view_group %}
+              <a class="btn btn-outline-danger" href="{% url 'accounts:manage_groups' %}"><i class="bi bi-shield-lock me-2"></i>Nhóm & Phân quyền</a>
+              {% endif %}
+              <a class="btn btn-outline-secondary" href="{% url 'common:dashboard' %}"><i class="bi bi-grid-fill me-2"></i>Dashboard</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h5 class="card-title mb-0">Hướng dẫn sử dụng nhanh</h5>
+            </div>
+            <div class="card-body">
+              <ul class="mb-0">
+                <li>Vào Quản lý Trung tâm để thêm/sửa Trung tâm và phòng học.</li>
+                <li>Vào Quản lý Tài khoản để tạo/sửa người dùng và phân quyền.</li>
+                <li>Dùng các nút trong “Hành động nhanh” để thao tác nhanh.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    {% else %}
+    <section class="section">
+      <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+          <div class="card">
+            <div class="card-body text-center p-5">
+              <img src="{% static 'compiled/svg/logo.svg' %}" alt="Logo" style="height:64px" class="mb-3" />
+              <h3 class="mb-2">Chào mừng, mời đăng nhập</h3>
+              <p class="text-muted mb-4">Hệ thống quản lý giảng dạy và học tập.</p>
+              <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
 

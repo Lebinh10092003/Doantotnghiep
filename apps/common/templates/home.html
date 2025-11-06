@@ -1,235 +1,343 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %} HOME {% endblock %}</title>
-    <!-- CSRF cho HTMX -->
-    <script>
-      document.addEventListener('htmx:configRequest', e => {
-        e.detail.headers['X-CSRFToken'] =
-          (document.cookie.match(/(?:^|; )csrftoken=([^;]+)/) || [, ''])[1];
-      });
-    </script>
 
-    <!-- Favicon -->
-    <link
-      rel="shortcut icon"
-      href="{% static 'compiled/svg/favicon.svg' %}"
-      type="image/x-icon"
-    />
-    <link
-      rel="shortcut icon"
-      href="{% static 'compiled/png/favicon.png' %}"
-      type="image/png"
-    />
-    <!-- CSS -->
-    <link rel="stylesheet" href="{% static 'compiled/css/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'compiled/css/app-dark.css' %}" />
-    <link rel="stylesheet" href="{% static 'compiled/css/iconly.css' %}" />
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-  </head>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EDS Center – Trang chủ</title>
+  <link rel="shortcut icon" href="{% static 'compiled/svg/favicon.svg' %}" type="image/x-icon" />
+  <link rel="shortcut icon" href="{% static 'compiled/png/favicon.png' %}" type="image/png" />
+  <link rel="stylesheet" href="{% static 'compiled/css/app.css' %}" />
+  <link rel="stylesheet" href="{% static 'compiled/css/app-dark.css' %}" />
+  <link rel="stylesheet" href="{% static 'compiled/css/iconly.css' %}" />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    crossorigin="anonymous"></script>
+  <style>
+    body {
+      font-family: 'Be Vietnam Pro', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
 
-  <body>
-    <div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
-    <div id="app">
-      <div id="main" class="layout-horizontal">
-        <header class="mb-5">
-          <div class="header-top">
-            <div class="container">
-              <div class="logo">
-                <a href="{% url 'common:home' %}"
-                  ><img src="{% static 'compiled/svg/logo.svg' %}" alt="Logo"
-                /></a>
-              </div>
-              <div class="header-top-right">
-                {% if user.is_authenticated %}
-                <!-- Nếu đã đăng nhập -->
-                <div class="dropdown">
-                  <a
-                    href="#"
-                    id="topbarUserDropdown"
-                    class="user-dropdown d-flex align-items-center dropend dropdown-toggle"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false"
-                  >
-                    <div class="avatar avatar-md2">
-                      <img
-                        src="{% static './compiled/jpg/1.jpg' %}"
-                        alt="Avatar"
-                      />
-                    </div>
-                    <div class="text">
-                      <h6 class="user-dropdown-name">
-                        {{ user.get_full_name|default:user.username }}
-                      </h6>
-                      <p class="user-dropdown-status text-sm text-muted">
-                        {{ user.get_role_display }}
-                      </p>
-                    </div>
-                  </a>
-                  <ul
-                    class="dropdown-menu dropdown-menu-end shadow-lg"
-                    aria-labelledby="topbarUserDropdown"
-                  >
-                    <li><a class="dropdown-item" href="#">Tài khoản của tô  i</a></li>
-                    <li><a class="dropdown-item" href="#">Cài đặt</a></li>
-                    <li><hr class="dropdown-divider" /></li>
-                    <li>
-                      <form 
-                        hx-post="{% url 'accounts:logout' %}" 
-                        hx-swap="none" 
-                        class="m-0">
-                        {% csrf_token %}
-                        <button type="submit" class="dropdown-item">Đăng xuất</button>
-                      </form>
-                    </li>
-                  </ul>
-                </div>
-                {% else %}
-                <!-- Nếu chưa đăng nhập -->
-                <a
-                  href="{% url 'accounts:login' %}"
-                  class="btn btn-primary rounded-pill"
-                >
-                  Đăng nhập
-                </a>
-                {% endif %}
+    .navbar-brand img {
+      height: 40px;
+    }
 
-                <!-- Burger button responsive -->
-                <a href="#" class="burger-btn d-block d-xl-none">
-                  <i class="bi bi-justify fs-3"></i>
-                </a>
-              </div>
-            </div>
-          </div>
-          <nav class="main-navbar">
-            <div class="container">
-              <ul class="main-menu d-flex justify-content-evenly">
-                <li class="menu-item">
-                  <a href="#" class="menu-link">
-                    <span><i class="bi bi-grid-fill"></i>TRANG CHỦ</span>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="#" class="menu-link">
-                    <span><i class="bi bi-grid-fill"></i>GIỚI THIỆU</span>
-                  </a>
-                </li>
-                <li class="menu-item">
-                  <a href="#" class="menu-link">
-                    <span><i class="bi bi-grid-fill"></i>LIÊN HỆ</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </nav>
-        </header>
-        <div class="page-heading d-flex justify-content-evenly">
-          <div class="d-flex flex-column align-items-center">
-            <h2>Chào mừng bạn đến với EDS</h2>
-            <h4>Hãy cho mình biết bạn là ai nhé</h4>
+    .hero {
+      background: linear-gradient(135deg, #e8f1ff 0%, #fff 100%);
+    }
+
+    .hero h1 {
+      font-weight: 800;
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .partner-logos img {
+      height: 36px;
+      opacity: .8;
+      filter: grayscale(100%);
+      transition: .2s;
+    }
+
+    .partner-logos img:hover {
+      filter: none;
+      opacity: 1;
+    }
+
+    footer a {
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'common:home' %}">
+        <img src="{% static 'compiled/svg/logo.svg' %}" alt="Logo" />
+        <strong>EDS Center</strong>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item"><a class="nav-link" href="#gioi-thieu">Giới thiệu</a></li>
+          <li class="nav-item"><a class="nav-link" href="#khoa-hoc">Khóa học</a></li>
+          <li class="nav-item"><a class="nav-link" href="#doi-ngu">Đội ngũ</a></li>
+          <li class="nav-item"><a class="nav-link" href="#hoc-vien">Học viên tiêu biểu</a></li>
+          <li class="nav-item"><a class="nav-link" href="#doi-tac">Đối tác</a></li>
+          <li class="nav-item"><a class="nav-link" href="#lien-he">Liên hệ</a></li>
+        </ul>
+        <div class="d-flex gap-2">
+          {% if user.is_authenticated %}
+          <a href="{% url 'common:dashboard' %}" class="btn btn-outline-primary btn-sm">Dashboard</a>
+          <form hx-post="{% url 'accounts:logout' %}" hx-swap="none">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary btn-sm">Đăng xuất</button>
+          </form>
+          {% else %}
+          <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-sm">Đăng nhập</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero py-5">
+    <div class="container py-3">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-6">
+          <h1 class="display-5 mb-3">EDS – Trung tâm Giáo dục Phát triển Kỹ năng và Tư duy</h1>
+          <p class="text-muted mb-4">EDS đồng hành cùng học sinh trong hành trình chinh phục kiến thức và kỹ năng thế kỷ
+            21: Toán tư duy, Tiếng Anh, Lập trình, Kỹ năng mềm… với đội ngũ giáo viên tận tâm và giáo trình hiện đại.
+          </p>
+          <div class="d-flex gap-2">
+            {% if user.is_authenticated %}
+            <a href="{% url 'common:dashboard' %}" class="btn btn-primary btn-lg"><i
+                class="bi bi-play-fill me-2"></i>Bắt đầu ngay</a>
+            {% else %}
+            <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg"><i
+                class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập</a>
+            {% endif %}
+            <a href="#gioi-thieu" class="btn btn-outline-secondary btn-lg">Tìm hiểu thêm</a>
           </div>
         </div>
-        <div class="content-wrapper container">
-          <div class="page-content">
-            <section class="row">
-              <div class="col-12">
-                <div class="row d-flex justify-content-evenly">
-                  <div class="col-6 col-lg-3 col-md-6">
-                    <a
-                      href="
-                      {% if user.is_authenticated %}
-                          {% url 'common:dashboard' %}
-                      {% else %}
-                          {% url 'accounts:login' %}
-                      {% endif %}
-                    "
-                    >
-                      <div class="card">
-                        <div
-                          class="card-body px-4 py-4-5 d-flex flex-column align-items-center"
-                        >
-                          <div class="stats-icon purple mb-3">
-                            <i class="fa-solid fa-user-graduate"></i>
-                          </div>
-                          <h6 class="text-muted font-semibold">Học sinh</h6>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
+        <div class="col-lg-6">
+          <img class="img-fluid" src="{% static 'compiled/svg/logo.svg' %}" alt="Hero" />
+        </div>
+      </div>
+    </div>
+  </section>
 
-                  <!-- Phụ huynh -->
-                  <div class="col-6 col-lg-3 col-md-6">
-                    <a
-                      href="
-                      {% if user.is_authenticated %}
-                          {% url 'common:dashboard' %}
-                      {% else %}
-                          {% url 'accounts:login' %}
-                      {% endif %}
-                    "
-                    >
-                      <div class="card">
-                        <div
-                          class="card-body px-4 py-4-5 d-flex flex-column align-items-center"
-                        >
-                          <div class="stats-icon blue mb-3">
-                            <i class="fa-solid fa-user"></i>
-                          </div>
-                          <h6 class="text-muted font-semibold">Phụ huynh</h6>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
-
-                  <!-- Giáo viên -->
-                  <div class="col-6 col-lg-3 col-md-6">
-                    <a
-                      href="
-                      {% if user.is_authenticated %}
-                          {% url 'common:dashboard' %}
-                      {% else %}
-                          {% url 'accounts:login' %}
-                      {% endif %}
-                    "
-                    >
-                      <div class="card">
-                        <div
-                          class="card-body px-4 py-4-5 d-flex flex-column align-items-center"
-                        >
-                          <div class="stats-icon green mb-3">
-                            <i class="fa-solid fa-chalkboard-teacher"></i>
-                          </div>
-                          <h6 class="text-muted font-semibold">Giáo viên</h6>
-                        </div>
-                      </div>
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </section>
+  <!-- Giới thiệu EDS -->
+  <section id="gioi-thieu" class="py-5 bg-light">
+    <div class="container">
+      <div class="text-center mb-4">
+        <h2>Giới thiệu về EDS</h2>
+        <p class="text-muted">Trung tâm EDS – Giáo dục định hướng tương lai</p>
+      </div>
+      <div class="row g-3 align-items-stretch">
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="feature-icon bg-primary-subtle text-primary mb-3"><i class="bi bi-speedometer2"></i></div>
+              <h5>Phương pháp hiện đại</h5>
+              <p class="text-muted mb-0">Kết hợp giáo trình cập nhật và công nghệ, khơi gợi hứng thú học tập.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="feature-icon bg-primary-subtle text-primary mb-3"><i class="bi bi-people"></i></div>
+              <h5>Đội ngũ tận tâm</h5>
+              <p class="text-muted mb-0">Giáo viên giàu kinh nghiệm, sát sao và đồng hành cùng phụ huynh.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="feature-icon bg-primary-subtle text-primary mb-3"><i class="bi bi-shield-lock"></i></div>
+              <h5>Môi trường an toàn</h5>
+              <p class="text-muted mb-0">Thân thiện, khuyến khích sáng tạo và trải nghiệm.</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  </section>
 
-    <!-- JS -->
-    <script src="{% static 'static/js/components/dark.js' %}"></script>
-    <script src="{% static 'extensions/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
-    <script src="{% static 'compiled/js/app.js' %}"></script>
+  <!-- Khóa học của EDS -->
+  <section id="khoa-hoc" class="py-5">
+    <div class="container">
+      <div class="text-center mb-4">
+        <h2>Khóa học tiêu biểu</h2>
+        <p class="text-muted">Chương trình đa dạng cho nhiều độ tuổi</p>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="feature-icon bg-primary-subtle text-primary mb-3"><i class="bi bi-code-slash"></i></div>
+              <h5>Lập trình (Scratch/Python)</h5>
+              <p class="text-muted mb-0">Tư duy máy tính, dự án sáng tạo theo lộ trình.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="feature-icon bg-primary-subtle text-primary mb-3"><i class="bi bi-cpu"></i></div>
+              <h5>Robot/Robotics</h5>
+              <p class="text-muted mb-0">Lắp ráp, lập trình robot STEM, rèn tư duy kỹ thuật.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="feature-icon bg-primary-subtle text-primary mb-3"><i class="bi bi-cpu"></i></div>
+              <h5>Luyện thi</h5>
+              <p class="text-muted mb-0">Thi đấu lập trình các cấp độ.</p>
+              <p class="text-muted mb-0">Thi đấu Robotics</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="feature-icon bg-primary-subtle text-primary mb-3"><i class="bi bi-chat-left-text"></i></div>
+              <h5>Kỹ năng mềm</h5>
+              <p class="text-muted mb-0">Làm việc nhóm, thuyết trình, quản lý thời gian.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    <!-- Need: Apexcharts -->
-    <script src="{% static 'extensions/apexcharts/apexcharts.min.js' %}"></script>
-    <script src="{% static 'static/js/pages/dashboard.js' %}"></script>
-    {% block extra_js %} {% endblock %}
-      <!-- HTMX + SweetAlert2 -->
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="{% static 'static/js/custom-events.js' %}"></script>
-    <script>
-      document.body.addEventListener('htmx:afterRequest', handleHtmxTriggerEvents);
-    </script>
-  </body>
+  <!-- Đội ngũ giáo viên -->
+  <section id="doi-ngu" class="py-5 bg-light">
+    <div class="container">
+      <div class="text-center mb-4">
+        <h2>Đội ngũ giáo viên</h2>
+        <p class="text-muted">Giàu kinh nghiệm – Tận tâm – Truyền cảm hứng</p>
+      </div>
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <div class="card h-100 text-center p-3">
+            <img class="rounded-circle mx-auto mb-2" src="{% static 'static/images/faces/1.jpg' %}" alt="GV1"
+              style="width:80px;height:80px;object-fit:cover;" />
+            <h6 class="mb-0">Nguyễn Minh Anh</h6><small class="text-muted">Toán tư duy</small>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card h-100 text-center p-3">
+            <img class="rounded-circle mx-auto mb-2" src="{% static 'static/images/faces/2.jpg' %}" alt="GV2"
+              style="width:80px;height:80px;object-fit:cover;" />
+            <h6 class="mb-0">Trần Quốc Bảo</h6><small class="text-muted">Tiếng Anh</small>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card h-100 text-center p-3">
+            <img class="rounded-circle mx-auto mb-2" src="{% static 'static/images/faces/3.jpg' %}" alt="GV3"
+              style="width:80px;height:80px;object-fit:cover;" />
+            <h6 class="mb-0">Phạm Thu Hà</h6><small class="text-muted">Lập trình</small>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card h-100 text-center p-3">
+            <img class="rounded-circle mx-auto mb-2" src="{% static 'static/images/faces/4.jpg' %}" alt="GV4"
+              style="width:80px;height:80px;object-fit:cover;" />
+            <h6 class="mb-0">Lê Hoàng Nam</h6><small class="text-muted">Kỹ năng mềm</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Học viên tiêu biểu -->
+  <section id="hoc-vien" class="py-5">
+    <div class="container">
+      <div class="text-center mb-4">
+        <h2>Học viên tiêu biểu</h2>
+        <p class="text-muted">Thành tích nổi bật của học viên EDS</p>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="card h-100 text-center p-3">
+            <img class="rounded-circle mx-auto mb-2" src="{% static 'static/images/faces/5.jpg' %}" alt="HV1"
+              style="width:80px;height:80px;object-fit:cover;" />
+            <h6 class="mb-1">Ngô Nhật Minh (Lớp 6)</h6>
+            <p class="text-muted mb-0">Giải Nhất Toán Tư duy cấp quận, tham gia CLB Toán EDS.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100 text-center p-3">
+            <img class="rounded-circle mx-auto mb-2" src="{% static 'static/images/faces/6.jpg' %}" alt="HV2"
+              style="width:80px;height:80px;object-fit:cover;" />
+            <h6 class="mb-1">Phạm Khánh Linh (Lớp 7)</h6>
+            <p class="text-muted mb-0">Chứng chỉ Cambridge Movers, giao tiếp tự tin.</p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100 text-center p-3">
+            <img class="rounded-circle mx-auto mb-2" src="{% static 'static/images/faces/7.jpg' %}" alt="HV3"
+              style="width:80px;height:80px;object-fit:cover;" />
+            <h6 class="mb-1">Vũ Hoàng Long (Lớp 8)</h6>
+            <p class="text-muted mb-0">12 dự án Scratch/Python, thi Sáng tạo Thanh thiếu niên.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Đối tác / Logo -->
+  <section id="doi-tac" class="py-5 bg-light">
+    <div class="container">
+      <div class="text-center mb-4">
+        <h2>Đối tác đồng hành</h2>
+        <p class="text-muted">Tin tưởng sử dụng nền tảng của chúng tôi</p>
+      </div>
+      <div class="partner-logos d-flex flex-wrap justify-content-center gap-4">
+        <img src="{% static 'compiled/svg/logo.svg' %}" alt="Partner" />
+        <img src="{% static 'compiled/svg/logo.svg' %}" alt="Partner" />
+        <img src="{% static 'compiled/svg/logo.svg' %}" alt="Partner" />
+        <img src="{% static 'compiled/svg/logo.svg' %}" alt="Partner" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Liên hệ / CTA -->
+  <section id="lien-he" class="py-5">
+    <div class="container text-center">
+      <h2 class="mb-2">Sẵn sàng bắt đầu?</h2>
+      <p class="text-muted mb-4">Tham gia cùng hàng trăm học viên EDS để nâng cao hiệu quả học tập.</p>
+      {% if user.is_authenticated %}
+      <a href="{% url 'common:dashboard' %}" class="btn btn-primary btn-lg">Vào Dashboard</a>
+      {% else %}
+      <a href="{% url 'accounts:login' %}" class="btn btn-primary btn-lg">Đăng nhập</a>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-4 bg-dark text-white-50">
+    <div class="container d-flex flex-wrap justify-content-between gap-3">
+      <div>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <img src="{% static 'compiled/svg/logo.svg' %}" alt="Logo" style="height:28px" />
+          <strong class="text-white">EDS Center</strong>
+        </div>
+        <small>© 2025 EDS Center. All rights reserved.</small>
+      </div>
+      <div class="d-flex flex-column">
+        <a href="#gioi-thieu" class="link-light">Giới thiệu</a>
+        <a href="#khoa-hoc" class="link-light">Khóa học</a>
+        <a href="#doi-ngu" class="link-light">Đội ngũ</a>
+        <a href="#hoc-vien" class="link-light">Học viên tiêu biểu</a>
+        <a href="#doi-tac" class="link-light">Đối tác</a>
+        <a href="#lien-he" class="link-light">Liên hệ</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="{% static 'static/js/custom-events.js' %}"></script>
+</body>
+
 </html>
