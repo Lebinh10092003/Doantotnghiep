@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // If any modal is visible, skip cleanup to avoid racing with a new open.
             const anyOpen = document.querySelector('.modal.show');
             if (anyOpen) return;
+            // If body indicates a modal is in open/transition state, skip cleanup
+            // to avoid removing a just-created backdrop.
+            if (document.body.classList.contains('modal-open')) return;
             document.body.classList.remove('modal-open');
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
@@ -37,6 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Backward-compat mappings for legacy trigger keys
             try {
                 if (triggers['reloadCentersTable'] && !triggers['reload-centers-table']) {
+                    triggers['reload-centers-table'] = true;
+                }
+                // If rooms table reloads, keep centers table in sync by default
+                if (triggers['reload-rooms-table'] && !triggers['reload-centers-table']) {
                     triggers['reload-centers-table'] = true;
                 }
             } catch (_) { /* noop */ }
@@ -241,6 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const modalEl = target.closest('.modal');
                 if (modalEl && !modalEl.classList.contains('show')) {
                     const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    // Ensure no stale body/backdrop before showing
+                    forceModalCleanup();
                     instance.show();
                 }
             }

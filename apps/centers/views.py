@@ -218,6 +218,7 @@ def room_create_view(request):
             response["HX-Trigger"] = json.dumps(
                 {
                     "reload-rooms-table": True,
+                    "reload-centers-table": True,
                     "closeRoomModal": True,
                     "show-sweet-alert": {
                         "icon": "success",

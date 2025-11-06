@@ -16,7 +16,7 @@
       {% for center in page_obj.object_list %}
       <tr>
         <td><input type="checkbox" name="center_ids" value="{{ center.id }}"></td>
-        <td><a href="{% url 'centers:center_detail' center.id %}">{{ center.name }}</a></td>
+        <td>{{ center.name }}</td>
         <td>{{ center.code }}</td>
         <td>{{ center.address|default:"-" }}</td>
         <td>{{ center.phone|default:"-" }}</td>
