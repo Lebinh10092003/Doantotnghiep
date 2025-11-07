@@ -125,6 +125,7 @@
                             <li class="submenu-item {% if request.path == subjects_manage_url %}active{% endif %}"><a href="{{ subjects_manage_url }}" class="submenu-link"><i class="bi bi-journal-bookmark"></i><span>Môn học</span></a></li>
                             <li class="submenu-item {% if request.path == modules_manage_url %}active{% endif %}"><a href="{{ modules_manage_url }}" class="submenu-link"><i class="bi bi-grid-1x2-fill"></i><span>Học phần</span></a></li>
                             <li class="submenu-item {% if request.path == lessons_manage_url %}active{% endif %}"><a href="{{ lessons_manage_url }}" class="submenu-link"><i class="bi bi-file-earmark-text"></i><span>Bài học</span></a></li>
+                        </ul>
                     </li>
                     {% endif %}
 
@@ -133,9 +134,6 @@
                         <a href="#" class="sidebar-link"><i class="bi bi-easel"></i><span>Lớp học</span></a>
                         <ul class="submenu">
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-list-ul"></i><span>Danh sách lớp</span></a></li>
-                            {% if perms.classes.add_class %}
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-plus-square"></i><span>Tạo lớp mới</span></a></li>
-                            {% endif %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-calendar-event"></i><span>Danh sách buổi học</span></a></li>
                             {% if perms.classes.change_classassistant %}
                             <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-workspace"></i><span>Phân công</span></a></li>

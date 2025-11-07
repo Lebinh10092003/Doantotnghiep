@@ -3,10 +3,17 @@ from apps.common.models import NamedModel
 
 
 class Subject(NamedModel):
+    avatar = models.ImageField(upload_to='subjects/avatars/', blank=True, null=True, verbose_name="Ảnh đại diện")
     description = models.TextField(blank=True)
 
     def __str__(self):
         return self.name
+    
+    @property
+    def avatar_url(self):
+        if self.avatar and hasattr(self.avatar, 'url'):
+            return self.avatar.url
+        return None
 
 
 class Module(models.Model):
@@ -16,6 +23,7 @@ class Module(models.Model):
     order = models.PositiveIntegerField()
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    image = models.ImageField(upload_to='modules/images/', blank=True, null=True, verbose_name="Ảnh minh họa")
 
 
     class Meta:
@@ -25,6 +33,12 @@ class Module(models.Model):
 
     def __str__(self):
         return f"{self.subject.name} - Học phần {self.order}: {self.title}"
+
+    @property
+    def image_url(self):
+        if self.image and hasattr(self.image, 'url'):
+            return self.image.url
+        return None
 
 
 class Lesson(models.Model):
@@ -62,6 +76,7 @@ class Exercise(models.Model):
     )
     description = models.TextField(blank=True)
     file = models.FileField(upload_to="exercises/", blank=True, null=True)
+    link_url = models.URLField(blank=True, null=True)
     difficulty = models.CharField(
         max_length=20,
         choices=[("easy", "Dễ"), ("medium", "Trung bình"), ("hard", "Khó")],

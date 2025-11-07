@@ -18,7 +18,7 @@
           {% if perms.centers.change_room %}
           <button type="button" class="btn btn-sm btn-warning"
                   hx-get="{% url 'centers:room_edit' room.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#center-modal #modal-content" hx-swap="innerHTML"
                   @click="modalTitle = 'Chỉnh sửa Phòng học: {{ room.name|escapejs }}'">
             <i class="bi bi-pencil-square"></i> Sửa
           </button>
@@ -54,7 +54,7 @@
     <ul class="pagination">
       {% if page_obj.number > 1 %}
       <li class="page-item">
-        <a hx-get="{% url 'centers:center_detail' center.id %}?page=1&per_page={{ per_page }}&q={{ q|urlencode }}&fragment=rooms_table"
+        <a hx-get="{% url 'centers:center_detail' center.id %}?page=1&per_page={{ per_page }}&q={{ q|urlencode }}&sort_by={{ sort_by|urlencode }}&fragment=rooms_table"
            hx-target="#center-rooms-table" hx-swap="innerHTML" class="page-link">
           Đầu
         </a>
@@ -64,7 +64,7 @@
       {% for p in paginator.page_range %}
         {% if p >= page_obj.number|add:-2 and p <= page_obj.number|add:2 %}
         <li class="page-item {% if page_obj.number == p %}active{% endif %}">
-          <a hx-get="{% url 'centers:center_detail' center.id %}?page={{ p }}&per_page={{ per_page }}&q={{ q|urlencode }}&fragment=rooms_table"
+          <a hx-get="{% url 'centers:center_detail' center.id %}?page={{ p }}&per_page={{ per_page }}&q={{ q|urlencode }}&sort_by={{ sort_by|urlencode }}&fragment=rooms_table"
              hx-target="#center-rooms-table" hx-swap="innerHTML" class="page-link">
             {{ p }}
           </a>
@@ -74,7 +74,7 @@
 
       {% if page_obj.number < paginator.num_pages %}
       <li class="page-item">
-        <a hx-get="{% url 'centers:center_detail' center.id %}?page={{ paginator.num_pages }}&per_page={{ per_page }}&q={{ q|urlencode }}&fragment=rooms_table"
+        <a hx-get="{% url 'centers:center_detail' center.id %}?page={{ paginator.num_pages }}&per_page={{ per_page }}&q={{ q|urlencode }}&sort_by={{ sort_by|urlencode }}&fragment=rooms_table"
            hx-target="#center-rooms-table" hx-swap="innerHTML" class="page-link">
           Cuối
         </a>

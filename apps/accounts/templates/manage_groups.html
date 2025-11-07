@@ -37,7 +37,7 @@
             <div class="d-flex gap-2">
               <button type="button" class="btn btn-primary btn-sm" 
                       hx-get="{% url 'accounts:group_create' %}"
-                      hx-target="#modal-content" 
+                      hx-target="#group-modal #modal-content" 
                       @click="modalTitle = 'Thêm nhóm mới'" 
                       data-bs-toggle="modal"
                       data-bs-target="#group-modal">

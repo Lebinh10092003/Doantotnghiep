@@ -1,11 +1,19 @@
+﻿{% load static %}
 <div class="modal-body">
+  <div class="mb-3 text-center">
+    {% if module.image_url %}
+      <img src="{{ module.image_url }}" alt="Ảnh học phần" class="rounded border" style="max-height: 100px; object-fit: cover;">
+    {% else %}
+      <img src="{% static 'static/images/faces/1.jpg' %}" alt="Ảnh mặc định" class="rounded border" style="max-height: 100px; object-fit: cover;">
+    {% endif %}
+  </div>
   <div class="row">
     <div class="col-md-6">
       <p><strong>Môn học:</strong> {{ module.subject.name }} ({{ module.subject.code }})</p>
-      <p><strong>Thứ tự:</strong> {{ module.order }}</p>
     </div>
     <div class="col-md-6">
-      <p><strong>Tiêu đề:</strong> {{ module.title }}</p>
+      <p><strong>Tiêu đề học phần:</strong> {{ module.title }}</p>
+      <p><strong>Thứ tự:</strong> {{ module.order }}</p>
     </div>
   </div>
   <p><strong>Mô tả:</strong> {{ module.description|default:"Không có mô tả." }}</p>
@@ -16,7 +24,9 @@
   {% if module.lessons.all %}
     <ul class="list-group list-group-flush">
     {% for lesson in module.lessons.all %}
-      <li class="list-group-item ps-0">Bài {{ lesson.order }}: {{ lesson.title }}</li>
+      <li class="list-group-item ps-0 d-flex align-items-center gap-3">
+        <div class="fw-semibold">Bài {{ lesson.order }}: {{ lesson.title }}</div>
+      </li>
     {% endfor %}
     </ul>
   {% else %}

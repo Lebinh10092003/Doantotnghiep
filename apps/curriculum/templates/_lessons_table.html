@@ -33,20 +33,20 @@
         <td class="d-flex flex-wrap gap-1">
           <button type="button" class="btn btn-sm btn-info"
                   hx-get="{% url 'curriculum:lesson_detail' l.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#curriculum-modal #modal-content"
                   @click="modalTitle = 'Chi tiết Bài học: {{ l.title|escapejs }}'">
             <i class="bi bi-eye"></i>
           </button>
           {% if perms.curriculum.change_lesson %}
           <button type="button" class="btn btn-sm btn-warning"
                   hx-get="{% url 'curriculum:lesson_edit' l.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#curriculum-modal #modal-content"
                   @click="modalTitle = 'Chỉnh sửa Bài học: {{ l.title|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
           </button>
           <button type="button" class="btn btn-sm {% if l.lecture_id or l.exercise_id %}btn-primary{% else %}btn-outline-primary{% endif %}"
                   hx-get="{% url 'curriculum:lesson_content_edit' l.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#curriculum-modal #modal-content"
                   @click="modalTitle = 'Nội dung Bài học: {{ l.title|escapejs }}'">
             <i class="bi bi-file-earmark-richtext"></i> Nội dung
           </button>

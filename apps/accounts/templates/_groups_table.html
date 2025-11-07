@@ -41,13 +41,13 @@
         <td>
           <button type="button" class="btn btn-sm btn-info"
                   hx-get="{% url 'accounts:group_view' group.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#group-modal #modal-content"
                   @click="modalTitle = 'Chi tiết nhóm: {{ group.name|escapejs }}'">
             <i class="bi bi-eye"></i>
           </button>
           <button type="button" class="btn btn-sm btn-warning" 
                   hx-get="{% url 'accounts:group_edit' group.id %}"
-                  hx-target="#modal-content" 
+                  hx-target="#group-modal #modal-content" 
                   @click="modalTitle = 'Chỉnh sửa nhóm: {{ group.name|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
           </button>

@@ -19,14 +19,14 @@
         <td class="d-flex flex-wrap gap-1">
           <button type="button" class="btn btn-sm btn-info"
                   hx-get="{% url 'curriculum:subject_detail' s.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#curriculum-modal #modal-content"
                   @click="modalTitle = 'Chi tiết Môn học: {{ s.name|escapejs }}'">
             <i class="bi bi-eye"></i>
           </button>
           {% if perms.curriculum.change_subject %}
           <button type="button" class="btn btn-sm btn-warning"
                   hx-get="{% url 'curriculum:subject_edit' s.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#curriculum-modal #modal-content"
                   @click="modalTitle = 'Chỉnh sửa Môn học: {{ s.name|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
           </button>

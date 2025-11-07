@@ -147,9 +147,8 @@ def center_detail_view(request, center_id: int):
         # If requesting rooms table fragment (from detail page filters/pagination)
         if request.GET.get("fragment") == "rooms_table":
             return render(request, "_center_rooms_table.html", context)
-        # If requesting modal content from list page
-        if request.GET.get("as") == "modal":
-            return render(request, "_center_detail_modal.html", context)
+        # Default for HTMX is the modal content, even if 'as' param is missing
+        return render(request, "_center_detail_modal.html", context)
 
     return render(request, "center_detail.html", context)
 

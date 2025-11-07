@@ -1,6 +1,7 @@
 <div class="modal-body">
   <form hx-post="{% if is_create %}{% url 'curriculum:subject_add' %}{% else %}{% url 'curriculum:subject_edit' subject.id %}{% endif %}"
-        hx-target="#modal-content" hx-swap="innerHTML">
+        hx-target="#modal-content" hx-swap="innerHTML"
+        enctype="multipart/form-data" hx-encoding="multipart/form-data">
     {% csrf_token %}
     <div class="mb-3">
       <label class="form-label">Tên môn</label>
@@ -13,6 +14,14 @@
     <div class="mb-3">
       <label class="form-label">Mô tả</label>
       {{ form.description }}
+    </div>
+    <div class="mb-3">
+      {{ form.avatar.label_tag }}
+      {{ form.avatar }}
+      {% if subject and subject.avatar %}
+      <div class="form-text mt-1">Ảnh hiện tại:</div>
+      <img src="{{ subject.avatar.url }}" alt="Subject avatar" class="rounded border" style="max-height: 100px; object-fit: cover;">
+      {% endif %}
     </div>
     <div class="modal-footer px-0">
       <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>

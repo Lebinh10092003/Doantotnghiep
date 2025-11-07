@@ -21,7 +21,7 @@
     {% if perms.centers.add_room %}
     <button type="button" class="btn btn-primary btn-sm"
             hx-get="{% url 'centers:room_add' %}?center={{ center.id }}"
-            hx-target="#modal-content"
+            hx-target="#center-modal #modal-content"
             @click="modalTitle = 'Thêm Phòng học mới'">
       <i class="bi bi-plus-lg"></i> Thêm phòng
     </button>
@@ -32,7 +32,7 @@
         hx-trigger="reload-rooms-table from:body"
         hx-get="{% url 'centers:center_detail' center.id %}?fragment=rooms_table"
         hx-target="#center-rooms-table"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML" hx-indicator=".rooms-indicator">
     {% csrf_token %}
     <div class="dataTable-top d-flex justify-content-between align-items-center flex-wrap mb-2">
       <div class="dataTable-search" style="min-width:250px;">
@@ -43,6 +43,24 @@
                hx-target="#center-rooms-table"
                hx-include="#center-rooms-table-form"
                hx-trigger="keyup changed delay:300ms">
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+        <select name="sort_by" class="form-select form-select-sm w-auto"
+                hx-get="{% url 'centers:center_detail' center.id %}?fragment=rooms_table"
+                hx-target="#center-rooms-table" hx-include="#center-rooms-table-form" hx-trigger="change">
+          <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Tên (A→Z)</option>
+          <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Tên (Z→A)</option>
+        </select>
+        <div class="rooms-indicator d-inline-flex align-items-center" style="min-width:1.5rem;">
+          <div class="spinner-border spinner-border-sm text-primary htmx-indicator" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                hx-get="{% url 'centers:center_detail' center.id %}?fragment=rooms_table"
+                hx-target="#center-rooms-table" hx-include="#center-rooms-table-form">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
       </div>
       <div class="dataTable-dropdown d-flex align-items-center gap-2">
         <select name="per_page" class="dataTable-selector form-select form-select-sm w-auto"

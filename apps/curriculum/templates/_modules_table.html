@@ -21,16 +21,26 @@
         <td class="d-flex flex-wrap gap-1">
           <button type="button" class="btn btn-sm btn-info"
                   hx-get="{% url 'curriculum:module_detail' m.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#curriculum-modal #modal-content"
                   @click="modalTitle = 'Chi tiết Học phần: {{ m.title|escapejs }}'">
             <i class="bi bi-eye"></i>
           </button>
           {% if perms.curriculum.change_module %}
           <button type="button" class="btn btn-sm btn-warning"
                   hx-get="{% url 'curriculum:module_edit' m.id %}"
-                  hx-target="#modal-content"
+                  hx-target="#curriculum-modal #modal-content"
                   @click="modalTitle = 'Chỉnh sửa Học phần: {{ m.title|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
+          </button>
+          {% endif %}
+          {% if perms.curriculum.delete_module %}
+          <button type="button" class="btn btn-sm btn-danger"
+                  hx-post="{% url 'curriculum:module_delete' %}"
+                  hx-swap="none"
+                  hx-vals='{"module_ids":["{{ m.id }}"]}'
+                  data-confirm-title="Xác nhận xóa"
+                  data-confirm-text="Bạn chắc chắn muốn xóa Học phần '{{ m.title|escapejs }}'?">
+            <i class="bi bi-trash"></i>
           </button>
           {% endif %}
         </td>

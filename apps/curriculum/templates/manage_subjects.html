@@ -37,10 +37,21 @@
               <a href="{% url 'curriculum:modules_manage' %}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-grid-1x2-fill"></i> Học phần
               </a>
+              <a href="{% url 'curriculum:curriculum_export' %}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-download"></i> Xuất CTĐT
+              </a>
+              {% if perms.curriculum.add_subject %}
+              <button type="button" class="btn btn-outline-primary btn-sm"
+                      hx-get="{% url 'curriculum:curriculum_import' %}"
+                      hx-target="#curriculum-modal #modal-content" hx-swap="innerHTML"
+                      @click="modalTitle = 'Nhập Chương trình'">
+                <i class="bi bi-upload"></i> Nhập CTĐT
+              </button>
+              {% endif %}
               {% if perms.curriculum.add_subject %}
               <button type="button" class="btn btn-primary btn-sm"
                       hx-get="{% url 'curriculum:subject_add' %}"
-                      hx-target="#modal-content"
+                      hx-target="#curriculum-modal #modal-content" hx-swap="innerHTML"
                       @click="modalTitle = 'Thêm Môn học mới'">
                 <i class="bi bi-plus-lg"></i> Thêm mới
               </button>

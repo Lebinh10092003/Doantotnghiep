@@ -1,26 +1,48 @@
+{% load static %}
 <div class="modal-body">
+  <div class="mb-3 text-center">
+    {% if subject.avatar_url %}
+      <img src="{{ subject.avatar_url }}" alt="Ảnh môn học" class="rounded border" style="max-height: 100px; object-fit: cover;">
+    {% else %}
+      <img src="{% static 'static/images/faces/1.jpg' %}" alt="Ảnh mặc định" class="rounded border" style="max-height: 100px; object-fit: cover;">
+    {% endif %}
+  </div>
   <div class="row">
     <div class="col-md-6">
-      <p><h6>Tên môn học:</h6> <p class="text-muted">{{ subject.name }}</p></p>
+      <p><strong>Tên môn học:</strong> {{ subject.name }}</p>
     </div>
     <div class="col-md-6">
-      <p><h6>Mã môn học:</h6> <p class="text-muted">{{ subject.code }}</p></p>
+      <p><strong>Mã môn học:</strong> {{ subject.code }}</p>
     </div>
   </div>
 
-  <h6>Mô tả</h6>
-  {% if subject.description %}
-    <div class="text-muted">{{ subject.description|linebreaksbr }}</div>
-  {% else %}
-    <p class="text-muted">Chưa có mô tả.</p>
-  {% endif %}
+  <p><strong>Mô tả:</strong> {{ subject.description|default:"Không có mô tả." }}</p>
 
   <hr>
 
   <h6>Các học phần ({{ subject.modules.count }})</h6>
-  {% for module in subject.modules.all %}
-    <p class="mb-1">Học phần {{ module.order }}: {{ module.title }}</p>
-  {% empty %}
+  {% if subject.modules.all %}
+  <ul class="list-group list-group-flush">
+    {% for module in subject.modules.all %}
+    <li class="list-group-item ps-0 d-flex align-items-center gap-3">
+      <div class="flex-shrink-0">
+        {% if module.image_url %}
+          <img src="{{ module.image_url }}" alt="Ảnh" class="rounded border" style="width:48px;height:48px;object-fit:cover;">
+        {% else %}
+          <img src="{% static 'static/images/faces/1.jpg' %}" alt="Ảnh mặc định" class="rounded border" style="width:48px;height:48px;object-fit:cover;">
+        {% endif %}
+      </div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold">Học phần {{ module.order }}: {{ module.title }}</div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
     <p class="text-muted">Chưa có học phần nào thuộc môn học này.</p>
-  {% endfor %}
+  {% endif %}
+  
+  <div class="modal-footer">
+    <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+  </div>
 </div>

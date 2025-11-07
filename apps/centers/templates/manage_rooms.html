@@ -37,7 +37,7 @@
               {% if perms.centers.add_room %}
               <button type="button" class="btn btn-primary btn-sm"
                       hx-get="{% url 'centers:room_add' %}"
-                      hx-target="#modal-content"
+                      hx-target="#room-modal #modal-content" hx-swap="innerHTML"
                       @click="modalTitle = 'Thêm Phòng học mới'">
                 <i class="bi bi-plus-lg"></i> Thêm mới
               </button>

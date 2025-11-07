@@ -38,7 +38,7 @@
                 {% if perms.centers.add_center %}
                 <button type="button" class="btn btn-primary btn-sm" 
                         hx-get="{% url 'centers:center_add' %}"
-                        hx-target="#modal-content"
+                        hx-target="#center-modal #modal-content" hx-swap="innerHTML"
                         @click="modalTitle = 'Thêm Trung tâm mới'">
                     <i class="bi bi-plus-lg"></i> Thêm mới
                 </button>

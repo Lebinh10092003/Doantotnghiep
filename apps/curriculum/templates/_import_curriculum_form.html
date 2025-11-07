@@ -1,0 +1,46 @@
+{% load widget_tweaks %}
+
+<form hx-post="{% url 'curriculum:curriculum_import' %}"
+      hx-encoding="multipart/form-data"
+      hx-target="this"
+      hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="modal-body">
+        {% if errors %}
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                <div>
+                    <h5 class="alert-heading mb-1">Import thất bại!</h5>
+                    <ul class="mb-0 ps-3">
+                    {% for error in errors %}
+                        <li><small>{{ error }}</small></li>
+                    {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="alert alert-light-info" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-info-circle"></i> Hướng dẫn</h5>
+            <p class="mb-1">Tải lên file <code>.xlsx</code> gồm các sheet: <b>Subjects</b>, <b>Modules</b>, <b>Lessons</b>, <b>Lectures</b>, <b>Exercises</b>.</p>
+            <ul class="mb-1">
+                <li>Subjects: code, name, description, <b>avatar_url</b></li>
+                <li>Modules: subject_code, order, title, description, <b>image_url</b></li>
+                <li>Lessons: subject_code, module_order, order, title, objectives</li>
+                <li>Lectures: subject_code, module_order, lesson_order, content, video_url, <b>file_url</b></li>
+                <li>Exercises: subject_code, module_order, lesson_order, description, difficulty (easy/medium/hard), <b>file_url</b></li>
+            </ul>
+            <hr>
+            <p class="mb-0">Bạn có thể <a href="{% url 'curriculum:curriculum_import_template' %}" class="fw-bold">tải file mẫu</a> để điền dữ liệu.</p>
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.file.id_for_label }}" class="form-label">{{ form.file.label }}</label>
+            {% render_field form.file class="form-control" accept=".xlsx" %}
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Đóng</button>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Bắt đầu Import</button>
+    </div>
+</form>

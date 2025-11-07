@@ -1,7 +1,18 @@
 <div class="modal-body">
   <div class="row">
     <div class="col-lg-6">
-      <h5 class="border-bottom pb-2 mb-3">Bài giảng</h5>
+      <h5 class="border-bottom pb-2 mb-3 d-flex align-items-center justify-content-between">
+        <span>Bài giảng</span>
+        {% if lesson.lecture_id and perms.curriculum.delete_lecture %}
+        <button type="button" class="btn btn-sm btn-outline-danger"
+                hx-post="{% url 'curriculum:lecture_delete' lesson.id %}"
+                hx-swap="none"
+                data-confirm-title="Xác nhận xóa"
+                data-confirm-text="Bạn chắc chắn muốn xóa Bài giảng của '{{ lesson.title|escapejs }}'?">
+          <i class="bi bi-trash"></i> Xóa Bài giảng
+        </button>
+        {% endif %}
+      </h5>
       <form hx-post="{% url 'curriculum:lesson_content_edit' lesson.id %}" hx-encoding="multipart/form-data" hx-swap="none">
         {% csrf_token %}
         <input type="hidden" name="form_type" value="lecture" />
@@ -20,7 +31,18 @@
     </div>
 
     <div class="col-lg-6 border-start">
-      <h5 class="border-bottom pb-2 mb-3">Bài tập</h5>
+      <h5 class="border-bottom pb-2 mb-3 d-flex align-items-center justify-content-between">
+        <span>Bài tập</span>
+        {% if lesson.exercise_id and perms.curriculum.delete_exercise %}
+        <button type="button" class="btn btn-sm btn-outline-danger"
+                hx-post="{% url 'curriculum:exercise_delete' lesson.id %}"
+                hx-swap="none"
+                data-confirm-title="Xác nhận xóa"
+                data-confirm-text="Bạn chắc chắn muốn xóa Bài tập của '{{ lesson.title|escapejs }}'?">
+          <i class="bi bi-trash"></i> Xóa Bài tập
+        </button>
+        {% endif %}
+      </h5>
       <form hx-post="{% url 'curriculum:lesson_content_edit' lesson.id %}" hx-encoding="multipart/form-data" hx-swap="none">
         {% csrf_token %}
         <input type="hidden" name="form_type" value="exercise" />
