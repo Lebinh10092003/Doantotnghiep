@@ -1,3 +1,5 @@
+# apps/class_sessions/views.py
+
 import json
 from datetime import date, timedelta
 from django.shortcuts import render, get_object_or_404
@@ -84,10 +86,10 @@ def session_create_view(request):
         form = ClassSessionForm(request.POST)
         if form.is_valid():
             session = form.save()
-            response = HttpResponse(status=204) # 204 No Content
+            response = HttpResponse(status=200)
             response["HX-Trigger"] = json.dumps({
                 "reload-sessions-table": True,
-                "closeAppModal": True,
+                "closeSessionModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
                     "title": f"Đã tạo Buổi {session.index} cho lớp '{session.klass.name}'!"
@@ -111,10 +113,10 @@ def session_edit_view(request, pk):
         form = ClassSessionForm(request.POST, instance=session)
         if form.is_valid():
             session = form.save()
-            response = HttpResponse(status=204) # 204 No Content
+            response = HttpResponse(status=200)
             response["HX-Trigger"] = json.dumps({
                 "reload-sessions-table": True,
-                "closeAppModal": True,
+                "closeSessionModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
                     "title": f"Đã cập nhật Buổi {session.index}!"
@@ -140,7 +142,8 @@ def session_detail_view(request, pk):
         pk=pk
     )
     context = {"session": session}
-    return render(request, "_session_detail.html", context)
+    response = render(request, "_session_detail.html", context)
+    return response
 
 
 @require_POST
@@ -151,10 +154,10 @@ def session_delete_view(request, pk):
     session_name = f"Buổi {session.index} của lớp {session.klass.name}"
     
     session.delete()
-    response = HttpResponse(status=204) # 204 No Content
+    response = HttpResponse(status=200)
     response["HX-Trigger"] = json.dumps({
         "reload-sessions-table": True,
-        "closeAppModal": True,
+        "closeSessionModal": True,
         "show-sweet-alert": {
             "icon": "success",
             "title": f"Đã xóa '{session_name}'!"

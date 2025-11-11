@@ -19,24 +19,24 @@ class ClassFilter(filters.FilterSet):
     status = filters.ChoiceFilter(
         choices=CLASS_STATUS, 
         label="Trạng thái",
-        widget=forms.Select(attrs={'class': 'form-select'}) # <-- THÊM WIDGET
+        widget=forms.Select(attrs={'class': 'form-select tom-select'}) # <-- THÊM WIDGET
     )
     
     # Lọc theo Foreign Key (Center, Subject, Teacher)
     center = filters.ModelChoiceFilter(
         queryset=Center.objects.all(),
         label="Trung tâm",
-        widget=forms.Select(attrs={'class': 'form-select'}) # <-- THÊM WIDGET
+        widget=forms.Select(attrs={'class': 'form-select tom-select'}) # <-- THÊM WIDGET
     )
     subject = filters.ModelChoiceFilter(
         queryset=Subject.objects.all(),
         label="Môn học",
-        widget=forms.Select(attrs={'class': 'form-select'}) # <-- THÊM WIDGET
+        widget=forms.Select(attrs={'class': 'form-select tom-select'}) # <-- THÊM WIDGET
     )
     main_teacher = filters.ModelChoiceFilter(
         queryset=User.objects.filter(role="TEACHER").order_by('first_name', 'last_name'),
         label="Giáo viên chính",
-        widget=forms.Select(attrs={'class': 'form-select'}) # <-- THÊM WIDGET
+        widget=forms.Select(attrs={'class': 'form-select tom-select'}) # <-- THÊM WIDGET
     )
     
     # Lọc theo khoảng ngày

@@ -48,6 +48,14 @@
 </div>
 <div class="modal-footer">
   <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+  {% if perms.class_sessions.change_classsession %}
+  <button type="button" class="btn btn-primary"
+          hx-get="{% url 'class_sessions:session_edit' session.pk %}"
+          hx-target="#app-modal #modal-content"
+          @click="modalTitle = 'Cập nhật Buổi học'">
+    <i class="bi bi-pencil-square"></i> Sửa
+  </button>
+  {% endif %}
   {% if perms.class_sessions.delete_classsession %}
   <button type="button" class="btn btn-danger"
           hx-post="{% url 'class_sessions:session_delete' session.pk %}"
@@ -55,14 +63,6 @@
           data-confirm-title="Xác nhận xóa"
           data-confirm-text="Bạn chắc chắn muốn xóa Buổi {{ session.index }} của lớp '{{ session.klass.name|escapejs }}'?">
     <i class="bi bi-trash"></i> Xóa
-  </button>
-  {% endif %}
-  {% if perms.class_sessions.change_classsession %}
-  <button type="button" class="btn btn-primary"
-          hx-get="{% url 'class_sessions:session_edit' session.pk %}"
-          hx-target="#app-modal #modal-content"
-          @click="modalTitle = 'Cập nhật Buổi học'">
-    <i class="bi bi-pencil-square"></i> Sửa
   </button>
   {% endif %}
 </div>

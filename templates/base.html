@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="{% static 'compiled/css/app.css' %}">
     <link rel="stylesheet" href="{% static 'compiled/css/app-dark.css' %}">
     <link rel="stylesheet" href="{% static 'compiled/css/iconly.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="{% static 'compiled/png/favicon.png' %}">
 
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&display=swap"
@@ -42,7 +43,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-..." crossorigin="anonymous"></script>
-    <script src="{% static 'static/js/custom-events.js' %}"></script>
+    
+    {# *** XÓA DÒNG custom-events.js TỪ ĐÂY *** #}
 </head>
 
 <body>
@@ -247,15 +249,11 @@
     <script src="{% static 'static/js/components/dark.js' %}"></script>
     <script src="{% static 'extensions/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
     <script src="{% static 'compiled/js/app.js' %}"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 
-    <script>
-        // Lắng nghe sự kiện HTMX trên toàn bộ trang
-        // và xử lý các trigger từ backend (ví dụ: show-sweet-alert)
-        document.body.addEventListener('htmx:afterRequest', handleHtmxTriggerEvents);
+    <script src="{% static 'static/js/custom-events.js' %}"></script>
 
-        // Ghi đè sự kiện confirm mặc định của HTMX để dùng SweetAlert
-        document.body.addEventListener('htmx:confirm', handleHtmxConfirm);
-    </script>
-</body>
+    </body>
 
 </html>

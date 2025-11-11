@@ -91,10 +91,10 @@ def class_create_view(request):
             formset.instance = klass
             formset.save()
             
-            response = HttpResponse(status=204)
+            response = HttpResponse(status=200)
             response["HX-Trigger"] = json.dumps({
                 "reload-classes-table": True,
-                "closeAppModal": True,
+                "closeClassModal": True,
                 "show-sweet-alert": {"icon": "success", "title": f"Đã tạo lớp '{klass.name}'!"}
             })
             return response
@@ -126,15 +126,12 @@ def class_edit_view(request, pk):
                 from apps.class_sessions.models import ClassSession
                 deleted_count, _ = ClassSession.objects.filter(klass=klass, status='PLANNED').delete()
                 if deleted_count > 0:
-                    # Gửi thêm một cảnh báo nếu có buổi học đã bị xóa
-                    # Lưu ý: Cần có cơ chế hiển thị nhiều thông báo hoặc gộp thông báo
-                    # Ở đây, chúng ta sẽ ưu tiên thông báo cập nhật thành công
                     pass
 
-            response = HttpResponse(status=204) # 204 No Content
+            response = HttpResponse(status=200)
             response["HX-Trigger"] = json.dumps({
                 "reload-classes-table": True,
-                "closeAppModal": True,
+                "closeClassModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
                     "title": f"Đã cập nhật lớp '{klass.name}'!"
@@ -159,7 +156,8 @@ def class_detail_view(request, pk):
         pk=pk
     )
     context = {"klass": klass}
-    return render(request, "_class_detail.html", context)
+    response = render(request, "_class_detail.html", context)
+    return response
 
 
 @require_POST
@@ -182,10 +180,10 @@ def class_delete_view(request, pk):
         return response
 
     klass.delete()
-    response = HttpResponse(status=204) 
+    response = HttpResponse(status=200)
     response["HX-Trigger"] = json.dumps({
         "reload-classes-table": True,
-        "closeAppModal": True,
+        "closeClassModal": True,
         "show-sweet-alert": {
             "icon": "success",
             "title": f"Đã xóa lớp '{klass_name}'!"

@@ -18,20 +18,20 @@ class ClassSessionFilter(filters.FilterSet):
         field_name="klass__center",
         queryset=Center.objects.all(),
         label="Trung tâm",
-        widget=forms.Select(attrs={'class': 'form-select'})
+        widget=forms.Select(attrs={'class': 'form-select tom-select'})
     )
     klass__subject = filters.ModelChoiceFilter(
         field_name="klass__subject",
         queryset=Subject.objects.all(),
         label="Môn học",
-        widget=forms.Select(attrs={'class': 'form-select'})
+        widget=forms.Select(attrs={'class': 'form-select tom-select'})
     )
     
     # Lọc theo trạng thái buổi học
     status = filters.ChoiceFilter(
         choices=SESSION_STATUS, 
         label="Trạng thái buổi học",
-        widget=forms.Select(attrs={'class': 'form-select'})
+        widget=forms.Select(attrs={'class': 'form-select tom-select'})
     )
     
     # Lọc theo bài học

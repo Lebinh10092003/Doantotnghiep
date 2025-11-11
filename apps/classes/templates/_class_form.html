@@ -1,100 +1,107 @@
 {% load widget_tweaks %}
 
-<form hx-post="{{ request.path }}" hx-encoding="multipart/form-data" class="form-horizontal">
+<form hx-post="{% if klass %}{% url 'classes:class_edit' klass.pk %}{% else %}{% url 'classes:class_add' %}{% endif %}"
+      hx-encoding="multipart/form-data"
+      hx-target="this"
+      hx-swap="outerHTML">
     {% csrf_token %}
-    <div class="modal-header">
-        <h5 class="modal-title">
-            {% if is_create %}
-                Thêm Lớp học mới
-            {% else %}
-                Chỉnh sửa Lớp học: {{ klass.name }}
-            {% endif %}
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-    </div>
-
-    <div class="modal-body">
+    <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.code.id_for_label }}" class="form-label">Mã lớp</label>
-                    {{ form.code|add_class:"form-control" }}
+                    {% render_field form.code class="form-control" %}
                     {% if form.code.errors %}<div class="invalid-feedback d-block">{{ form.code.errors|first }}</div>{% endif %}
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.name.id_for_label }}" class="form-label">Tên lớp</label>
-                    {{ form.name|add_class:"form-control" }}
+                    {% render_field form.name class="form-control" required="required" %}
                     {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors|first }}</div>{% endif %}
                 </div>
             </div>
         </div>
         
         <div class="row">
-            <div class="col-md-6"><div class="mb-3">{{ form.center.label_tag }}{{ form.center|add_class:"form-select" }}{% if form.center.errors %}<div class="invalid-feedback d-block">{{ form.center.errors|first }}</div>{% endif %}</div></div>
-            <div class="col-md-6"><div class="mb-3">{{ form.subject.label_tag }}{{ form.subject|add_class:"form-select" }}{% if form.subject.errors %}<div class="invalid-feedback d-block">{{ form.subject.errors|first }}</div>{% endif %}</div></div>
+            <div class="col-md-6 mb-3"><label for="{{ form.center.id_for_label }}" class="form-label">{{ form.center.label }}</label>{% render_field form.center class="form-select" %}{% if form.center.errors %}<div class="invalid-feedback d-block">{{ form.center.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.subject.id_for_label }}" class="form-label">{{ form.subject.label }}</label>{% render_field form.subject class="form-select" %}{% if form.subject.errors %}<div class="invalid-feedback d-block">{{ form.subject.errors|first }}</div>{% endif %}</div>
         </div>
 
         <div class="row">
-            <div class="col-md-6"><div class="mb-3">{{ form.start_date.label_tag }}{{ form.start_date|add_class:"form-control" }}{% if form.start_date.errors %}<div class="invalid-feedback d-block">{{ form.start_date.errors|first }}</div>{% endif %}</div></div>
-            <div class="col-md-6"><div class="mb-3">{{ form.end_date.label_tag }}{{ form.end_date|add_class:"form-control" }}{% if form.end_date.errors %}<div class="invalid-feedback d-block">{{ form.end_date.errors|first }}</div>{% endif %}</div></div>
+            <div class="col-md-6 mb-3"><label for="{{ form.start_date.id_for_label }}" class="form-label">{{ form.start_date.label }}</label>{% render_field form.start_date class="form-control" %}{% if form.start_date.errors %}<div class="invalid-feedback d-block">{{ form.start_date.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.end_date.id_for_label }}" class="form-label">{{ form.end_date.label }}</label>{% render_field form.end_date class="form-control" %}{% if form.end_date.errors %}<div class="invalid-feedback d-block">{{ form.end_date.errors|first }}</div>{% endif %}</div>
         </div>
 
         <div class="row">
-            <div class="col-md-6"><div class="mb-3">{{ form.main_teacher.label_tag }}{{ form.main_teacher|add_class:"form-select" }}{% if form.main_teacher.errors %}<div class="invalid-feedback d-block">{{ form.main_teacher.errors|first }}</div>{% endif %}</div></div>
-            <div class="col-md-6"><div class="mb-3">{{ form.status.label_tag }}{{ form.status|add_class:"form-select" }}{% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors|first }}</div>{% endif %}</div></div>
+            <div class="col-md-6 mb-3"><label for="{{ form.main_teacher.id_for_label }}" class="form-label">{{ form.main_teacher.label }}</label>{% render_field form.main_teacher class="form-select tom-select" %}{% if form.main_teacher.errors %}<div class="invalid-feedback d-block">{{ form.main_teacher.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.status.id_for_label }}" class="form-label">{{ form.status.label }}</label>{% render_field form.status class="form-select" %}{% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors|first }}</div>{% endif %}</div>
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.assistants.id_for_label }}" class="form-label">{{ form.assistants.label }}</label>
+            {% render_field form.assistants class="form-select tom-select" %}
+            {% if form.assistants.errors %}<div class="invalid-feedback d-block">{{ form.assistants.errors|first }}</div>{% endif %}
         </div>
 
         <hr>
         <h5>Lịch học hàng tuần</h5>
         {{ formset.management_form }}
+        
         <div id="schedule-form-list">
             {% for schedule_form in formset %}
-                <div class="row align-items-center schedule-form mb-2">
-                    <div class="col-1">{{ schedule_form.id }}</div>
-                    <div class="col-4">{{ schedule_form.day_of_week }}</div>
-                    <div class="col-3">{{ schedule_form.start_time }}</div>
-                    <div class="col-3">{{ schedule_form.end_time }}</div>
-                    <div class="col-1">
-                        {% if schedule_form.instance.pk %}
-                            {{ schedule_form.DELETE|add_class:"form-check-input" }}
-                        {% endif %}
+                <div class="row align-items-center schedule-form mb-2" id="schedule-{{ forloop.counter0 }}">
+                    {{ schedule_form.id }}
+                    <div class="col-4">
+                        {% if forloop.first %}<label class="form-label small">Ngày trong tuần</label>{% endif %}
+                        {% render_field schedule_form.day_of_week class="form-select form-select-sm" %}
                     </div>
+                    <div class="col-3">
+                        {% if forloop.first %}<label class="form-label small">Bắt đầu</label>{% endif %}
+                        {% render_field schedule_form.start_time class="form-control form-control-sm" %}
+                    </div>
+                    <div class="col-3">
+                        {% if forloop.first %}<label class="form-label small">Kết thúc</label>{% endif %}
+                        {% render_field schedule_form.end_time class="form-control form-control-sm" %}
+                    </div>
+                    <div class="col-2 text-center">
+                        {% if forloop.first %}<label class="form-label small d-block">&nbsp;</label>{% endif %}
+                        <div class="form-check d-inline-block">
+                            {% render_field schedule_form.DELETE class="form-check-input" %}
+                            <label class="form-check-label" for="{{ schedule_form.DELETE.id_for_label }}">Xóa</label>
+                        </div>
+                    </div>
+                    <div class="text-danger small">{{ schedule_form.non_field_errors|striptags }}</div>
                 </div>
             {% endfor %}
         </div>
+        
         <div id="empty-form" class="d-none">
-            <div class="row align-items-center schedule-form mb-2">
-                <div class="col-1">{{ formset.empty_form.id }}</div>
-                <div class="col-4">{{ formset.empty_form.day_of_week }}</div>
-                <div class="col-3">{{ formset.empty_form.start_time }}</div>
-                <div class="col-3">{{ formset.empty_form.end_time }}</div>
-                <div class="col-1"></div>
+            <div class="row align-items-center schedule-form mb-2" id="schedule-__prefix__">
+                {{ formset.empty_form.id }}
+                {{ formset.empty_form.DELETE }}
+                <div class="col-4">{% render_field formset.empty_form.day_of_week class="form-select form-select-sm" %}</div>
+                <div class="col-3">{% render_field formset.empty_form.start_time class="form-control form-control-sm" %}</div>
+                <div class="col-3">{% render_field formset.empty_form.end_time class="form-control form-control-sm" %}</div>
+                <div class="col-2 text-center">
+                    <button type="button" class="btn btn-danger btn-sm" data-action="remove-schedule-form" title="Xóa dòng này">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
             </div>
         </div>
-        <button type="button" id="add-schedule-form" class="btn btn-sm btn-outline-secondary mt-2">Thêm lịch</button>
-
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-action="add-schedule-form">
+            <i class="bi bi-plus-lg"></i> Thêm lịch
+        </button>
     </div>
-
     <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="submit" class="btn btn-primary">Lưu</button>
     </div>
 </form>
-
-<script>
-document.getElementById('add-schedule-form').addEventListener('click', function() {
-    const formList = document.getElementById('schedule-form-list');
-    const totalForms = document.getElementById('id_schedules-TOTAL_FORMS');
-    const formIdx = totalForms.value;
-    
-    const emptyFormHtml = document.getElementById('empty-form').innerHTML.replace(/__prefix__/g, formIdx);
-    
-    const newForm = document.createElement('div');
-    newForm.innerHTML = emptyFormHtml;
-    formList.appendChild(newForm.firstElementChild);
-    
-    totalForms.value = parseInt(formIdx) + 1;
-});
-</script>
