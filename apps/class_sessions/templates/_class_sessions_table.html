@@ -1,0 +1,102 @@
+<div class="dataTable-container table-responsive">
+  <table class="table table-striped dataTable-table">
+    <thead>
+      <tr>
+        <th>Lớp học</th>
+        <th>Buổi số</th>
+        <th>Ngày học</th>
+        <th>Thời gian</th>
+        <th>Bài học</th>
+        <th>Giáo viên</th>
+        <th>Trạng thái</th>
+        <th>Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for session in page_obj.object_list %}
+      <tr>
+        <td>{{ session.klass.name }}</td>
+        <td>{{ session.index }}</td>
+        <td>{{ session.date|date:"d/m/Y"|default:"-" }}</td>
+        <td class="text-nowrap">{{ session.start_time|time:"H:i"|default:"-" }} - {{ session.end_time|time:"H:i"|default:"-" }}</td>
+        <td>{% if session.lesson %}{{ session.lesson.title }}{% else %}-{% endif %}</td>
+        <td>{{ session.teacher_override.get_full_name|default:session.klass.main_teacher.get_full_name|default:"-" }}</td><td>
+          {% if session.status == 'PLANNED' %}
+            <span class="badge bg-info">{{ session.get_status_display }}</span>
+          {% elif session.status == 'COMPLETED' %}
+            <span class="badge bg-success">{{ session.get_status_display }}</span>
+          {% elif session.status == 'CANCELLED' %}
+            <span class="badge bg-danger">{{ session.get_status_display }}</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ session.get_status_display }}</span>
+          {% endif %}
+        </td>
+        <td class="text-nowrap">
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-info"
+                    hx-get="{% url 'class_sessions:session_detail' session.pk %}"
+                    hx-target="#app-modal #modal-content"
+                    data-bs-toggle="modal" data-bs-target="#app-modal"
+                    @click="modalTitle = 'Chi tiết Buổi học: {{ session.klass.name }} - Buổi {{ session.index }}'">
+              <i class="bi bi-eye"></i>
+            </button>
+            {% if perms.class_sessions.change_classsession %}
+            <button type="button" class="btn btn-warning"
+                    hx-get="{% url 'class_sessions:session_edit' session.pk %}"
+                    hx-target="#app-modal #modal-content"
+                    data-bs-toggle="modal" data-bs-target="#app-modal"
+                    @click="modalTitle = 'Cập nhật Buổi học: {{ session.klass.name }} - Buổi {{ session.index }}'">
+              <i class="bi bi-pencil-square"></i>
+            </button>
+            {% endif %}
+            {% if perms.class_sessions.delete_classsession %}
+            <button type="button" class="btn btn-danger"
+                    hx-post="{% url 'class_sessions:session_delete' session.pk %}"
+                    hx-swap="none"
+                    data-confirm-title="Xác nhận xóa"
+                    data-confirm-text="Bạn chắc chắn muốn xóa Buổi {{ session.index }} của lớp '{{ session.klass.name|escapejs }}'?">
+              <i class="bi bi-trash"></i>
+            </button>
+            {% endif %}
+          </div>
+        </td>
+        </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" class="text-center">Không tìm thấy buổi học nào khớp.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="dataTable-bottom d-flex justify-content-between align-items-center">
+  <div class="dataTable-info">
+    Hiện {{ page_obj.start_index }} đến {{ page_obj.end_index }} trong tổng số {{ paginator.count }} mục
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <nav class="dataTable-pagination">
+    <ul class="pagination">
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page=1&{{ current_query_params }}" hx-get="?page=1&{{ current_query_params }}" hx-target="#session-table-container" hx-swap="innerHTML">Đầu</a>
+      </li>
+      <li class="page-item">
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ current_query_params }}" hx-get="?page={{ page_obj.previous_page_number }}&{{ current_query_params }}" hx-target="#session-table-container" hx-swap="innerHTML">Trước</a>
+      </li>
+      {% endif %}
+
+      {% for i in paginator.page_range %}
+        {% if i >= page_obj.number|add:'-2' and i <= page_obj.number|add:'2' %}
+          <li class="page-item {% if page_obj.number == i %}active{% endif %}"><a class="page-link" href="?page={{ i }}&{{ current_query_params }}" hx-get="?page={{ i }}&{{ current_query_params }}" hx-target="#session-table-container" hx-swap="innerHTML">{{ i }}</a></li>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ paginator.num_pages }}&{{ current_query_params }}" hx-get="?page={{ paginator.num_pages }}&{{ current_query_params }}" hx-target="#session-table-container" hx-swap="innerHTML">Cuối</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+</div>

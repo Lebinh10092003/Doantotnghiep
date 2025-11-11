@@ -1,12 +1,13 @@
 from django.db import models
+from apps.class_sessions.models import ClassSession
 
 
 class StudentProduct(models.Model):
     session = models.ForeignKey(
-        "classes.ClassSession",
-        on_delete=models.CASCADE,
-        related_name="student_products",
-    )
+            ClassSession,
+            on_delete=models.CASCADE,
+            related_name="student_products",
+        )
     student = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, related_name="student_products"
     )

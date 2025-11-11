@@ -1,0 +1,86 @@
+<div class="modal-header">
+    <h5 class="modal-title">Chi tiết Lớp học: {{ klass.name }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body">
+    <div class="row">
+        <div class="col-md-6">
+            <p><strong>Mã lớp:</strong> {{ klass.code }}</p>
+            <p><strong>Trung tâm:</strong> {{ klass.center.name }}</p>
+            <p><strong>Môn học:</strong> {{ klass.subject.name }}</p>
+            <p><strong>Trạng thái:</strong> 
+                {% if klass.status == 'PLANNED' %}
+                    <span class="badge bg-info">{{ klass.get_status_display }}</span>
+                {% elif klass.status == 'ONGOING' %}
+                    <span class="badge bg-success">{{ klass.get_status_display }}</span>
+                {% elif klass.status == 'COMPLETED' %}
+                    <span class="badge bg-secondary">{{ klass.get_status_display }}</span>
+                {% else %}
+                    <span class="badge bg-danger">{{ klass.get_status_display }}</span>
+                {% endif %}
+            </p>
+        </div>
+        <div class="col-md-6">
+            <p><strong>Ngày bắt đầu:</strong> {{ klass.start_date|date:"d/m/Y"|default:"Chưa có" }}</p>
+            <p><strong>Ngày kết thúc:</strong> {{ klass.end_date|date:"d/m/Y"|default:"Chưa có" }}</p>
+            <p><strong>Giáo viên chính:</strong> {{ klass.main_teacher.get_full_name|default:"Chưa có" }}</p>
+            <p><strong>Phòng học mặc định:</strong> {{ klass.room.name|default:"Chưa có" }}</p>
+        </div>
+    </div>
+
+    <hr>
+
+    <h5>Lịch học hàng tuần</h5>
+    {% if klass.weekly_schedules.all %}
+        <ul>
+        {% for schedule in klass.weekly_schedules.all %}
+            <li>
+                <strong>{{ schedule.get_day_of_week_display }}:</strong> 
+                {{ schedule.start_time|time:"H:i" }} - {{ schedule.end_time|time:"H:i" }}
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-muted">Chưa có lịch học hàng tuần được thiết lập.</p>
+    {% endif %}
+
+    <hr>
+
+    <h5>Trợ giảng</h5>
+    {% if klass.assistants.all %}
+        <ul>
+        {% for assistant in klass.assistants.all %}
+            <li>{{ assistant.get_full_name }}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p class="text-muted">Không có trợ giảng.</p>
+    {% endif %}
+
+    <hr>
+
+    <h5>Ghi chú</h5>
+    <p>{{ klass.note|default:"Không có ghi chú." }}</p>
+
+</div>
+
+<div class="modal-footer justify-content-between">
+    <div>
+        {% if perms.class_sessions.add_classsession %}
+        <button 
+            type="button" 
+            class="btn btn-info"
+            hx-post="{% url 'classes:generate_sessions' pk=klass.pk %}"
+            hx-confirm="Thao tác này sẽ XÓA tất cả các buổi học 'Đã lên kế hoạch' hiện có và tạo lại từ đầu dựa trên lịch học hàng tuần. Bạn có chắc chắn muốn tiếp tục?"
+            hx-target="body"
+            hx-swap="none"
+        >
+            <i class="fas fa-cogs me-1"></i> Tạo buổi học tự động
+        </button>
+        {% endif %}
+    </div>
+    <div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+    </div>
+</div>

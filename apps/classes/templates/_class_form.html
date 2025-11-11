@@ -1,0 +1,100 @@
+{% load widget_tweaks %}
+
+<form hx-post="{{ request.path }}" hx-encoding="multipart/form-data" class="form-horizontal">
+    {% csrf_token %}
+    <div class="modal-header">
+        <h5 class="modal-title">
+            {% if is_create %}
+                Thêm Lớp học mới
+            {% else %}
+                Chỉnh sửa Lớp học: {{ klass.name }}
+            {% endif %}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+
+    <div class="modal-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.code.id_for_label }}" class="form-label">Mã lớp</label>
+                    {{ form.code|add_class:"form-control" }}
+                    {% if form.code.errors %}<div class="invalid-feedback d-block">{{ form.code.errors|first }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label">Tên lớp</label>
+                    {{ form.name|add_class:"form-control" }}
+                    {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors|first }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6"><div class="mb-3">{{ form.center.label_tag }}{{ form.center|add_class:"form-select" }}{% if form.center.errors %}<div class="invalid-feedback d-block">{{ form.center.errors|first }}</div>{% endif %}</div></div>
+            <div class="col-md-6"><div class="mb-3">{{ form.subject.label_tag }}{{ form.subject|add_class:"form-select" }}{% if form.subject.errors %}<div class="invalid-feedback d-block">{{ form.subject.errors|first }}</div>{% endif %}</div></div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6"><div class="mb-3">{{ form.start_date.label_tag }}{{ form.start_date|add_class:"form-control" }}{% if form.start_date.errors %}<div class="invalid-feedback d-block">{{ form.start_date.errors|first }}</div>{% endif %}</div></div>
+            <div class="col-md-6"><div class="mb-3">{{ form.end_date.label_tag }}{{ form.end_date|add_class:"form-control" }}{% if form.end_date.errors %}<div class="invalid-feedback d-block">{{ form.end_date.errors|first }}</div>{% endif %}</div></div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6"><div class="mb-3">{{ form.main_teacher.label_tag }}{{ form.main_teacher|add_class:"form-select" }}{% if form.main_teacher.errors %}<div class="invalid-feedback d-block">{{ form.main_teacher.errors|first }}</div>{% endif %}</div></div>
+            <div class="col-md-6"><div class="mb-3">{{ form.status.label_tag }}{{ form.status|add_class:"form-select" }}{% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors|first }}</div>{% endif %}</div></div>
+        </div>
+
+        <hr>
+        <h5>Lịch học hàng tuần</h5>
+        {{ formset.management_form }}
+        <div id="schedule-form-list">
+            {% for schedule_form in formset %}
+                <div class="row align-items-center schedule-form mb-2">
+                    <div class="col-1">{{ schedule_form.id }}</div>
+                    <div class="col-4">{{ schedule_form.day_of_week }}</div>
+                    <div class="col-3">{{ schedule_form.start_time }}</div>
+                    <div class="col-3">{{ schedule_form.end_time }}</div>
+                    <div class="col-1">
+                        {% if schedule_form.instance.pk %}
+                            {{ schedule_form.DELETE|add_class:"form-check-input" }}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <div id="empty-form" class="d-none">
+            <div class="row align-items-center schedule-form mb-2">
+                <div class="col-1">{{ formset.empty_form.id }}</div>
+                <div class="col-4">{{ formset.empty_form.day_of_week }}</div>
+                <div class="col-3">{{ formset.empty_form.start_time }}</div>
+                <div class="col-3">{{ formset.empty_form.end_time }}</div>
+                <div class="col-1"></div>
+            </div>
+        </div>
+        <button type="button" id="add-schedule-form" class="btn btn-sm btn-outline-secondary mt-2">Thêm lịch</button>
+
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+    </div>
+</form>
+
+<script>
+document.getElementById('add-schedule-form').addEventListener('click', function() {
+    const formList = document.getElementById('schedule-form-list');
+    const totalForms = document.getElementById('id_schedules-TOTAL_FORMS');
+    const formIdx = totalForms.value;
+    
+    const emptyFormHtml = document.getElementById('empty-form').innerHTML.replace(/__prefix__/g, formIdx);
+    
+    const newForm = document.createElement('div');
+    newForm.innerHTML = emptyFormHtml;
+    formList.appendChild(newForm.firstElementChild);
+    
+    totalForms.value = parseInt(formIdx) + 1;
+});
+</script>

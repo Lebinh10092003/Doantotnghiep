@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Quản lý Buổi học{% endblock %}
+
+{% block content %}
+<div x-data="{ modalTitle: 'Tiêu đề Modal' }">
+  <div id="main">
+    <header class="mb-3">
+      <a href="#" class="burger-btn d-block d-xl-none">
+        <i class="bi bi-justify fs-3"></i>
+      </a>
+    </header>
+
+    <div class="page-heading">
+      <div class="page-title">
+        <div class="row">
+          <div class="col-12 col-md-6 order-md-1 order-last">
+            <h3>Buổi học</h3>
+            <p class="text-subtitle text-muted">Quản lý và lọc danh sách các buổi học.</p>
+          </div>
+          <div class="col-12 col-md-6 order-md-2 order-first">
+            <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'classes:manage_classes' %}">Lớp học</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Danh sách buổi học</li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Danh sách Buổi học</h5>
+            {% if perms.class_sessions.add_classsession %}
+            <button type="button" class="btn btn-primary btn-sm"
+                    hx-get="{% url 'class_sessions:session_add' %}"
+                    hx-target="#app-modal #modal-content"
+                    hx-swap="innerHTML"
+                    data-bs-toggle="modal" 
+                    data-bs-target="#app-modal"
+                    @click="modalTitle = 'Thêm Buổi học mới'">
+              <i class="bi bi-plus-lg"></i> Thêm mới
+            </button>
+            {% endif %}
+            </div>
+
+          <div class="card-body">
+            {% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters my_filters=my_filters public_filters=public_filters model_name=model_name current_query_params=current_query_params %}
+
+            <div id="session-table-container" 
+                 class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns"
+                 hx-get="{% url 'class_sessions:manage_class_sessions' %}?{{ current_query_params }}"
+                 hx-trigger="load, reload-sessions-table from:body" hx-swap="innerHTML">
+              {% include "_class_sessions_table.html" with page_obj=page_obj paginator=paginator current_query_params=current_query_params %}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal fade" id="filter-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
+      <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+          </div>
+          <div id="modal-content">
+            <div class="modal-body"><p>Đang tải...</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal fade" id="app-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div id="modal-content">
+             <div class="modal-body"><p>Đang tải...</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -294,6 +294,7 @@ def manage_accounts(request):
         "group_by": request.GET.get("group_by", ""),
         "per_page": per_page,
         "relations": relations,
+        "current_query_params": request.GET.urlencode(),
     }
 
     if is_htmx_request(request):
@@ -465,6 +466,7 @@ def user_detail_view(request, user_id):
         parents = ParentStudentRelation.objects.filter(student=user).select_related('parent__center')
         # Lấy các lớp học sinh đang ghi danh
         enrolled_classes = user.enrollments.select_related('klass__subject', 'klass__center').all()
+        enrolled_classes = user.enrollments.select_related('klass__subject', 'klass__center')
 
     if user_role_upper == 'TEACHER' or user_role_upper == 'ASSISTANT':
         # Lấy các lớp giáo viên đang dạy (giáo viên chính)
@@ -473,11 +475,13 @@ def user_detail_view(request, user_id):
         else:
             teaching_classes = Class.objects.filter(main_teacher=user).select_related('subject', 'center')
 
+        teaching_classes = user.main_classes.select_related('subject', 'center')
         # Lấy các lớp trợ giảng
         if hasattr(user, 'assist_classes'):
             assisting_classes = user.assist_classes.select_related('subject', 'center').all()
         else:
             assisting_classes = Class.objects.filter(assistants=user).select_related('subject', 'center')
+        assisting_classes = user.assist_classes.select_related('subject', 'center')
 
     context = {
         'user': user,
@@ -745,6 +749,7 @@ def manage_groups(request):
         "page_obj": page_obj,
         "paginator": paginator,
         "per_page": per_page,
+        "current_query_params": request.GET.urlencode(),
     }
 
     if is_htmx_request(request):
@@ -934,6 +939,7 @@ def group_users_view(request, group_id):
         "page_obj": page_obj,
         "paginator": paginator,
         "per_page": per_page,
+        "current_query_params": request.GET.urlencode(),
     }
     
     # Trả về partial mới

@@ -13,6 +13,9 @@ urlpatterns = [
     path("students/", include("apps.students.urls")),
     path("teachers/", include("apps.teachers.urls")),
     path("parents/", include("apps.parents.urls")),
+    path("classes/", include("apps.classes.urls")),
+    path("sessions/", include("apps.class_sessions.urls")),
+    path("filters/", include("apps.filters.urls")),
     
 ]
 if settings.DEBUG:

@@ -1,0 +1,68 @@
+<div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+  <h5>Buổi {{ session.index }}: Lớp {{ session.klass.name }}</h5>
+  <p>
+    {% if session.status == 'PLANNED' %}
+      <span class="badge bg-info">{{ session.get_status_display }}</span>
+    {% elif session.status == 'COMPLETED' %}
+      <span class="badge bg-success">{{ session.get_status_display }}</span>
+    {% elif session.status == 'CANCELLED' %}
+      <span class="badge bg-danger">{{ session.get_status_display }}</span>
+    {% else %}
+      <span class="badge bg-secondary">{{ session.get_status_display }}</span>
+    {% endif %}
+  </p>
+
+  <div class="row">
+    <div class="col-md-6">
+      <p><strong>Ngày:</strong> {{ session.date|date:"d/m/Y"|default:"-" }}</p>
+      <p><strong>Giờ bắt đầu:</strong> {{ session.start_time|time:"H:i"|default:"-" }}</p>
+      <p><strong>Giờ kết thúc:</strong> {{ session.end_time|time:"H:i"|default:"-" }}</p>
+    </div>
+    <div class="col-md-6">
+      <p><strong>Bài học:</strong> {% if session.lesson %}{{ session.lesson.title }}{% else %}-{% endif %}</p>
+      <p><strong>Phòng học:</strong> 
+        {% if session.room_override %}
+          {{ session.room_override.name }} (Thay thế)
+        {% elif session.klass.room %}
+          {{ session.klass.room.name }} (Mặc định)
+        {% else %}-{% endif %}
+      </p>
+    </div>
+  </div>
+  
+  <p><strong>Giáo viên:</strong>
+    {% if session.teacher_override %}
+      {{ session.teacher_override.get_full_name|default:"-" }} (Thay thế)
+    {% else %}
+      {{ session.klass.main_teacher.get_full_name|default:"-" }} (Chính)
+    {% endif %}
+  </p>
+
+  <p><strong>Trợ giảng (Buổi):</strong>
+    {% for assistant in session.assistants.all %}
+      <span class="badge bg-secondary">{{ assistant.get_full_name }}</span>
+    {% empty %}
+      <span class="text-muted">Không có</span>
+    {% endfor %}
+  </p>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+  {% if perms.class_sessions.delete_classsession %}
+  <button type="button" class="btn btn-danger"
+          hx-post="{% url 'class_sessions:session_delete' session.pk %}"
+          hx-swap="none"
+          data-confirm-title="Xác nhận xóa"
+          data-confirm-text="Bạn chắc chắn muốn xóa Buổi {{ session.index }} của lớp '{{ session.klass.name|escapejs }}'?">
+    <i class="bi bi-trash"></i> Xóa
+  </button>
+  {% endif %}
+  {% if perms.class_sessions.change_classsession %}
+  <button type="button" class="btn btn-primary"
+          hx-get="{% url 'class_sessions:session_edit' session.pk %}"
+          hx-target="#app-modal #modal-content"
+          @click="modalTitle = 'Cập nhật Buổi học'">
+    <i class="bi bi-pencil-square"></i> Sửa
+  </button>
+  {% endif %}
+</div>

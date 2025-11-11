@@ -1,13 +1,15 @@
 from django.db import models
-
+from apps.class_sessions.models import ClassSession
 
 ATTEND_CHOICES = [("P", "Present"), ("A", "Absent"), ("L", "Late")]
 
 
 class Attendance(models.Model):
     session = models.ForeignKey(
-        "classes.ClassSession", on_delete=models.CASCADE, related_name="attendances"
-    )
+            ClassSession,
+            on_delete=models.CASCADE, 
+            related_name="attendances"
+        )
     student = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, related_name="attendances"
     )

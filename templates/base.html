@@ -129,28 +129,21 @@
                     </li>
                     {% endif %}
 
-                    {% if perms.classes.view_class %}
-                    <li class="sidebar-item has-sub {% if '/classes/' in request.path or '/class_sessions/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link"><i class="bi bi-easel"></i><span>Lớp học</span></a>
-                        <ul class="submenu">
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-list-ul"></i><span>Danh sách lớp</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-calendar-event"></i><span>Danh sách buổi học</span></a></li>
-                            {% if perms.classes.change_classassistant %}
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-person-workspace"></i><span>Phân công</span></a></li>
-                            {% endif %}
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-people-fill"></i><span>Danh sách HS theo lớp</span></a></li>
-                        </ul>
-                    </li>
-                    {% endif %}
-                    {% if perms.class_sessions.view_classsession %}
-                    <li class="sidebar-item has-sub {% if '/sessions/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link"><i class="bi bi-clock"></i><span>Buổi học</span></a>
-                        <ul class="submenu">
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-calendar3"></i><span>Lịch buổi học</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-check2-square"></i><span>Điểm danh</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-card-image"></i><span>Sản phẩm</span></a></li>
-                            <li class="submenu-item"><a href="#" class="submenu-link"><i class="bi bi-chat-left-text"></i><span>Ghi chú & Phản hồi</span></a></li>
-                        </ul>
+                    {% if perms.classes.view_class or perms.class_sessions.view_classsession %}
+                    <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' %}active{% endif %}">
+                      <a href="#" class="sidebar-link"><i class="bi bi-journal-bookmark-fill"></i><span>Lớp & Lịch học</span></a>
+                      <ul class="submenu {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' %}active{% endif %}">
+                        {% if perms.classes.view_class %}
+                        <li class="submenu-item {% if request.resolver_match.view_name == 'classes:manage_classes' %}active{% endif %}">
+                          <a href="{% url 'classes:manage_classes' %}" class="submenu-link">Quản lý Lớp học</a>
+                        </li>
+                        {% endif %}
+                        {% if perms.class_sessions.view_classsession %}
+                        <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:manage_class_sessions' %}active{% endif %}">
+                          <a href="{% url 'class_sessions:manage_class_sessions' %}" class="submenu-link">Quản lý Buổi học</a>
+                        </li>
+                        {% endif %}
+                      </ul>
                     </li>
                     {% endif %}
                     {% if perms.assessments.view_assessment %}

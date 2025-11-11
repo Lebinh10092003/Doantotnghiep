@@ -1,10 +1,13 @@
 from django.db import models
+from apps.class_sessions.models import ClassSession
 
 
 class Assessment(models.Model):
     session = models.ForeignKey(
-        "classes.ClassSession", on_delete=models.CASCADE, related_name="assessments"
-    )
+            ClassSession, 
+            on_delete=models.CASCADE, 
+            related_name="assessments"
+        )
     student = models.ForeignKey(
         "accounts.User", on_delete=models.CASCADE, related_name="assessments"
     )

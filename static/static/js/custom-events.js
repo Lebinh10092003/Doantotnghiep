@@ -91,7 +91,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 2. Đóng modal chung và dọn dẹp backdrop
-            if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal || triggers.closeSubjectModal) {
+            if (triggers.closeUserModal 
+                || triggers.closeGroupModal 
+                || triggers.closeCenterModal 
+                || triggers.closeRoomModal 
+                || triggers.closeSubjectModal
+                || triggers.closeFilterModal
+                || triggers.closeAppModal // <-- Trigger chung cho CRUD
+            ) {
                 try {
                     // Prefer closing the modal that initiated the request
                     const sourceEl = evt.detail.elt;
@@ -153,6 +160,16 @@ document.addEventListener('DOMContentLoaded', () => {
             dispatchCustomEvent('reload-subjects-table');
             dispatchCustomEvent('reload-modules-table');
             dispatchCustomEvent('reload-lessons-table');
+            dispatchCustomEvent('reload-classes-table');
+            dispatchCustomEvent('reload-sessions-table');
+
+            // 7. Kích hoạt sự kiện tải lại bộ lọc đã lưu (cho model cụ thể)
+            Object.keys(triggers).forEach(key => {
+                if (key.startsWith('reload-saved-filters-')) {
+                    document.body.dispatchEvent(new CustomEvent(key));
+                }
+            });
+
         } catch (e) {
             // console.error('Lỗi xử lý HX-Trigger:', e, 'Header:', header);
         }
@@ -241,7 +258,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const header = evt.detail?.xhr?.getResponseHeader('HX-Trigger');
                 if (header) {
                     const triggers = JSON.parse(header);
-                    if (triggers.closeUserModal || triggers.closeGroupModal || triggers.closeCenterModal || triggers.closeRoomModal || triggers.closeSubjectModal) {
+                    if (triggers.closeUserModal 
+                        || triggers.closeGroupModal 
+                        || triggers.closeCenterModal 
+                        || triggers.closeRoomModal 
+                        || triggers.closeSubjectModal
+                        || triggers.closeFilterModal
+                        || triggers.closeAppModal // <-- THÊM MỚI
+                    ) {
                         shouldShow = false;
                     }
                 }

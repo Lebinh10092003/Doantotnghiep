@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.reports",
     "apps.rewards",
+    "apps.filters",
 ]
 INSTALLED_APPS += ["django_seed"]
 

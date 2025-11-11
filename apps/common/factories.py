@@ -3,8 +3,9 @@ from factory import SubFactory, Sequence, post_generation
 from faker import Faker
 from django.contrib.auth import get_user_model
 from apps.centers.models import Center, Room
-from apps.curriculum.models import Subject, Module, Lesson
-from apps.classes.models import Class as Klass, ClassSession
+from apps.curriculum.models import Subject, Module, Lesson # Keep Module and Lesson if they are used elsewhere in factories.py
+from apps.classes.models import Class as Klass
+from apps.class_sessions.models import ClassSession
 from apps.students.models import StudentProduct
 from django.utils import timezone
 

@@ -1,7 +1,7 @@
 from django.db import models
 from django.conf import settings
 from apps.centers.models import Center, Room
-from apps.curriculum.models import Subject, Module, Lesson
+from apps.curriculum.models import Subject
 from apps.common.models import TimeStampedModel
 
 CLASS_STATUS = [
@@ -44,10 +44,31 @@ class Class(models.Model):
         blank=True,
     )
 
+    def __str__(self):
+        return f"{self.code} - {self.name}"
 
-def __str__(self):
-    return f"{self.code} - {self.name}"
+class ClassSchedule(models.Model):
+    """
+    Lưu lịch học cố định hàng tuần cho một lớp học.
+    Ví dụ: Thứ 2 (8:00-9:30), Thứ 5 (14:00-15:30)
+    """
+    class DayOfWeek(models.IntegerChoices):
+        MONDAY = 0, "Thứ Hai"
+        TUESDAY = 1, "Thứ Ba"
+        WEDNESDAY = 2, "Thứ Tư"
+        THURSDAY = 3, "Thứ Năm"
+        FRIDAY = 4, "Thứ Sáu"
+        SATURDAY = 5, "Thứ Bảy"
+        SUNDAY = 6, "Chủ Nhật"
 
+    klass = models.ForeignKey(Class, on_delete=models.CASCADE, related_name="weekly_schedules")
+    day_of_week = models.IntegerField(choices=DayOfWeek.choices)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        unique_together = (("klass", "day_of_week", "start_time"),)
+        ordering = ["klass", "day_of_week", "start_time"]
 
 class ClassAssistant(models.Model):
     klass = models.ForeignKey(Class, on_delete=models.CASCADE)
@@ -58,48 +79,8 @@ class ClassAssistant(models.Model):
         default="COURSE",
     )
 
+    class Meta:
+        unique_together = (("klass", "assistant", "scope"),)
 
-class Meta:
-    unique_together = (("klass", "assistant", "scope"),)
-
-
-def __str__(self):
-    return f"{self.assistant.username} → {self.klass.name} ({self.scope})"
-
-
-SESSION_STATUS = [
-    ("PLANNED", "Planned"),
-    ("DONE", "Done"),
-    ("MISSED", "Missed"),
-    ("CANCELLED", "Cancelled"),
-]
-
-
-class ClassSession(TimeStampedModel):
-    klass = models.ForeignKey(Class, on_delete=models.CASCADE, related_name="sessions")
-    index = models.PositiveIntegerField()
-    date = models.DateField(null=True, blank=True)
-    lesson = models.ForeignKey(Lesson, null=True, blank=True, on_delete=models.SET_NULL)
-    status = models.CharField(max_length=20, choices=SESSION_STATUS, default="PLANNED")
-    teacher_override = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="taught_sessions",
-    )
-    room_override = models.ForeignKey(
-        Room, null=True, blank=True, on_delete=models.SET_NULL
-    )
-    assistants = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="assisted_sessions"
-    )
-
-
-class Meta:
-    unique_together = (("klass", "index"),)
-    ordering = ["klass", "index"]
-
-
-def __str__(self):
-    return f"{self.klass.name} - Buổi {self.index}"
+    def __str__(self):
+        return f"{self.assistant.username} → {self.klass.name} ({self.scope})"

@@ -1,0 +1,107 @@
+{% load group_tags %}
+{% load static %}
+{% load widget_tweaks %} {# <-- THÊM DÒNG NÀY #}
+
+<div x-data="{ showFilters: false }">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    
+    <button type="button" class="btn btn-outline-secondary btn-sm" @click="showFilters = !showFilters">
+      <i class="bi bi-funnel-fill"></i>
+      <span x-text="showFilters ? 'Ẩn Filter' : 'Hiện Filter'">Filter</span>
+    </button>
+
+    <div class="d-flex flex-wrap gap-2">
+      <div class="btn-group">
+        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-lightning-charge-fill"></i> Lọc nhanh
+        </button>
+        <ul class="dropdown-menu">
+          {% for qf in quick_filters %}
+            <li><a class="dropdown-item" href="?{{ qf.params }}">{{ qf.name }}</a></li>
+          {% empty %}
+            <li><a class="dropdown-item disabled" href="#">Không có</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="btn-group" 
+           hx-get="{{ request.path }}" 
+           hx-trigger="reload-saved-filters-{{ model_name }} from:body"
+           hx-select="#saved-filters-dropdown" 
+           hx-target="#saved-filters-dropdown" 
+           hx-swap="outerHTML">
+        <div id="saved-filters-dropdown" class="btn-group">
+          <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-star-fill"></i> Bộ lọc đã lưu
+          </button>
+          <ul class="dropdown-menu">
+            {% if my_filters %}
+              <li><h6 class="dropdown-header">Bộ lọc của tôi</h6></li>
+              {% for sf in my_filters %}
+                <li class="d-flex justify-content-between align-items-center pe-2">
+                  <a class="dropdown-item" href="?{{ sf.query_params|json_script:sf.name|safe }}">{{ sf.name }}</a>
+                  <button type="button" class="btn btn-sm btn-outline-danger border-0"
+                          hx-post="{% url 'filters:delete_filter' sf.pk %}"
+                          hx-swap="none"
+                          data-confirm-title="Xác nhận xóa"
+                          data-confirm-text="Bạn chắc chắn muốn xóa bộ lọc '{{ sf.name }}'?"
+                          title="Xóa bộ lọc">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </li>
+              {% endfor %}
+            {% endif %}
+            
+            {% if public_filters %}
+              <li><hr class="dropdown-divider"></li>
+              <li><h6 class="dropdown-header">Bộ lọc chia sẻ</h6></li>
+              {% for sf in public_filters %}
+                <li><a class="dropdown-item" href="?{{ sf.query_params|json_script:sf.name|safe }}">{{ sf.name }}</a></li>
+              {% endfor %}
+            {% endif %}
+            
+            {% if not my_filters and not public_filters %}
+              <li><a class="dropdown-item disabled" href="#">Chưa có bộ lọc nào</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-sm"
+              hx-get="{% url 'filters:save_filter' %}?model_name={{ model_name }}&{{ current_query_params }}"
+              hx-target="#filter-modal #modal-content"
+              hx-swap="innerHTML"
+              @click="modalTitle = 'Lưu bộ lọc hiện tại'">
+        <i class="bi bi-save"></i> Lưu bộ lọc
+      </button>
+    </div>
+  </div>
+
+  <div x-show="showFilters" x-transition class="card card-body bg-light border mb-3">
+    <h6 class="mb-3">Tùy chọn lọc</h6>
+    <form id="filter-form" method="get" action="" class="row g-3">
+      {% for field in filter.form %}
+        <div class="col-md-4 col-sm-6">
+          <label for="{{ field.id_for_label }}" class="form-label small">{{ field.label }}</label>
+          {# ----- THAY ĐỔI DÒNG NÀY ----- #}
+          {% if field.field.widget_type == 'select' %}
+            {% render_field field class="form-select" %}
+          {% elif field.field.widget_type == 'rangewidget' %}
+             {# Xử lý đặc biệt cho RangeWidget (ngày tháng) #}
+             <div class="input-group">
+                {% render_field field.field.widget.widgets.0 class="form-control" placeholder="Từ ngày" %}
+                {% render_field field.field.widget.widgets.1 class="form-control" placeholder="Đến ngày" %}
+             </div>
+          {% else %}
+            {% render_field field class="form-control" %}
+          {% endif %}
+          {# ------------------------------ #}
+        </div>
+      {% endfor %}
+      <div class="col-12 d-flex justify-content-end gap-2">
+        <a href="{{ request.path }}" class="btn btn-light-secondary">Xóa lọc</a>
+        <button type="submit" class="btn btn-primary">Áp dụng</button>
+      </div>
+    </form>
+  </div>
+</div>

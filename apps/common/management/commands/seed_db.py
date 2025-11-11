@@ -1,5 +1,6 @@
 import random
 from collections import defaultdict
+from datetime import date, time, timedelta
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group
@@ -15,15 +16,17 @@ from apps.common.factories import (
     StudentProductFactory,
 )
 from apps.accounts.models import ParentStudentRelation, User
+from apps.classes.models import ClassSchedule
+from apps.class_sessions.models import ClassSession
 from apps.enrollments.models import Enrollment
+from apps.curriculum.models import Lesson
 
 
 class Command(BaseCommand):
     help = (
         "Seed database with factories and default groups. "
         "Creates 5 centers, 50 users (all assigned a center), 3 subjects, "
-        "3 classes (each bound to a subject), 12 modules/subject, 12 sessions/module. "
-        "Sessions are created per class. StudentProduct only for enrolled students."
+        "classes with schedules, and generates sessions accordingly."
     )
 
     def add_arguments(self, parser):
@@ -31,8 +34,7 @@ class Command(BaseCommand):
         parser.add_argument("--subjects", type=int, default=3)
         parser.add_argument("--users", type=int, default=50)
         parser.add_argument("--modules_per_subject", type=int, default=12)
-        parser.add_argument("--sessions_per_module", type=int, default=12)
-        parser.add_argument("--classes", type=int, default=3)
+        parser.add_argument("--classes", type=int, default=5)
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS("--- Starting Database Seeding ---"))
@@ -141,8 +143,8 @@ class Command(BaseCommand):
             # === CLASSES AND SESSIONS ===
             classes = []
             sessions = []
+            schedules = []
             teacher_index = 0
-            assistant_index = 0
 
             # Create exactly N classes, each bound to a subject
             for c in range(options["classes"]):
@@ -151,38 +153,85 @@ class Command(BaseCommand):
                 teacher_index += 1
                 center = centers[c % len(centers)]
 
+                start_date = date.today() - timedelta(days=random.randint(15, 45))
+                end_date = start_date + timedelta(days=random.randint(60, 90))
+
                 klass = KlassFactory(
                     main_teacher=main_teacher,
                     subject=subject,
                     center=center,
+                    start_date=start_date,
+                    end_date=end_date,
                 )
-                # Optional assistant if the model supports it
+                # Thêm 0 đến 2 trợ giảng ngẫu nhiên cho mỗi lớp
                 if assistants:
-                    try:
-                        if hasattr(klass, "assistant"):
-                            setattr(
-                                klass,
-                                "assistant",
-                                assistants[assistant_index % len(assistants)],
-                            )
-                            klass.save()
-                            assistant_index += 1
-                    except Exception:
-                        # Ignore if KlassFactory or model does not support assistant
-                        pass
-
+                    num_assistants = random.randint(0, min(2, len(assistants)))
+                    if num_assistants > 0:
+                        # Lấy ngẫu nhiên các trợ giảng từ danh sách
+                        selected_assistants = random.sample(assistants, num_assistants)
+                        
+                        # Thêm trợ giảng vào lớp học.
+                        # Django sẽ tự động tạo các bản ghi ClassAssistant.
+                        klass.assistants.add(*selected_assistants)
                 classes.append(klass)
 
-            # For each class: 12 modules × 12 sessions/module
-            for klass in classes:
-                for _m in range(options["modules_per_subject"]):
-                    for _s in range(options["sessions_per_module"]):
-                        session = ClassSessionFactory(klass=klass)
-                        sessions.append(session)
+                # Tạo lịch học hàng tuần cho lớp
+                days_of_week = random.sample(range(7), random.randint(1, 3))
+                for day in days_of_week:
+                    start_hour = random.randint(8, 18)
+                    start_minute = random.choice([0, 30])
+                    start_time = time(start_hour, start_minute)
+                    end_time = (
+                        (datetime.combine(date.today(), start_time) + timedelta(minutes=90))
+                    ).time()
+                    
+                    schedule, _ = ClassSchedule.objects.get_or_create(
+                        klass=klass,
+                        day_of_week=day,
+                        start_time=start_time,
+                        defaults={'end_time': end_time}
+                    )
+                    schedules.append(schedule)
 
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Created {len(classes)} Classes and {len(sessions)} Sessions."
+                    f"Created {len(classes)} Classes and {len(schedules)} Weekly Schedules."
+                )
+            )
+
+            # Tạo các buổi học (ClassSession) từ lịch học (ClassSchedule)
+            all_lessons = list(Lesson.objects.all())
+            for klass in classes:
+                klass_schedules = ClassSchedule.objects.filter(klass=klass)
+                if not klass_schedules.exists() or not klass.start_date or not klass.end_date:
+                    continue
+
+                sessions_to_create = []
+                current_date = klass.start_date
+                while current_date <= klass.end_date:
+                    day_schedules = klass_schedules.filter(day_of_week=current_date.weekday())
+                    for schedule in day_schedules:
+                        sessions_to_create.append(
+                            ClassSession(
+                                klass=klass,
+                                date=current_date,
+                                start_time=schedule.start_time,
+                                end_time=schedule.end_time,
+                                lesson=random.choice(all_lessons) if all_lessons else None,
+                            )
+                        )
+                    current_date += timedelta(days=1)
+                
+                sessions_to_create.sort(key=lambda s: (s.date, s.start_time))
+                for i, session in enumerate(sessions_to_create, 1):
+                    session.index = i
+                
+                created = ClassSession.objects.bulk_create(sessions_to_create, ignore_conflicts=True)
+                sessions.extend(created)
+
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Generated {len(sessions)} Sessions from schedules."
                 )
             )
 
@@ -243,7 +292,8 @@ Centers: {len(centers)}
 Subjects: {len(subjects)}
 Users: {len(created_users)} (Admins={admins_count}, Managers={center_managers_count}, Teachers={teachers_count}, Assistants={assistants_count}, Parents={parents_count}, Students={students_count})
 Classes: {len(classes)}  (requested={options['classes']})
-Sessions: {len(sessions)}  (per class = {options['modules_per_subject']}×{options['sessions_per_module']})
+Schedules: {len(schedules)}
+Sessions: {len(sessions)}
 Parent-Student Relations: {len(parent_student_relations)}
 Enrollments: {len(enrollments)}
 Student Products: {student_product_count}
