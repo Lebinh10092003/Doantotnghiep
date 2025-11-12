@@ -15,10 +15,10 @@
       {% for klass in page_obj.object_list %}
       <tr>
         <td>{{ klass.name }}</td>
-        <td>{{ klass.center.name|default:"-" }}</td>
-        <td>{{ klass.subject.name|default:"-" }}</td>
-        <td>{{ klass.main_teacher.get_full_name|default:"-" }}</td>
-        <td>{{ klass.start_date|date:"d/m/Y" }}</td>
+        <td>{% if klass.center %}{{ klass.center.name }}{% else %}-{% endif %}</td>
+        <td>{% if klass.subject %}{{ klass.subject.name }}{% else %}-{% endif %}</td>
+        <td>{% if klass.main_teacher %}{{ klass.main_teacher.get_full_name|default:klass.main_teacher.username }}{% else %}-{% endif %}</td>
+        <td>{{ klass.start_date|date:"d/m/Y"|default:"-" }}</td>
         <td>
           {% if klass.status == 'PLANNED' %}
             <span class="badge bg-info">{{ klass.get_status_display }}</span>
@@ -31,10 +31,28 @@
           {% endif %}
         </td>
         <td class="text-nowrap">
-          <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-info" hx-get="{% url 'classes:class_detail' klass.pk %}" hx-target="#app-modal #app-modal-content" data-bs-toggle="modal" data-bs-target="#app-modal" @click="modalTitle = 'Chi tiết Lớp học: {{ klass.name|escapejs }}'"><i class="bi bi-eye"></i></button>
-            {% if perms.classes.change_class %}<button type="button" class="btn btn-warning" hx-get="{% url 'classes:class_edit' klass.pk %}" hx-target="#app-modal #app-modal-content" data-bs-toggle="modal" data-bs-target="#app-modal" @click="modalTitle = 'Cập nhật Lớp học: {{ klass.name|escapejs }}'"><i class="bi bi-pencil-square"></i></button>{% endif %}
-            {% if perms.classes.delete_class %}<button type="button" class="btn btn-danger" hx-post="{% url 'classes:class_delete' klass.pk %}" hx-swap="none" data-confirm-title="Xác nhận xóa" data-confirm-text="Bạn chắc chắn muốn xóa lớp '{{ klass.name|escapejs }}'?"><i class="bi bi-trash"></i></button>{% endif %}
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-sm btn-info" title="Xem chi tiết"
+               hx-get="{% url 'classes:class_detail' klass.pk %}"
+               hx-target="#classes-modal-content"
+               data-bs-toggle="modal" data-bs-target="#classes-modal"
+               @click="modalTitle = 'Chi tiết Lớp học: {{ klass.name|escapejs }}'">
+                <i class="bi bi-eye"></i>
+            </button>
+            {% if perms.classes.change_class %}
+            <button type="button" class="btn btn-sm btn-warning" title="Chỉnh sửa"
+               hx-get="{% url 'classes:class_edit' klass.pk %}"
+               hx-target="#classes-modal-content"
+               data-bs-toggle="modal" data-bs-target="#classes-modal"
+               @click="modalTitle = 'Cập nhật Lớp học: {{ klass.name|escapejs }}'">
+                <i class="bi bi-pencil-square"></i>
+            </button>
+            {% endif %}
+            {% if perms.classes.delete_class %}
+            <button type="button" class="btn btn-sm btn-danger" title="Xóa"
+               hx-post="{% url 'classes:class_delete' klass.pk %}" hx-swap="none"
+               data-confirm-title="Xác nhận xóa" data-confirm-text="Bạn chắc chắn muốn xóa lớp '{{ klass.name|escapejs }}'?"><i class="bi bi-trash"></i></button>
+            {% endif %}
           </div>
         </td>
       </tr>
@@ -56,9 +74,6 @@
       {% if page_obj.has_previous %}
       <li class="page-item">
         <a class="page-link" href="?page=1&{{ current_query_params }}" hx-get="?page=1&{{ current_query_params }}" hx-target="#{{ target_id|default:'filterable-content' }}" hx-swap="innerHTML" hx-push-url="true">Đầu</a>
-      </li>
-      <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ current_query_params }}" hx-get="?page={{ page_obj.previous_page_number }}&{{ current_query_params }}" hx-target="#{{ target_id|default:'filterable-content' }}" hx-swap="innerHTML" hx-push-url="true">Trước</a>
       </li>
       {% endif %}
 

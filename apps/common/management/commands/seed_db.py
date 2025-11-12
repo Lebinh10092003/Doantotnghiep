@@ -1,44 +1,61 @@
+# apps/common/management/commands/seed_db.py
 import random
 from collections import defaultdict
-from datetime import date, time, timedelta
+from datetime import date, time, timedelta, datetime
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group
 from django.db import transaction
 from django.db.utils import IntegrityError
+from faker import Faker
 
+# Import các Factory từ app common
 from apps.common.factories import (
     CenterFactory,
     SubjectFactory,
     UserFactory,
     KlassFactory,
-    ClassSessionFactory,
-    StudentProductFactory,
 )
+
+# Import các Model từ tất cả các app
+# Thứ tự import này chỉ để tham chiếu, thứ tự thực thi mới quan trọng
 from apps.accounts.models import ParentStudentRelation, User
-from apps.classes.models import ClassSchedule
+from apps.centers.models import Center, Room
+from apps.classes.models import Class as Klass, ClassSchedule
 from apps.class_sessions.models import ClassSession
+from apps.curriculum.models import Subject, Module, Lesson, Lecture, Exercise
 from apps.enrollments.models import Enrollment
-from apps.curriculum.models import Lesson
+from apps.attendance.models import Attendance
+from apps.assessments.models import Assessment
+from apps.rewards.models import PointAccount, RewardItem, RewardTransaction
+from apps.notifications.models import Notification
+from apps.students.models import StudentProduct
+
+# Khởi tạo Faker
+fake = Faker("vi_VN")
 
 
 class Command(BaseCommand):
     help = (
-        "Seed database with factories and default groups. "
-        "Creates 5 centers, 50 users (all assigned a center), 3 subjects, "
-        "classes with schedules, and generates sessions accordingly."
+        "Seed database with factories and default groups for all applications. "
+        "Creates curriculum (12x12), users, classes, sessions (with absolute index), "
+        "enrollments, attendance, assessments, rewards, and notifications."
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("--centers", type=int, default=5)
-        parser.add_argument("--subjects", type=int, default=3)
-        parser.add_argument("--users", type=int, default=50)
-        parser.add_argument("--modules_per_subject", type=int, default=12)
-        parser.add_argument("--classes", type=int, default=5)
+        parser.add_argument("--centers", type=int, default=3, help="Số lượng Trung tâm")
+        parser.add_argument("--rooms_per_center", type=int, default=4, help="Số phòng học mỗi trung tâm")
+        parser.add_argument("--subjects", type=int, default=4, help="Số lượng Môn học")
+        parser.add_argument("--modules_per_subject", type=int, default=12, help="Số Module mỗi Môn học (12)")
+        parser.add_argument("--lessons_per_module", type=int, default=12, help="Số Bài học mỗi Module (12)")
+        parser.add_argument("--users", type=int, default=100, help="Tổng số Người dùng (sẽ được chia vai trò)")
+        parser.add_argument("--classes", type=int, default=10, help="Số lượng Lớp học")
 
+    @transaction.atomic
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS("--- Starting Database Seeding ---"))
 
+        # === 1. TẠO NHÓM (GROUP) VAI TRÒ (Cần cho User) ===
         ROLE_GROUPS = {
             "ADMIN": "Admin",
             "CENTER_MANAGER": "Center Manager",
@@ -47,258 +64,346 @@ class Command(BaseCommand):
             "PARENT": "Parent",
             "STUDENT": "Student",
         }
+        groups_by_name = {}
+        for role_code, group_name in ROLE_GROUPS.items():
+            group, _ = Group.objects.get_or_create(name=group_name)
+            groups_by_name[role_code] = group
+        self.stdout.write(self.style.SUCCESS(f"Ensured {len(ROLE_GROUPS)} Groups exist."))
 
-        # Ensure groups exist
-        for group_name in ROLE_GROUPS.values():
-            Group.objects.get_or_create(name=group_name)
+        # === 2. TẠO TRUNG TÂM & PHÒNG HỌC (Cần cho User, Class) ===
+        centers = [CenterFactory() for _ in range(options["centers"])]
+        rooms = []
+        for center in centers:
+            for i in range(options["rooms_per_center"]):
+                rooms.append(Room.objects.create(center=center, name=f"Phòng {i+1} ({center.code})"))
+        self.stdout.write(self.style.SUCCESS(f"Created {len(centers)} Centers and {len(rooms)} Rooms."))
 
-        with transaction.atomic():
-            # === CORE ENTITIES ===
-            centers = [CenterFactory() for _ in range(options["centers"])]
-            subjects = [SubjectFactory() for _ in range(options["subjects"])]
+        # === 3. TẠO CHƯƠNG TRÌNH HỌC (Cần cho Class, ClassSession) ===
+        subjects = [SubjectFactory() for _ in range(options["subjects"])]
+        all_modules = []
+        all_lessons = []
+        all_lectures = []
+        all_exercises = []
+        
+        # Tạo một bản đồ (map) các bài học theo môn học để gán cho ClassSession
+        lessons_by_subject = defaultdict(list)
+        lessons_per_module_count = options["lessons_per_module"] # = 12
 
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Created {len(centers)} Centers and {len(subjects)} Subjects."
-                )
-            )
-
-            # === USER COUNTS ===
-            total_users = options["users"]
-            admins_count = 2
-            center_managers_count = options["centers"]
-            teachers_count = max(5, options["subjects"] * 2)  # >=6 for 3 subjects
-            assistants_count = max(3, options["subjects"])    # >=3
-            parents_count = max(10, total_users // 5)         # >=10
-            assigned = (
-                admins_count
-                + center_managers_count
-                + teachers_count
-                + assistants_count
-                + parents_count
-            )
-            students_count = max(0, total_users - assigned)
-
-            created_users = []
-
-            # === USER CREATION HELPER ===
-            def _create_and_assign(role_code, count, extra_attrs=None):
-                g = Group.objects.get(name=ROLE_GROUPS[role_code])
-                for i in range(count):
-                    attrs = dict(extra_attrs or {})
-                    attrs["role"] = role_code
-                    user = UserFactory(**attrs)
-                    # All users belong to a center
-                    user.center = centers[i % len(centers)]
-                    if role_code == "ADMIN":
-                        user.is_superuser = True
-                        user.is_staff = True
-                    user.save()
-                    user.groups.add(g)
-                    created_users.append(user)
-
-            # === CREATE USERS ===
-            _create_and_assign("ADMIN", admins_count)
-            _create_and_assign("CENTER_MANAGER", center_managers_count)
-            _create_and_assign("TEACHER", teachers_count)
-            _create_and_assign("ASSISTANT", assistants_count)
-            _create_and_assign("PARENT", parents_count)
-            _create_and_assign("STUDENT", students_count)
-
-            # === ROLE LISTS ===
-            teachers = [u for u in created_users if u.role == "TEACHER"]
-            assistants = [u for u in created_users if u.role == "ASSISTANT"]
-            parents = [u for u in created_users if u.role == "PARENT"]
-            students = [u for u in created_users if u.role == "STUDENT"]
-
-            # --- Parent-Student relationships ---
-            parent_student_relations = []
-            if parents and students:
-                for student in students:
-                    num_parents = random.randint(1, 2)
-                    assigned_parents = random.sample(
-                        parents, min(num_parents, len(parents))
-                    )
-                    for parent in assigned_parents:
-                        try:
-                            relation, _ = ParentStudentRelation.objects.get_or_create(
-                                parent=parent,
-                                student=student,
-                                defaults={"note": "Auto-generated relation"},
-                            )
-                            parent_student_relations.append(relation)
-                        except IntegrityError:
-                            self.stdout.write(
-                                self.style.WARNING(
-                                    f"Relation for {parent.username} and {student.username} already exists. Skipping."
-                                )
-                            )
-
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Created {len(parent_student_relations)} Parent-Student Relations."
-                )
-            )
-
-            # === CLASSES AND SESSIONS ===
-            classes = []
-            sessions = []
-            schedules = []
-            teacher_index = 0
-
-            # Create exactly N classes, each bound to a subject
-            for c in range(options["classes"]):
-                subject = subjects[c % len(subjects)]
-                main_teacher = teachers[teacher_index % len(teachers)]
-                teacher_index += 1
-                center = centers[c % len(centers)]
-
-                start_date = date.today() - timedelta(days=random.randint(15, 45))
-                end_date = start_date + timedelta(days=random.randint(60, 90))
-
-                klass = KlassFactory(
-                    main_teacher=main_teacher,
+        for subject in subjects:
+            for i in range(options["modules_per_subject"]): # 12 modules
+                module = Module.objects.create(
                     subject=subject,
-                    center=center,
-                    start_date=start_date,
-                    end_date=end_date,
+                    order=i + 1,
+                    title=f"{subject.name} - Module {i+1}",
+                    description=fake.sentence(nb_words=15)
                 )
-                # Thêm 0 đến 2 trợ giảng ngẫu nhiên cho mỗi lớp
-                if assistants:
-                    num_assistants = random.randint(0, min(2, len(assistants)))
-                    if num_assistants > 0:
-                        # Lấy ngẫu nhiên các trợ giảng từ danh sách
-                        selected_assistants = random.sample(assistants, num_assistants)
-                        
-                        # Thêm trợ giảng vào lớp học.
-                        # Django sẽ tự động tạo các bản ghi ClassAssistant.
-                        klass.assistants.add(*selected_assistants)
-                classes.append(klass)
-
-                # Tạo lịch học hàng tuần cho lớp
-                days_of_week = random.sample(range(7), random.randint(1, 3))
-                for day in days_of_week:
-                    start_hour = random.randint(8, 18)
-                    start_minute = random.choice([0, 30])
-                    start_time = time(start_hour, start_minute)
-                    end_time = (
-                        (datetime.combine(date.today(), start_time) + timedelta(minutes=90))
-                    ).time()
-                    
-                    schedule, _ = ClassSchedule.objects.get_or_create(
-                        klass=klass,
-                        day_of_week=day,
-                        start_time=start_time,
-                        defaults={'end_time': end_time}
+                all_modules.append(module)
+                for j in range(lessons_per_module_count): # 12 lessons
+                    lesson = Lesson.objects.create(
+                        module=module,
+                        order=j + 1,
+                        title=f"Bài {j+1}: {fake.sentence(nb_words=6)}",
+                        objectives=fake.text(max_nb_chars=200)
                     )
-                    schedules.append(schedule)
+                    all_lessons.append(lesson)
+                    lessons_by_subject[subject.id].append(lesson) # Thêm vào bản đồ
+                    
+                    if random.random() < 0.7:
+                        all_lectures.append(Lecture.objects.create(lesson=lesson, content=fake.text(max_nb_chars=400)))
+                    if random.random() < 0.5:
+                        all_exercises.append(Exercise.objects.create(lesson=lesson, description=fake.text(max_nb_chars=200)))
+        
+        self.stdout.write(self.style.SUCCESS(f"Created {len(subjects)} Subjects, {len(all_modules)} Modules, {len(all_lessons)} Lessons (Structure: {options['modules_per_subject']}x{lessons_per_module_count})."))
 
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Created {len(classes)} Classes and {len(schedules)} Weekly Schedules."
-                )
+        # === 4. TẠO NGƯỜI DÙNG (Cần cho mọi thứ khác) ===
+        total_users = options["users"]
+        admins_count = 2
+        center_managers_count = options["centers"] # Mỗi trung tâm 1 quản lý
+        teachers_count = max(10, options["subjects"] * 3)
+        assistants_count = max(5, options["subjects"] * 2)
+        parents_count = max(15, total_users // 4)
+        assigned = (admins_count + center_managers_count + teachers_count + assistants_count + parents_count)
+        students_count = max(20, total_users - assigned)
+
+        created_users = []
+        users_by_role = defaultdict(list)
+
+        # Hàm helper để tạo user, gán role, group VÀ center
+        def _create_and_assign(role_code, count, center_pool):
+            g = groups_by_name[role_code]
+            for i in range(count):
+                user = UserFactory(role=role_code)
+                
+                if role_code == "ADMIN":
+                    user.is_superuser = True
+                    user.is_staff = True
+                else:
+                    # Gán center cụ thể (nếu là manager) hoặc ngẫu nhiên (nếu là role khác)
+                    if center_pool:
+                         # Gán xoay vòng cho Center Manager, ngẫu nhiên cho role khác
+                        user.center = center_pool[i % len(center_pool)]
+                    else:
+                        user.center = None # Admin không có center
+                
+                user.save()
+                user.groups.add(g)
+                created_users.append(user)
+                users_by_role[role_code].append(user)
+
+        _create_and_assign("ADMIN", admins_count, center_pool=None)
+        # Đảm bảo mỗi center có 1 manager
+        _create_and_assign("CENTER_MANAGER", center_managers_count, center_pool=centers) 
+        _create_and_assign("TEACHER", teachers_count, center_pool=centers)
+        _create_and_assign("ASSISTANT", assistants_count, center_pool=centers)
+        _create_and_assign("PARENT", parents_count, center_pool=centers)
+        _create_and_assign("STUDENT", students_count, center_pool=centers)
+
+        # Lưu lại các danh sách đã được tạo
+        teachers = users_by_role["TEACHER"]
+        assistants = users_by_role["ASSISTANT"]
+        parents = users_by_role["PARENT"]
+        students = users_by_role["STUDENT"]
+        
+        self.stdout.write(self.style.SUCCESS(f"Created {len(created_users)} Users with roles and centers assigned."))
+
+        # === 5. TẠO QUAN HỆ PHỤ HUYNH - HỌC SINH (Depends on User) ===
+        parent_student_relations = []
+        if parents and students:
+            for student in students:
+                num_parents = random.randint(1, 2)
+                assigned_parents = random.sample(parents, min(num_parents, len(parents)))
+                for parent in assigned_parents:
+                    relation, _ = ParentStudentRelation.objects.get_or_create(
+                        parent=parent, student=student, defaults={"note": "Auto-generated"}
+                    )
+                    parent_student_relations.append(relation)
+        self.stdout.write(self.style.SUCCESS(f"Created {len(parent_student_relations)} Parent-Student Relations."))
+
+        # === 6. TẠO LỚP HỌC & LỊCH HỌC (Depends on C-R-S-U) ===
+        classes = []
+        schedules = []
+        if not teachers:
+             self.stdout.write(self.style.WARNING("No teachers found. Classes will have no main teacher."))
+        
+        for c in range(options["classes"]):
+            # CHỌN LOGIC: Lớp học phải thuộc 1 center, 1 subject, 1 giáo viên
+            subject = random.choice(subjects)
+            center = random.choice(centers)
+            # Lọc giáo viên thuộc trung tâm đó (hoặc bất kỳ nếu không có)
+            possible_teachers = [t for t in teachers if t.center == center] or teachers
+            main_teacher = random.choice(possible_teachers) if possible_teachers else None
+            # Lọc phòng học thuộc trung tâm đó
+            possible_rooms = [r for r in rooms if r.center == center] or rooms
+            
+            start_date = date.today() - timedelta(days=random.randint(15, 45))
+            end_date = start_date + timedelta(days=random.randint(90, 120)) 
+
+            klass = KlassFactory(
+                main_teacher=main_teacher,
+                subject=subject,
+                center=center, # Gán center đã chọn
+                room=random.choice(possible_rooms) if possible_rooms else None, # Gán phòng đã lọc
+                start_date=start_date,
+                end_date=end_date,
             )
+            
+            # Gán trợ giảng (có thể khác center với giáo viên chính)
+            if assistants:
+                num_assistants = random.randint(0, min(2, len(assistants)))
+                if num_assistants > 0:
+                    selected_assistants = random.sample(assistants, num_assistants)
+                    klass.assistants.add(*selected_assistants)
+            classes.append(klass)
 
-            # Tạo các buổi học (ClassSession) từ lịch học (ClassSchedule)
-            all_lessons = list(Lesson.objects.all())
-            for klass in classes:
-                klass_schedules = ClassSchedule.objects.filter(klass=klass)
-                if not klass_schedules.exists() or not klass.start_date or not klass.end_date:
-                    continue
+            # Tạo lịch học hàng tuần cho lớp này
+            days_of_week = random.sample(range(7), random.randint(1, 2))
+            for day in days_of_week:
+                start_hour = random.randint(8, 18)
+                start_minute = random.choice([0, 30])
+                start_time = time(start_hour, start_minute)
+                end_time = (datetime.combine(date.today(), start_time) + timedelta(minutes=90)).time()
+                
+                schedule, _ = ClassSchedule.objects.get_or_create(
+                    klass=klass, day_of_week=day, start_time=start_time, defaults={'end_time': end_time}
+                )
+                schedules.append(schedule)
+        self.stdout.write(self.style.SUCCESS(f"Created {len(classes)} Classes and {len(schedules)} Weekly Schedules."))
 
-                sessions_to_create = []
-                current_date = klass.start_date
-                while current_date <= klass.end_date:
-                    day_schedules = klass_schedules.filter(day_of_week=current_date.weekday())
-                    for schedule in day_schedules:
-                        sessions_to_create.append(
-                            ClassSession(
-                                klass=klass,
-                                date=current_date,
-                                start_time=schedule.start_time,
-                                end_time=schedule.end_time,
-                                lesson=random.choice(all_lessons) if all_lessons else None,
-                            )
-                        )
+        # === 7. TẠO BUỔI HỌC (Depends on Class, Lesson) ===
+        sessions = []
+        
+        for klass in classes:
+            klass_schedules = list(ClassSchedule.objects.filter(klass=klass).order_by('day_of_week', 'start_time'))
+            if not klass_schedules or not klass.start_date or not klass.end_date:
+                continue
+
+            # Lấy 144 bài học (đã sắp xếp) CHO MÔN HỌC CỦA LỚP NÀY
+            all_lessons_for_subject = lessons_by_subject.get(klass.subject_id, [])
+            if not all_lessons_for_subject:
+                continue
+
+            sessions_to_create = []
+            current_date = klass.start_date
+            lesson_idx = 0 
+            schedule_idx = 0
+            
+            while current_date <= klass.end_date and lesson_idx < len(all_lessons_for_subject):
+                schedule = klass_schedules[schedule_idx % len(klass_schedules)]
+                
+                while current_date.weekday() != schedule.day_of_week:
                     current_date += timedelta(days=1)
+                    if current_date > klass.end_date: break
+                if current_date > klass.end_date: break
                 
-                sessions_to_create.sort(key=lambda s: (s.date, s.start_time))
-                for i, session in enumerate(sessions_to_create, 1):
-                    session.index = i
+                lesson = all_lessons_for_subject[lesson_idx]
                 
-                created = ClassSession.objects.bulk_create(sessions_to_create, ignore_conflicts=True)
-                sessions.extend(created)
-
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Generated {len(sessions)} Sessions from schedules."
+                # TÍNH TOÁN INDEX TUYỆT ĐỐI (1-144)
+                absolute_index = ((lesson.module.order - 1) * lessons_per_module_count) + lesson.order
+                
+                sessions_to_create.append(
+                    ClassSession(
+                        klass=klass,
+                        index=absolute_index, 
+                        date=current_date,
+                        start_time=schedule.start_time,
+                        end_time=schedule.end_time,
+                        lesson=lesson,
+                        status="PLANNED"
+                    )
                 )
-            )
+                
+                lesson_idx += 1
+                schedule_idx += 1
+                current_date += timedelta(days=1) 
 
-            # --- Enroll students in classes ---
-            enrollments = []
-            if students and classes:
-                for klass in classes:
-                    # Enroll 10 to 20 random students per class, or up to available
-                    upper = min(20, len(students))
-                    lower = min(10, upper) if upper > 0 else 0
-                    if lower == 0:
-                        continue
-                    num_students_to_enroll = random.randint(lower, upper)
-                    students_for_class = random.sample(students, num_students_to_enroll)
-                    for student in students_for_class:
-                        enrollment, _ = Enrollment.objects.get_or_create(
-                            student=student, klass=klass
-                        )
-                        enrollments.append(enrollment)
+            # SỬA LỖI QUAN TRỌNG: KHÔNG dùng ignore_conflicts=True
+            created = ClassSession.objects.bulk_create(sessions_to_create)
+            sessions.extend(created) # 'created' bây giờ chứa các object CÓ PK
+        
+        self.stdout.write(self.style.SUCCESS(f"Generated {len(sessions)} Sessions with absolute curriculum indexing."))
 
-            self.stdout.write(
-                self.style.SUCCESS(f"Created {len(enrollments)} Enrollments.")
-            )
+        # === 8. GHI DANH (Depends on User, Class) ===
+        enrollments = []
+        enrolled_by_klass = defaultdict(list) # Dùng cho các bước sau
+        
+        if students and classes:
+            for klass in classes:
+                # CHỌN LOGIC: Chỉ ghi danh học sinh CÙNG TRUNG TÂM với lớp học
+                possible_students = [s for s in students if s.center == klass.center] or students
+                
+                upper = min(20, len(possible_students))
+                lower = min(10, upper) if upper > 0 else 0
+                if lower == 0: continue
+                
+                num_students_to_enroll = random.randint(lower, upper)
+                students_for_class = random.sample(possible_students, num_students_to_enroll)
+                
+                for student in students_for_class:
+                    enrollment, _ = Enrollment.objects.get_or_create(
+                        student=student, klass=klass, defaults={'active': True}
+                    )
+                    enrollments.append(enrollment)
+                    enrolled_by_klass[klass.id].append(student) # Lưu lại để dùng sau
 
-            # === STUDENT PRODUCTS only for enrolled students of the session's class ===
-            enrolled_by_klass = defaultdict(list)
-            student_by_id = {s.id: s for s in students}
-            for e in enrollments:
-                s_obj = student_by_id.get(e.student_id)
-                if s_obj:
-                    enrolled_by_klass[e.klass_id].append(s_obj)
+        self.stdout.write(self.style.SUCCESS(f"Created {len(enrollments)} Enrollments."))
 
-            rr_counter_by_klass = defaultdict(int)
-            student_product_count = 0
-            for session in sessions:
-                pool = enrolled_by_klass.get(session.klass_id, [])
-                if not pool:
-                    continue
-                idx = rr_counter_by_klass[session.klass_id] % len(pool)
-                rr_counter_by_klass[session.klass_id] += 1
-                student = pool[idx]
-                StudentProductFactory(session=session, student=student)
+        # === 9. TẠO ĐIỂM DANH & ĐÁNH GIÁ (Depends on Enrollment, Session) ===
+        attendances = []
+        assessments = []
+        today = date.today()
+        
+        for enrollment in enrollments:
+            student = enrollment.student
+            klass_sessions_past = ClassSession.objects.filter(klass=enrollment.klass, date__lt=today)
+            
+            for session in klass_sessions_past:
+                if session.status == "PLANNED":
+                    session.status = "DONE"
+                    session.save()
+                
+                attendances.append(Attendance.objects.create(
+                    session=session,
+                    student=student,
+                    status=random.choice(['P', 'P', 'P', 'P', 'P', 'L', 'A'])
+                ))
+                if random.random() < 0.2:
+                    assessments.append(Assessment.objects.create(
+                        session=session,
+                        student=student,
+                        score=round(random.uniform(5.0, 10.0), 1),
+                        remark=fake.sentence(nb_words=6)
+                    ))
+        self.stdout.write(self.style.SUCCESS(f"Created {len(attendances)} Attendances and {len(assessments)} for past sessions."))
+
+        # === 10. SẢN PHẨM HỌC SINH (Depends on Session, User) ===
+        student_product_count = 0
+        for session in sessions: # 'sessions' bây giờ đã CÓ PK (do sửa lỗi bulk_create)
+            pool = enrolled_by_klass.get(session.klass_id, [])
+            if not pool: continue
+            
+            if random.random() < 0.3:
+                student = random.choice(pool)
+                StudentProduct.objects.create(
+                    session=session, 
+                    student=student,
+                    title=f"Sản phẩm {session.index}",
+                    description=fake.text(max_nb_chars=100)
+                )
                 student_product_count += 1
+        self.stdout.write(self.style.SUCCESS(f"Created {student_product_count} Student Products."))
+        
+        # === 11. ĐIỂM THƯỞNG (Depends on User) ===
+        reward_items = [
+            RewardItem.objects.create(name="Bút chì 2B", cost=10),
+            RewardItem.objects.create(name="Vở ô ly", cost=20),
+        ]
+        point_accounts = []
+        reward_transactions = []
+        for student in students:
+            account = PointAccount.objects.create(student=student, balance=0)
+            point_accounts.append(account)
+            if random.random() < 0.5:
+                delta = random.choice([10, 20, 30])
+                reward_transactions.append(RewardTransaction.objects.create(
+                    student=student, delta=delta, reason="Thưởng thành tích học tập"
+                ))
+                account.balance += delta
+                account.save()
+        self.stdout.write(self.style.SUCCESS(f"Created {len(reward_items)} Reward Items, {len(point_accounts)} Point Accounts, {len(reward_transactions)} Reward Transactions."))
 
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Created {student_product_count} Student Products."
-                )
-            )
+        # === 12. THÔNG BÁO (Depends on User) ===
+        notifications = []
+        managers_and_admins = users_by_role["ADMIN"] + users_by_role["CENTER_MANAGER"]
+        for user in managers_and_admins:
+            notifications.append(Notification.objects.create(
+                user=user,
+                title="Chào mừng bạn đến với hệ thống EDS",
+                body=f"Xin chào {user.get_full_name()}, tài khoản của bạn đã sẵn sàng."
+            ))
+        self.stdout.write(self.style.SUCCESS(f"Created {len(notifications)} Notifications."))
 
         # === FINAL LOG ===
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"""
+        self.stdout.write(self.style.SUCCESS(f"""
 ✅ SEEDING COMPLETED
 -----------------------------
-Centers: {len(centers)}
-Subjects: {len(subjects)}
-Users: {len(created_users)} (Admins={admins_count}, Managers={center_managers_count}, Teachers={teachers_count}, Assistants={assistants_count}, Parents={parents_count}, Students={students_count})
-Classes: {len(classes)}  (requested={options['classes']})
-Schedules: {len(schedules)}
-Sessions: {len(sessions)}
-Parent-Student Relations: {len(parent_student_relations)}
-Enrollments: {len(enrollments)}
-Student Products: {student_product_count}
+- Trung tâm: {len(centers)}
+- Phòng học: {len(rooms)}
+- Môn học: {len(subjects)}
+- Học phần (Module): {len(all_modules)}
+- Bài học (Lesson): {len(all_lessons)} (Lectures: {len(all_lectures)}, Exercises: {len(all_exercises)})
+- Người dùng: {len(created_users)}
+  (Admin: {admins_count}, QLTT: {center_managers_count}, GV: {teachers_count}, TG: {assistants_count}, PH: {parents_count}, HS: {students_count})
+- Quan hệ PH-HS: {len(parent_student_relations)}
+- Lớp học: {len(classes)} (Yêu cầu: {options['classes']})
+- Lịch học (Schedule): {len(schedules)}
+- Buổi học (Session): {len(sessions)}
+- Ghi danh (Enrollment): {len(enrollments)}
+- Điểm danh (Attendance): {len(attendances)}
+- Đánh giá (Assessment): {len(assessments)}
+- Vật phẩm thưởng: {len(reward_items)}
+- Tài khoản điểm: {len(point_accounts)}
+- Giao dịch điểm: {len(reward_transactions)}
+- Sản phẩm HS: {student_product_count}
+- Thông báo: {len(notifications)}
 -----------------------------
-All data linked: Center → Subject → Class → Session → StudentProduct (enrollment-validated).
-"""
-            )
-        )
+"""))

@@ -8,8 +8,8 @@ class PointAccount(models.Model):
     balance = models.IntegerField(default=0)
 
 
-def __str__(self):
-    return f"{self.student.username}: {self.balance} points"
+    def __str__(self):
+        return f"{self.student.username}: {self.balance} points"
 
 
 class RewardItem(models.Model):
@@ -17,8 +17,8 @@ class RewardItem(models.Model):
     cost = models.IntegerField()
 
 
-def __str__(self):
-    return f"{self.name} ({self.cost} pts)"
+    def __str__(self):
+        return f"{self.name} ({self.cost} pts)"
 
 
 class RewardTransaction(models.Model):
@@ -33,10 +33,10 @@ class RewardTransaction(models.Model):
     )
 
 
-class Meta:
-    ordering = ["-created_at"]
-    indexes = [models.Index(fields=["student"]), models.Index(fields=["created_at"])]
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["student"]), models.Index(fields=["created_at"])]
 
 
-def __str__(self):
-    return f"{self.student.username}: {self.delta} ({self.reason})"
+    def __str__(self):
+        return f"{self.student.username}: {self.delta} ({self.reason})"

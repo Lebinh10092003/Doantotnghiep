@@ -35,11 +35,10 @@
             <h5 class="card-title mb-0">Danh sách Lớp học</h5>
             {% if perms.classes.add_class %}
             <button type="button" class="btn btn-primary btn-sm"
-                    hx-get="{% url 'classes:class_add' %}" 
-                    hx-target="#app-modal #app-modal-content"
-                    hx-swap="innerHTML"
-                    data-bs-toggle="modal" 
-                    data-bs-target="#app-modal"
+                    hx-get="{% url 'classes:class_add' %}"
+                    hx-target="#classes-modal-content"
+                    data-bs-toggle="modal"
+                    data-bs-target="#classes-modal"
                     @click="modalTitle = 'Thêm Lớp học mới'">
               <i class="bi bi-plus-lg"></i> Thêm mới
             </button>
@@ -48,8 +47,11 @@
 
           <div class="card-body">
             <div x-data="{ showFilters: false }">
-              <div id="filterable-content">
-                {% include "_filterable_content.html" %}
+              <div id="filterable-content"
+                   hx-get="{% url 'classes:manage_classes' %}?{{ current_query_params }}"
+                   hx-trigger="load, reload-classes-table from:body"
+                   hx-swap="innerHTML">
+                <div class="text-center p-5"><span class="spinner-border" role="status"></span> Đang tải dữ liệu...</div>
               </div>
             </div>
           </div>
@@ -59,26 +61,26 @@
 
     {% comment %} (Các modal giữ nguyên) {% endcomment %}
     <div class="modal fade" id="filter-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
-      <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
           </div>
-          <div id="modal-content">
+          <div id="filter-modal-content">
             <div class="modal-body"><p>Đang tải...</p></div>
           </div>
         </div>
       </div>
     </div>
     
-    <div class="modal fade" id="app-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
+    <div class="modal fade" id="classes-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
       <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div id="modal-content">
+          <div id="classes-modal-content">
              <div class="modal-body"><p>Đang tải...</p></div>
           </div>
         </div>

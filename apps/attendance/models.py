@@ -17,11 +17,11 @@ class Attendance(models.Model):
     note = models.CharField(max_length=255, blank=True)
 
 
-class Meta:
-    unique_together = (("session", "student"),)
-    indexes = [models.Index(fields=["session"]), models.Index(fields=["student"])]
-    ordering = ["-session__date", "student__username"]
+    class Meta:
+        unique_together = (("session", "student"),)
+        indexes = [models.Index(fields=["session"]), models.Index(fields=["student"])]
+        ordering = ["-session__date", "student__username"]
 
 
-def __str__(self):
-    return f"{self.student.username} - {self.get_status_display()} ({self.session})"
+    def __str__(self):
+        return f"{self.student.username} - {self.get_status_display()} ({self.session})"

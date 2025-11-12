@@ -24,10 +24,10 @@ class StudentProduct(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class Meta:
-    unique_together = (("session", "student", "title"),)
-    ordering = ["-created_at"]
+    class Meta:
+        unique_together = (("session", "student", "title"),)
+        ordering = ["-created_at"]
 
 
-def __str__(self):
-    return f"{self.student.username} - {self.title}"
+    def __str__(self):
+        return f"{self.student.username} - {self.title}"

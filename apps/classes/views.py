@@ -53,7 +53,7 @@ def manage_classes(request):
                     display_value = str(value)
                 # Xử lý giá trị là ChoiceField (lấy tên hiển thị)
                 elif isinstance(class_filter.form.fields[name], forms.ChoiceField):
-                    display_value = dict(class_filter.form.fields[name].choices).get(value, value)
+                    display_value = dict(class_filter.form.fields[name].choices).get(value) if value else None
                 # Xử lý giá trị là DateFromToRangeFilter (kiểu slice)
                 elif isinstance(value, slice): 
                     start, end = value.start, value.stop
@@ -72,7 +72,7 @@ def manage_classes(request):
                     active_filter_badges.append({
                         "label": field_label,
                         "value": display_value,
-                        "key": name, # <-- SỬA LỖI 1: THÊM DÒNG NÀY
+                        "key": name, 
                     })
     # 3. Phân trang
     try:
@@ -141,7 +141,7 @@ def manage_classes(request):
     # 5. Render
     if is_htmx_request(request):
         # Nếu là yêu cầu HTMX (lọc, phân trang, xóa lọc), chỉ trả về phần nội dung có thể lọc
-        return render(request, "_filterable_content.html", context)
+        return render(request, "_class_filterable_content.html", context)
     
     # Nếu là yêu cầu thông thường, tải trang đầy đủ
     return render(request, "manage_classes.html", context)
@@ -157,7 +157,7 @@ def class_create_view(request):
             formset.instance = klass
             formset.save()
             
-            response = HttpResponse(status=200)
+            response = HttpResponse(status=204)
             response["HX-Trigger"] = json.dumps({
                 "reload-classes-table": True,
                 "closeClassModal": True,
@@ -166,7 +166,7 @@ def class_create_view(request):
             return response
         else:
             context = {"form": form, "formset": formset}
-            return render(request, "_class_form.html", context, status=422)
+            return render(request, "_class_form.html", context, status=400)
     
     form = ClassForm()
     formset = ClassScheduleFormSet(prefix='schedules')
@@ -194,19 +194,20 @@ def class_edit_view(request, pk):
                 if deleted_count > 0:
                     pass
 
-            response = HttpResponse(status=200)
+            response = HttpResponse(status=204)
             response["HX-Trigger"] = json.dumps({
                 "reload-classes-table": True,
                 "closeClassModal": True,
                 "show-sweet-alert": {
                     "icon": "success",
-                    "title": f"Đã cập nhật lớp '{klass.name}'!"
+                    "title": "Thành công",
+                    "text": f"Đã cập nhật lớp '{klass.name}'!"
                 }
             })
             return response
         else:
             context = {"form": form, "formset": formset, "klass": klass}
-            return render(request, "_class_form.html", context, status=422)
+            return render(request, "_class_form.html", context, status=400)
     
     form = ClassForm(instance=klass)
     formset = ClassScheduleFormSet(instance=klass, prefix='schedules')

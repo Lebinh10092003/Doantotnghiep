@@ -14,10 +14,10 @@ class Enrollment(models.Model):
     note = models.CharField(max_length=255, blank=True)
 
 
-class Meta:
-    unique_together = (("klass", "student"),)
-    indexes = [models.Index(fields=["klass"]), models.Index(fields=["student"])]
+    class Meta:
+        unique_together = (("klass", "student"),)
+        indexes = [models.Index(fields=["klass"]), models.Index(fields=["student"])]
 
 
-def __str__(self):
-    return f"{self.student.username} → {self.klass.name}"
+    def __str__(self):
+        return f"{self.student.username} → {self.klass.name}"

@@ -15,9 +15,9 @@ class Assessment(models.Model):
     remark = models.CharField(max_length=255, blank=True)
 
 
-class Meta:
-    unique_together = (("session", "student"),)
+    class Meta:
+        unique_together = (("session", "student"),)
 
 
-def __str__(self):
-    return f"{self.student.username} - {self.session}: {self.score}"
+    def __str__(self):
+        return f"{self.student.username} - {self.session}: {self.score}"

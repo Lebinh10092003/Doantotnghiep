@@ -2,8 +2,7 @@
 
 <form hx-post="{% if klass %}{% url 'classes:class_edit' klass.pk %}{% else %}{% url 'classes:class_add' %}{% endif %}"
       hx-encoding="multipart/form-data"
-      hx-target="this"
-      hx-swap="outerHTML">
+      hx-target="this" hx-swap="outerHTML">
     {% csrf_token %}
     <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
         {% if form.non_field_errors %}

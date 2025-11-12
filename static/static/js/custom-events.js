@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // 4. Xử lý TRƯỚC KHI SWAP (Quan trọng nhất)
+    // 4. Xử lý TRƯỚC KHI SWAP 
     document.body.addEventListener('htmx:beforeSwap', function (evt) {
         const target = evt.detail.target;
         if (!target) return;
