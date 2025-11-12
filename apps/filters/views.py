@@ -48,12 +48,21 @@ def save_filter_view(request):
     model_name = request.GET.get("model_name", "")
     query_params = {}
     
-    # Lấy các tham số filter từ query string của request
-    for key, value in request.GET.items():
-        if key not in ["page", "model_name", "_"]:
-            # Bỏ qua các list rỗng (thường do form filter gửi lên)
-            if value or (isinstance(value, list) and any(v for v in value)):
-                query_params[key] = request.GET.getlist(key) if len(request.GET.getlist(key)) > 1 else value
+    # === SỬA ĐỔI BẮT ĐẦU: Sử dụng .lists() để lấy query params ===
+    # Lọc ra các tham số không cần thiết
+    excluded_keys = ["page", "model_name", "_", "hx-request", "hx-target", "hx-current-path", "hx-trigger"]
+    
+    for key, value_list in request.GET.lists():
+        if key not in excluded_keys:
+            # Bỏ qua các list rỗng
+            if value_list and any(v for v in value_list):
+                # Nếu chỉ có 1 giá trị, lưu dạng string
+                if len(value_list) == 1:
+                    query_params[key] = value_list[0]
+                # Nếu có nhiều giá trị, lưu cả list
+                else:
+                    query_params[key] = value_list
+    # === SỬA ĐỔI KẾT THÚC ===
 
     form = SavedFilterForm(initial={
         "model_name": model_name,
@@ -92,6 +101,7 @@ def delete_filter_view(request, pk):
 def load_saved_filters_view(request, model_name: str):
     if not is_htmx_request(request):
         return HttpResponse("Yêu cầu không hợp lệ", status=400)
+    
     # Lấy các bộ lọc giống như logic trong view 
     saved = SavedFilter.objects.filter(model_name=model_name).filter(
         Q(user=request.user) | Q(is_public=True)
@@ -105,13 +115,22 @@ def load_saved_filters_view(request, model_name: str):
         "public_filters": public_filters,
         "model_name": model_name,
         "target_id": request.GET.get("target_id"), # Lấy target_id từ request
+        "origin_path": request.GET.get("origin_path", "/"), # Lấy đường dẫn gốc
     }
-
-    # Chuyển đổi current_query_params từ string (vd: 'subject=4') thành JSON string (vd: '{"subject": "4"}')
-    # để so sánh với dữ liệu trong DB
-    query_dict = {k: v for k, v in request.GET.items() if k not in ['target_id', 'current_query_params']}
+    # Lọc ra các tham số không cần thiết
+    excluded_keys = ['target_id', 'current_query_params', 'origin_path', 'page', '_', 'hx-request', 'hx-target', 'hx-current-path', 'hx-trigger']
+    
+    query_dict = {}
+    for key, value_list in request.GET.lists():
+        if key not in excluded_keys:
+            if value_list and any(v for v in value_list):
+                if len(value_list) == 1:
+                    query_dict[key] = value_list[0]
+                else:
+                    query_dict[key] = value_list
+    
     if query_dict:
-        context["current_query_params"] = json.dumps(query_dict)
-
+        # Truyền DICT vào context, KHÔNG PHẢI json.dumps
+        context["current_query_params"] = query_dict
     # Render một template fragment mới CHỈ chứa các <li>
     return render(request, "_saved_filters_list.html", context)

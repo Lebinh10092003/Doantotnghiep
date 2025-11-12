@@ -32,8 +32,8 @@
         </td>
         <td class="text-nowrap">
           <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-info" hx-get="{% url 'classes:class_detail' klass.pk %}" hx-target="#app-modal #modal-content" data-bs-toggle="modal" data-bs-target="#app-modal" @click="modalTitle = 'Chi tiết Lớp học: {{ klass.name|escapejs }}'"><i class="bi bi-eye"></i></button>
-            {% if perms.classes.change_class %}<button type="button" class="btn btn-warning" hx-get="{% url 'classes:class_edit' klass.pk %}" hx-target="#app-modal #modal-content" data-bs-toggle="modal" data-bs-target="#app-modal" @click="modalTitle = 'Cập nhật Lớp học: {{ klass.name|escapejs }}'"><i class="bi bi-pencil-square"></i></button>{% endif %}
+            <button type="button" class="btn btn-info" hx-get="{% url 'classes:class_detail' klass.pk %}" hx-target="#app-modal #app-modal-content" data-bs-toggle="modal" data-bs-target="#app-modal" @click="modalTitle = 'Chi tiết Lớp học: {{ klass.name|escapejs }}'"><i class="bi bi-eye"></i></button>
+            {% if perms.classes.change_class %}<button type="button" class="btn btn-warning" hx-get="{% url 'classes:class_edit' klass.pk %}" hx-target="#app-modal #app-modal-content" data-bs-toggle="modal" data-bs-target="#app-modal" @click="modalTitle = 'Cập nhật Lớp học: {{ klass.name|escapejs }}'"><i class="bi bi-pencil-square"></i></button>{% endif %}
             {% if perms.classes.delete_class %}<button type="button" class="btn btn-danger" hx-post="{% url 'classes:class_delete' klass.pk %}" hx-swap="none" data-confirm-title="Xác nhận xóa" data-confirm-text="Bạn chắc chắn muốn xóa lớp '{{ klass.name|escapejs }}'?"><i class="bi bi-trash"></i></button>{% endif %}
           </div>
         </td>

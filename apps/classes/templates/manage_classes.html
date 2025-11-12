@@ -35,8 +35,8 @@
             <h5 class="card-title mb-0">Danh sách Lớp học</h5>
             {% if perms.classes.add_class %}
             <button type="button" class="btn btn-primary btn-sm"
-                    hx-get="{% url 'classes:class_add' %}"
-                    hx-target="#app-modal #modal-content"
+                    hx-get="{% url 'classes:class_add' %}" 
+                    hx-target="#app-modal #app-modal-content"
                     hx-swap="innerHTML"
                     data-bs-toggle="modal" 
                     data-bs-target="#app-modal"

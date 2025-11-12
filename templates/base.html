@@ -235,10 +235,13 @@
                     {% endif %}
 
                     <li class="sidebar-item">
-                        <a href="{% url 'accounts:logout' %}" class="sidebar-link"><i class="bi bi-box-arrow-right"></i><span>Đăng xuất</span></a>
+                        <a href="#" class="sidebar-link" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                            <i class="bi bi-box-arrow-right"></i><span>Đăng xuất</span>
+                        </a>
                     </li>
 
                 </ul>
+                <form id="logout-form" hx-post="{% url 'accounts:logout' %}" hx-swap="none" class="d-none">{% csrf_token %}</form>
 
             </div>
         </div>
@@ -254,6 +257,9 @@
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 
     <script src="{% static 'static/js/custom-events.js' %}"></script>
+
+    {% block extra_js %}
+    {% endblock %}
 
     </body>
 

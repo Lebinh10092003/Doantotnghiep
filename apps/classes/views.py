@@ -1,3 +1,5 @@
+# apps/classes/views.py
+
 import json
 from datetime import date, timedelta
 from django.shortcuts import render, get_object_or_404, redirect
@@ -70,6 +72,7 @@ def manage_classes(request):
                     active_filter_badges.append({
                         "label": field_label,
                         "value": display_value,
+                        "key": name, # <-- SỬA LỖI 1: THÊM DÒNG NÀY
                     })
     # 3. Phân trang
     try:
@@ -114,7 +117,9 @@ def manage_classes(request):
         if not active_filter_name:
             for sf in saved_filters:
                 try:
-                    sf_dict = json.loads(sf.query_params)
+                    # Chú ý: Dựa trên file 'filters/views.py' của bạn, 
+                    # query_params được lưu dưới dạng JSONField (dict)
+                    sf_dict = sf.query_params
                     if sf_dict == current_params_dict:
                         active_filter_name = sf.name
                         break
