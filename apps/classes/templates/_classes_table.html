@@ -55,21 +55,21 @@
     <ul class="pagination">
       {% if page_obj.has_previous %}
       <li class="page-item">
-        <a class="page-link" href="?page=1&{{ current_query_params }}" hx-get="?page=1&{{ current_query_params }}" hx-target="#class-table-container" hx-swap="innerHTML">Đầu</a>
+        <a class="page-link" href="?page=1&{{ current_query_params }}" hx-get="?page=1&{{ current_query_params }}" hx-target="#{{ target_id|default:'filterable-content' }}" hx-swap="innerHTML" hx-push-url="true">Đầu</a>
       </li>
       <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ current_query_params }}" hx-get="?page={{ page_obj.previous_page_number }}&{{ current_query_params }}" hx-target="#class-table-container" hx-swap="innerHTML">Trước</a>
+        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ current_query_params }}" hx-get="?page={{ page_obj.previous_page_number }}&{{ current_query_params }}" hx-target="#{{ target_id|default:'filterable-content' }}" hx-swap="innerHTML" hx-push-url="true">Trước</a>
       </li>
       {% endif %}
 
       {% for i in paginator.page_range %}
         {% if i >= page_obj.number|add:'-2' and i <= page_obj.number|add:'2' %}
-          <li class="page-item {% if page_obj.number == i %}active{% endif %}"><a class="page-link" href="?page={{ i }}&{{ current_query_params }}" hx-get="?page={{ i }}&{{ current_query_params }}" hx-target="#class-table-container" hx-swap="innerHTML">{{ i }}</a></li>
+          <li class="page-item {% if page_obj.number == i %}active{% endif %}"><a class="page-link" href="?page={{ i }}&{{ current_query_params }}" hx-get="?page={{ i }}&{{ current_query_params }}" hx-target="#{{ target_id|default:'filterable-content' }}" hx-swap="innerHTML" hx-push-url="true">{{ i }}</a></li>
         {% endif %}
       {% endfor %}
 
       {% if page_obj.has_next %}
-      <li class="page-item"><a class="page-link" href="?page={{ paginator.num_pages }}&{{ current_query_params }}" hx-get="?page={{ paginator.num_pages }}&{{ current_query_params }}" hx-target="#class-table-container" hx-swap="innerHTML">Cuối</a></li>
+      <li class="page-item"><a class="page-link" href="?page={{ paginator.num_pages }}&{{ current_query_params }}" hx-get="?page={{ paginator.num_pages }}&{{ current_query_params }}" hx-target="#{{ target_id|default:'filterable-content' }}" hx-swap="innerHTML" hx-push-url="true">Cuối</a></li>
       {% endif %}
     </ul>
   </nav>

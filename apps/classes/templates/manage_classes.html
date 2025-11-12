@@ -47,19 +47,17 @@
             </div>
 
           <div class="card-body">
-            {% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters my_filters=my_filters public_filters=public_filters model_name=model_name current_query_params=current_query_params %}
-
-            <div id="class-table-container" 
-                 class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns"
-                 hx-get="{% url 'classes:manage_classes' %}?{{ current_query_params }}"
-                 hx-trigger="load, reload-classes-table from:body" hx-swap="innerHTML">
-              {% include "_classes_table.html" with page_obj=page_obj paginator=paginator current_query_params=current_query_params %}
+            <div x-data="{ showFilters: false }">
+              <div id="filterable-content">
+                {% include "_filterable_content.html" %}
+              </div>
             </div>
           </div>
         </div>
       </section>
     </div>
 
+    {% comment %} (Các modal giữ nguyên) {% endcomment %}
     <div class="modal fade" id="filter-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
       <div class="modal-dialog modal-md modal-dialog-centered">
         <div class="modal-content">

@@ -1,0 +1,47 @@
+{% load group_tags %}
+{% load filter_tags %}
+
+<div class="list-group list-group-flush">
+  {% if my_filters %}
+    <div class="list-group-item list-group-item-light fw-bold small text-muted">Bộ lọc của tôi</div>
+    {% for sf in my_filters %}
+      <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center p-0 {% if sf.query_params == current_query_params %}active{% endif %}" >
+        <a href="#" class="text-decoration-none flex-grow-1 px-3 py-2 {% if sf.query_params == current_query_params %}text-white{% else %}text-body{% endif %}"
+            hx-get="?{{ sf.query_params|json_to_query_string }}"
+            hx-target="#{{ target_id|default:'filterable-content' }}"
+            hx-swap="innerHTML" 
+            hx-push-url="true"
+            hx-on::after-request="const modal = bootstrap.Modal.getInstance(htmx.closest(this, '.modal')); if (modal) modal.hide();">
+            {{ sf.name }}
+        </a>
+
+        <button type="button" class="btn btn-sm btn-outline-danger border-0 ms-2"
+                hx-post="{% url 'filters:delete_filter' sf.pk %}"
+                hx-swap="none"
+                data-confirm-title="Xác nhận xóa"
+                data-confirm-text="Bạn chắc chắn muốn xóa bộ lọc '{{ sf.name }}'?"
+                title="Xóa bộ lọc">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    {% endfor %}
+  {% endif %}
+  
+  {% if public_filters %}
+    <div class="list-group-item list-group-item-light fw-bold small text-muted">Bộ lọc chia sẻ</div>
+    {% for sf in public_filters %}
+      <a href="#" class="list-group-item list-group-item-action {% if sf.query_params == current_query_params %}active{% endif %}" 
+         hx-get="?{{ sf.query_params|json_to_query_string }}"
+         hx-target="#{{ target_id|default:'filterable-content' }}"
+         hx-swap="innerHTML" 
+         hx-push-url="true"
+         hx-on::after-request="const modal = bootstrap.Modal.getInstance(htmx.closest(this, '.modal')); if (modal) modal.hide();">
+         {{ sf.name }}
+      </a>
+    {% endfor %}
+  {% endif %}
+  
+  {% if not my_filters and not public_filters %}
+    <div class="list-group-item text-center text-muted">Chưa có bộ lọc nào được lưu.</div>
+  {% endif %}
+</div>

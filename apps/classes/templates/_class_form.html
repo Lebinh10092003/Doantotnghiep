@@ -72,10 +72,12 @@
                     </div>
                     <div class="col-2 text-center">
                         {% if forloop.first %}<label class="form-label small d-block">&nbsp;</label>{% endif %}
-                        <div class="form-check d-inline-block">
-                            {% render_field schedule_form.DELETE class="form-check-input" %}
-                            <label class="form-check-label" for="{{ schedule_form.DELETE.id_for_label }}">Xóa</label>
-                        </div>
+                        {# Ẩn checkbox mặc định đi #}
+                        <div class="d-none">{% render_field schedule_form.DELETE %}</div>
+                        {# Luôn hiển thị nút bấm xóa #}
+                        <button type="button" class="btn btn-danger btn-sm" data-action="remove-schedule-form" title="Xóa dòng này">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
                     <div class="text-danger small">{{ schedule_form.non_field_errors|striptags }}</div>
                 </div>

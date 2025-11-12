@@ -6,17 +6,13 @@ from django.views.decorators.http import require_POST, require_GET
 from .models import SavedFilter
 from .forms import SavedFilterForm
 from django.utils.http import urlencode
+from django.db.models import Q
 
 def is_htmx_request(request):
     return request.headers.get("HX-Request") == "true"
 
 @login_required
 def save_filter_view(request):
-    """
-    Xử lý lưu bộ lọc.
-    GET: Trả về form modal.
-    POST: Lưu bộ lọc.
-    """
     if not is_htmx_request(request):
         return HttpResponse("Yêu cầu không hợp lệ", status=400)
 
@@ -73,9 +69,6 @@ def save_filter_view(request):
 @login_required
 @require_POST
 def delete_filter_view(request, pk):
-    """
-    Xóa một bộ lọc đã lưu (chỉ chủ sở hữu mới được xóa).
-    """
     if not is_htmx_request(request):
         return HttpResponse("Yêu cầu không hợp lệ", status=400)
 
@@ -93,3 +86,32 @@ def delete_filter_view(request, pk):
         f"reload-saved-filters-{model_name}": True,
     })
     return response
+
+@login_required
+@require_GET # Chỉ cho phép request GET
+def load_saved_filters_view(request, model_name: str):
+    if not is_htmx_request(request):
+        return HttpResponse("Yêu cầu không hợp lệ", status=400)
+    # Lấy các bộ lọc giống như logic trong view 
+    saved = SavedFilter.objects.filter(model_name=model_name).filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+    
+    my_filters = saved.filter(user=request.user)
+    public_filters = saved.filter(is_public=True).exclude(user=request.user)
+    
+    context = {
+        "my_filters": my_filters,
+        "public_filters": public_filters,
+        "model_name": model_name,
+        "target_id": request.GET.get("target_id"), # Lấy target_id từ request
+    }
+
+    # Chuyển đổi current_query_params từ string (vd: 'subject=4') thành JSON string (vd: '{"subject": "4"}')
+    # để so sánh với dữ liệu trong DB
+    query_dict = {k: v for k, v in request.GET.items() if k not in ['target_id', 'current_query_params']}
+    if query_dict:
+        context["current_query_params"] = json.dumps(query_dict)
+
+    # Render một template fragment mới CHỈ chứa các <li>
+    return render(request, "_saved_filters_list.html", context)

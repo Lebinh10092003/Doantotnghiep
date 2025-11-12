@@ -7,7 +7,11 @@ from django.views.decorators.http import require_POST
 from django_filters.views import FilterView
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
-
+from django.http import QueryDict
+from django import forms
+from apps.centers.models import Center
+from apps.curriculum.models import Subject
+from apps.accounts.models import User
 from .models import Class
 from .filters import ClassFilter
 from .forms import ClassForm, ClassScheduleFormSet
@@ -29,12 +33,46 @@ def manage_classes(request):
     class_filter = ClassFilter(request.GET, queryset=base_qs)
     
     # 2. Sắp xếp
-    # Dùng .qs để lấy queryset đã lọc, sau đó sắp xếp
     qs = class_filter.qs.order_by("-start_date", "name")
 
+    # +++ THÊM LOGIC TẠO BADGE LỌC +++
+    active_filter_badges = []
+    # Kiểm tra xem form có dữ liệu không (ví dụ: có request.GET)
+    if class_filter.form.is_bound:
+        # Lặp qua dữ liệu đã được làm sạch và xác thực
+        for name, value in class_filter.form.cleaned_data.items():
+            # Chỉ xử lý nếu trường có giá trị VÀ trường đó có trong form
+            if value and name in class_filter.form.fields: 
+                field_label = class_filter.form.fields[name].label or name
+                display_value = ""
+
+                # Xử lý giá trị là model instance (FK, ModelChoice)
+                if isinstance(value, (Center, Subject, User)):
+                    display_value = str(value)
+                # Xử lý giá trị là ChoiceField (lấy tên hiển thị)
+                elif isinstance(class_filter.form.fields[name], forms.ChoiceField):
+                    display_value = dict(class_filter.form.fields[name].choices).get(value, value)
+                # Xử lý giá trị là DateFromToRangeFilter (kiểu slice)
+                elif isinstance(value, slice): 
+                    start, end = value.start, value.stop
+                    if start and end:
+                        display_value = f"từ {start.strftime('%d/%m/%Y')} đến {end.strftime('%d/%m/%Y')}"
+                    elif start:
+                        display_value = f"từ {start.strftime('%d/%m/%Y')}"
+                    elif end:
+                        display_value = f"đến {end.strftime('%d/%m/%Y')}"
+                # Xử lý giá trị là chuỗi (CharFilter)
+                elif isinstance(value, str) and value:
+                    display_value = value
+                
+                # Nếu có giá trị hiển thị, thêm vào danh sách
+                if display_value:
+                    active_filter_badges.append({
+                        "label": field_label,
+                        "value": display_value,
+                    })
     # 3. Phân trang
     try:
-        # Lấy paginate_by = 10 từ CBV cũ
         per_page = int(request.GET.get("per_page", 10)) 
     except (TypeError, ValueError):
         per_page = 10
@@ -49,35 +87,58 @@ def manage_classes(request):
     except EmptyPage:
         page_obj = paginator.page(1)
 
-    # 4. Xây dựng Context
-    model_name = "Class"
-    context = {
-        "page_obj": page_obj,
-        "paginator": paginator,
-        "filter": class_filter, # Truyền filterset (giống như accounts)
-        "model_name": model_name,
-        "current_query_params": request.GET.urlencode(),
-    }
-
-    # Lấy quick_filters từ CBV cũ
-    context["quick_filters"] = [
+    # Lấy quick_filters 
+    quick_filters = [
         {"name": "Đang diễn ra", "params": "status=ONGOING"},
         {"name": "Đã lên kế hoạch", "params": "status=PLANNED"},
         {"name": "Đã hoàn thành", "params": "status=COMPLETED"},
     ]
     
-    # Lấy saved_filters từ CBV cũ
-    if request.user.is_authenticated:
-        saved = SavedFilter.objects.filter(model_name=model_name).filter(
-            Q(user=request.user) | Q(is_public=True)
-        ).distinct()
-        context["my_filters"] = saved.filter(user=request.user)
-        context["public_filters"] = saved.filter(is_public=True).exclude(user=request.user)
+    # Lấy saved_filters
+    saved_filters = SavedFilter.objects.filter(model_name="Class").filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+
+    # Tìm tên bộ lọc đang hoạt động
+    active_filter_name = None
+    current_params_dict = {k: v_list for k, v_list in request.GET.lists() if k != 'page'}
+
+    if current_params_dict:
+        # Kiểm tra quick filters
+        for qf in quick_filters:
+            qf_dict = {k: v_list for k, v_list in QueryDict(qf['params']).lists()}
+            if qf_dict == current_params_dict:
+                active_filter_name = qf['name']
+                break
+        # Nếu không phải quick filter, kiểm tra saved filters
+        if not active_filter_name:
+            for sf in saved_filters:
+                try:
+                    sf_dict = json.loads(sf.query_params)
+                    if sf_dict == current_params_dict:
+                        active_filter_name = sf.name
+                        break
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+    # 4. Xây dựng Context
+    context = {
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "filter": class_filter,
+        "model_name": "Class",
+        "current_query_params": request.GET.urlencode(),
+        "quick_filters": quick_filters,
+        "active_filter_name": active_filter_name,
+        "active_filter_badges": active_filter_badges, # <-- Thêm dòng này
+    }
 
     # 5. Render
     if is_htmx_request(request):
-        return render(request, "_classes_table.html", context)
+        # Nếu là yêu cầu HTMX (lọc, phân trang, xóa lọc), chỉ trả về phần nội dung có thể lọc
+        return render(request, "_filterable_content.html", context)
     
+    # Nếu là yêu cầu thông thường, tải trang đầy đủ
     return render(request, "manage_classes.html", context)
 
 @login_required

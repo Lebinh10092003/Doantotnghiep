@@ -1,8 +1,8 @@
 {% load widget_tweaks %}
 
 <form hx-post="{% url 'filters:save_filter' %}"
-      hx-target="this"
-      hx-swap="outerHTML">
+      hx-target="this">
+
   {% csrf_token %}
   <div class="modal-body">
     {% if form.non_field_errors %}

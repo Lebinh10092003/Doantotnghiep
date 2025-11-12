@@ -1,0 +1,7 @@
+{% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
+
+<div id="class-table-container" 
+     class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns"
+     hx-trigger="reload-classes-table from:body" hx-swap="innerHTML">
+  {% include "_classes_table.html" with page_obj=page_obj paginator=paginator current_query_params=current_query_params target_id='filterable-content' %}
+</div>
