@@ -72,7 +72,7 @@
             type="button" 
             class="btn btn-info"
             hx-post="{% url 'classes:generate_sessions' pk=klass.pk %}"
-            hx-confirm="Thao tác này sẽ XÓA tất cả các buổi học 'Đã lên kế hoạch' hiện có và tạo lại từ đầu dựa trên lịch học hàng tuần. Bạn có chắc chắn muốn tiếp tục?"
+            hx-confirm="Thao tác này sẽ cập nhật các buổi học 'Đã lên kế hoạch' chưa diễn ra dựa trên lịch học hàng tuần. Các buổi học đã có sẽ được cập nhật, các buổi mới sẽ được thêm vào. Bạn có chắc chắn muốn tiếp tục?"
             hx-target="body"
             hx-swap="none"
         >

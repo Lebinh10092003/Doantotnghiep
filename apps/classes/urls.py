@@ -9,5 +9,5 @@ urlpatterns = [
     path("<int:pk>/edit/", views.class_edit_view, name="class_edit"),
     path("<int:pk>/detail/", views.class_detail_view, name="class_detail"),
     path("<int:pk>/delete/", views.class_delete_view, name="class_delete"),
-    path("<int:pk>/generate-sessions/", views.generate_sessions_view, name="generate_sessions"),
+    path("<int:pk>/generate-sessions/", views.generate_sessions, name="generate_sessions"), 
 ]

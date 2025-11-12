@@ -1,5 +1,3 @@
-# apps/classes/views.py
-
 import json
 from datetime import date, timedelta
 from django.shortcuts import render, get_object_or_404, redirect
@@ -8,10 +6,11 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_POST
 from django_filters.views import FilterView
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.http import QueryDict
 from django import forms
 from apps.centers.models import Center
+from django.utils import timezone
 from apps.curriculum.models import Subject
 from apps.accounts.models import User
 from .models import Class
@@ -19,6 +18,11 @@ from .filters import ClassFilter
 from .forms import ClassForm, ClassScheduleFormSet
 from apps.filters.models import SavedFilter
 from django.core.paginator import Paginator, EmptyPage
+from apps.class_sessions.models import ClassSession
+from apps.class_sessions.utils import recalculate_session_indices
+from django.db import transaction
+from apps.curriculum.models import Lesson
+
 
 
 def is_htmx_request(request):
@@ -258,79 +262,133 @@ def class_delete_view(request, pk):
     })
     return response
 
+
+PLANNED_STATUS = "PLANNED"
 @require_POST
 @login_required
 @permission_required("class_sessions.add_classsession", raise_exception=True)
-def generate_sessions_view(request, pk):
-    klass = get_object_or_404(
-        Class.objects.prefetch_related("weekly_schedules"), 
-        pk=pk
-    )
+def generate_sessions(request, pk):
+    """
+    Tạo hoặc cập nhật các buổi học cho một lớp, tự động gán Lesson.
+    - Cập nhật thời gian nếu lịch học thay đổi.
+    - Gán Lesson cho các buổi học mới, hoặc các buổi học cũ nhưng chưa có Lesson.
+    """
     
-    schedules = klass.weekly_schedules.all()
-    start_date = klass.start_date
-    end_date = klass.end_date
-
-    # --- Validation ---
-    if not schedules.exists():
-        return JsonResponse({"error": "Lớp học chưa có lịch học hàng tuần."}, status=400)
-    if not start_date or not end_date:
-        return JsonResponse({"error": "Vui lòng đặt Ngày bắt đầu và Ngày kết thúc cho lớp học."}, status=400)
-    if start_date > end_date:
-        return JsonResponse({"error": "Ngày bắt đầu không được sau Ngày kết thúc."}, status=400)
-
-    # Xóa các buổi học cũ ở trạng thái "PLANNED" trước khi tạo mới
-    from apps.class_sessions.models import ClassSession
-    ClassSession.objects.filter(klass=klass, status='PLANNED').delete()
-
-    # --- Logic tạo buổi học ---
-    from apps.class_sessions.models import ClassSession
-    
-    sessions_to_create = []
-    current_date = start_date
-    
-    while current_date <= end_date:
-        # Lấy lịch học cho ngày hiện tại (0=Thứ 2, 1=Thứ 3,...)
-        day_schedules = schedules.filter(day_of_week=current_date.weekday())
+    with transaction.atomic():
+        klass = get_object_or_404(Class, pk=pk)
+        schedules = klass.weekly_schedules.all()
         
-        for schedule in day_schedules:
-            sessions_to_create.append(
-                ClassSession(
-                    klass=klass,
-                    date=current_date,
-                    start_time=schedule.start_time,
-                    end_time=schedule.end_time,
-                    # index sẽ được gán sau
-                )
+        # ... (Kiểm tra điều kiện cần thiết giữ nguyên) ...
+
+        # 1. TRUY VẤN VÀ LẬP BẢN ĐỒ LESSONS
+        # Lấy tất cả Lesson của môn học, sắp xếp theo thứ tự Module và Lesson
+        all_lessons = []
+        if klass.subject:
+             all_lessons = list(
+                Lesson.objects
+                    .filter(module__subject=klass.subject)
+                    .select_related('module')
+                    .order_by('module__order', 'order') # Sắp xếp theo Học phần (module) rồi đến Bài học (order)
             )
-        current_date += timedelta(days=1)
+        lessons_count = len(all_lessons)
 
-    if not sessions_to_create:
-        alert = {
-            "icon": "info",
-            "title": "Không có buổi học nào được tạo",
-            "text": "Vui lòng kiểm tra lại lịch học và khoảng thời gian của lớp."
+        # 2. Thiết lập ngày bắt đầu và lấy sessions hiện có
+        today = timezone.now().date()
+        start_date_for_generation = max(klass.start_date, today)
+        
+        existing_sessions = {
+            s.date: s for s in ClassSession.objects.filter(
+                klass=klass, 
+                status=PLANNED_STATUS, 
+                date__gte=today 
+            )
         }
-        response = HttpResponse(status=200)
-        response["HX-Trigger"] = json.dumps({"show-sweet-alert": alert})
-        return response
 
-    # Sắp xếp và gán `index`
-    sessions_to_create.sort(key=lambda s: (s.date, s.start_time))
-    for i, session in enumerate(sessions_to_create, 1):
-        session.index = i
+        # Bộ đếm index tạm thời (sử dụng số dương lớn để tránh UniqueViolation và CheckViolation)
+        temp_index_counter = 999999 
+        sessions_to_create = []
+        sessions_to_update = []
+        
+        # Xác định index LOGIC bắt đầu để biết Lesson nào cần được gán tiếp theo
+        last_session = ClassSession.objects.filter(klass=klass).order_by('index').last()
+        current_session_index = last_session.index if last_session and last_session.index else 0
+        
+        # 3. Lặp qua các ngày để gen sessions
+        current_date = start_date_for_generation
+        
+        while current_date <= klass.end_date:
+            for schedule in schedules:
+                if current_date.weekday() == schedule.day_of_week:
+                    
+                    # Tăng index logic cho buổi học tiềm năng này
+                    current_session_index += 1
+                    
+                    lesson_to_assign = None
+                    # Gán Lesson nếu có sẵn
+                    if lessons_count > 0 and current_session_index <= lessons_count:
+                        lesson_to_assign = all_lessons[current_session_index - 1] 
+                    
+                    
+                    if current_date in existing_sessions:
+                        session_to_check = existing_sessions[current_date]
+                        
+                        fields_to_update = []
+                        is_time_changed = (session_to_check.start_time != schedule.start_time or 
+                                           session_to_check.end_time != schedule.end_time)
+                        
+                        # Chỉ gán Lesson nếu nó đang NULL
+                        is_lesson_changed = (session_to_check.lesson is None and lesson_to_assign)
+                        
+                        if is_time_changed:
+                            session_to_check.start_time = schedule.start_time
+                            session_to_check.end_time = schedule.end_time
+                            fields_to_update.extend(['start_time', 'end_time'])
+                        
+                        if is_lesson_changed:
+                            session_to_check.lesson = lesson_to_assign
+                            fields_to_update.append('lesson')
+                            
+                        # Chỉ thêm vào danh sách cập nhật nếu có trường cần cập nhật
+                        if fields_to_update:
+                            sessions_to_update.append(session_to_check)
 
-    # Tạo hàng loạt. `ignore_conflicts` không cần thiết vì đã xóa các buổi PLANNED
-    created_sessions = ClassSession.objects.bulk_create(sessions_to_create)
+                    else:
+                        # Tạo buổi học mới
+                        sessions_to_create.append(
+                            ClassSession(
+                                klass=klass, 
+                                date=current_date, 
+                                start_time=schedule.start_time, 
+                                end_time=schedule.end_time, 
+                                status=PLANNED_STATUS,
+                                lesson=lesson_to_assign,
+                                index=temp_index_counter 
+                            )
+                        )
+                        temp_index_counter -= 1 
+                        
+            current_date += timedelta(days=1)
 
-    alert = {
-        "icon": "success",
-        "title": "Thành công!",
-        "text": f"Đã tạo thành công {len(created_sessions)} buổi học cho lớp '{klass.name}'."
-    }
-    response = HttpResponse(status=204) # No content, chỉ trigger event
+        # 4. Thực hiện Bulk Operations
+        if sessions_to_create:
+            ClassSession.objects.bulk_create(sessions_to_create) 
+        
+        if sessions_to_update:
+            # Cập nhật tất cả các trường có thể thay đổi (thời gian + Lesson)
+            ClassSession.objects.bulk_update(sessions_to_update, ['start_time', 'end_time', 'lesson'])
+
+        # 5. Đánh số lại index cho toàn bộ các buổi học (sửa chữa index tạm thời)
+        updated_count = recalculate_session_indices(klass.pk) 
+
+    # 6. Trả về phản hồi HTMX
+    response = HttpResponse(status=200)
     response["HX-Trigger"] = json.dumps({
-        "show-sweet-alert": alert,
-        "reload-sessions-table": True, # Trigger để reload bảng buổi học nếu có
+        "show-sweet-alert": {
+            "icon": "success",
+            "title": "Thành công!",
+            "text": f"Đã tạo {len(sessions_to_create)} và cập nhật {len(sessions_to_update)} buổi học. Đã đánh số lại {updated_count} index."
+        },
+        "reload-sessions-table": True,
+        "closeClassModal": True,
     })
     return response
