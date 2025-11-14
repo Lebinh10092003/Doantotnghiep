@@ -201,7 +201,7 @@
     {% if perms.accounts.change_user %}
         <button type="button" class="btn btn-primary"
             hx-get="{% url 'accounts:edit_user' user.id %}"
-            hx-target="#user-modal #modal-content"
+            hx-target="#user-modal-content"
             @click="modalTitle = 'Chỉnh sửa: {{ user.username|escapejs }}'">
             <i class="bi bi-pencil-square"></i> Chỉnh sửa
         </button>

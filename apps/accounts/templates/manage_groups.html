@@ -37,7 +37,7 @@
             <div class="d-flex gap-2">
               <button type="button" class="btn btn-primary btn-sm" 
                       hx-get="{% url 'accounts:group_create' %}"
-                      hx-target="#group-modal #modal-content" 
+                      hx-target="#group-modal-content" 
                       @click="modalTitle = 'Thêm nhóm mới'" 
                       data-bs-toggle="modal"
                       data-bs-target="#group-modal">
@@ -80,7 +80,7 @@
         <div class="modal-header">
           <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
         </div>
-        <div id="modal-content">
+        <div id="group-modal-content">
           <div class="modal-body">
             <p>Đang tải...</p>
           </div>
@@ -97,7 +97,7 @@
           <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div id="modal-content">
+        <div id="user-modal-content">
           <div class="modal-body">
             <p>Đang tải...</p>
           </div>

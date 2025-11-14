@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Các lớp đang dạy{% endblock %}
+
+{% block content %}
+<div id="main" x-data="{ modalTitle: 'Đang tải...' }">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-12 col-md-6 order-md-1 order-last">
+          <h3>Các lớp đang dạy</h3>
+          <p class="text-subtitle text-muted">Danh sách lớp bạn đang phụ trách</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">Bộ lọc</h5>
+          <form id="teaching-classes-filters" class="d-flex gap-2 align-items-center"
+                hx-get="{% url 'class_sessions:teaching_classes' %}"
+                hx-target="#teaching-classes-table"
+                hx-swap="innerHTML">
+            {% if teachers %}
+            <select name="teacher" class="form-select form-select-sm w-auto">
+              {% for t in teachers %}
+              <option value="{{ t.id }}" {% if teacher and teacher.id == t.id %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>
+              {% endfor %}
+            </select>
+            {% endif %}
+            <button type="submit" class="btn btn-sm btn-primary">Áp dụng</button>
+          </form>
+        </div>
+        <div class="card-body" id="teaching-classes-table">
+          {% include "_teaching_classes_table.html" %}
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+{% block extra_js %}{% endblock %}
+{% endblock %}
+{# Modal cho chi tiết lớp/buổi dùng chung #}
+<div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" x-text="modalTitle">Chi tiết</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="sessions-modal-content">
+        <div class="modal-body"><p>Đang tải...</p></div>
+      </div>
+    </div>
+  </div>
+</div>

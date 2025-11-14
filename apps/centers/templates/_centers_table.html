@@ -31,20 +31,16 @@
         <td>
           <button type="button" class="btn btn-info btn-sm"
                   hx-get="{% url 'centers:center_detail' center.id %}?as=modal"
-                  hx-target="#center-modal #modal-content"
-                  hx-swap="innerHTML"
-                  hx-on="click: document.querySelector('#center-modal #modal-content').innerHTML = '<div class=\'modal-body\'><p>Đang tải...</p></div>'"
-                  data-bs-toggle="modal" data-bs-target="#center-modal"
+                  hx-target="#center-modal-content"
+                  hx-swap="innerHTML"                  
                   @click="modalTitle = 'Chi tiết Trung tâm: {{ center.name|escapejs }}'">
             <i class="bi bi-eye"></i>
           </button>
           {# Nút SỬA #}
           {% if perms.centers.change_center %}
           <button type="button" class="btn btn-sm btn-warning" 
-                  hx-get="{% url 'centers:center_edit' center.id %}"
-                  hx-target="#center-modal #modal-content" hx-swap="innerHTML"
-                  hx-on="click: document.querySelector('#center-modal #modal-content').innerHTML = '<div class=\'modal-body\'><p>Đang tải...</p></div>'"
-                  data-bs-toggle="modal" data-bs-target="#center-modal"
+                  hx-get="{% url 'centers:center_edit' center.id %}" 
+                  hx-target="#center-modal-content" hx-swap="innerHTML"                  
                   @click="modalTitle = 'Chỉnh sửa Trung tâm: {{ center.name|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
           </button>

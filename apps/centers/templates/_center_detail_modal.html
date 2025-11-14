@@ -21,7 +21,7 @@
     {% if perms.centers.add_room %}
     <button type="button" class="btn btn-primary btn-sm"
             hx-get="{% url 'centers:room_add' %}?center={{ center.id }}"
-            hx-target="#center-modal #modal-content"
+            hx-target="#center-modal-content"
             @click="modalTitle = 'Thêm Phòng học mới'">
       <i class="bi bi-plus-lg"></i> Thêm phòng
     </button>
@@ -56,11 +56,6 @@
             <span class="visually-hidden">Loading...</span>
           </div>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm"
-                hx-get="{% url 'centers:center_detail' center.id %}?fragment=rooms_table"
-                hx-target="#center-rooms-table" hx-include="#center-rooms-table-form">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
       </div>
       <div class="dataTable-dropdown d-flex align-items-center gap-2">
         <select name="per_page" class="dataTable-selector form-select form-select-sm w-auto"

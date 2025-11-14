@@ -1,7 +1,7 @@
 {% load widget_tweaks %}
 
 <form hx-post="{% if room %}{% url 'centers:room_edit' room.id %}{% else %}{% url 'centers:room_add' %}{% endif %}"
-      hx-target="#room-modal #modal-content"
+      hx-target="closest [id$='-modal-content']"
       hx-swap="innerHTML">
   {% csrf_token %}
   <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">

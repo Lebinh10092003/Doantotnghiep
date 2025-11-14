@@ -8,17 +8,16 @@ from django_filters.views import FilterView
 from django.db.models import Q
 from django.http import HttpResponse, QueryDict
 from django import forms 
-
 from .models import ClassSession
 from .filters import ClassSessionFilter
 from .forms import ClassSessionForm 
 from apps.filters.models import SavedFilter
 from django.core.paginator import Paginator, EmptyPage
-
-# IMPORT CHO LOGIC BADGE
 from apps.centers.models import Center
 from apps.curriculum.models import Subject, Lesson
 from apps.accounts.models import User
+from apps.enrollments.models import Enrollment
+from apps.accounts.models import ParentStudentRelation
 
 
 def is_htmx_request(request):
@@ -204,13 +203,17 @@ def session_edit_view(request, pk):
 def session_detail_view(request, pk):
     session = get_object_or_404(
         ClassSession.objects.select_related(
-            "klass", "klass__center", "lesson", "teacher_override", "room_override", "klass__main_teacher"
+            "klass", "klass__center", "lesson", "lesson__lecture", "lesson__exercise",
+            "teacher_override", "room_override", "klass__main_teacher"
         ).prefetch_related("assistants"),
         pk=pk
     )
     context = {"session": session}
-    response = render(request, "_session_detail.html", context)
-    return response
+    if is_htmx_request(request):
+        return render(request, "_session_detail.html", context)
+    # Full page view for better usability (non-HTMX)
+    context["as_page"] = True
+    return render(request, "session_detail.html", context)
 
 
 @require_POST
@@ -231,3 +234,154 @@ def session_delete_view(request, pk):
         }
     })
     return response
+
+
+# ========= SCHEDULE VIEWS =========
+@login_required
+def my_schedule_view(request):
+    """Lịch học cho Học sinh/Phụ huynh; các vai trò khác vẫn xem lịch cá nhân nếu có."""
+    today = date.today()
+    try:
+        start = date.fromisoformat(request.GET.get("start")) if request.GET.get("start") else today - timedelta(days=today.weekday())
+    except ValueError:
+        start = today - timedelta(days=today.weekday())
+    try:
+        end = date.fromisoformat(request.GET.get("end")) if request.GET.get("end") else start + timedelta(days=6)
+    except ValueError:
+        end = start + timedelta(days=6)
+
+    user = request.user
+    sessions_qs = ClassSession.objects.select_related(
+        "klass", "klass__subject", "klass__center", "klass__main_teacher", "lesson"
+    ).prefetch_related("assistants").filter(date__isnull=False, date__range=(start, end))
+
+    selected_student_id = request.GET.get("student")
+    user_role = (user.role or "").upper()
+
+    if user_role == "PARENT":
+        children_ids = list(
+            ParentStudentRelation.objects.filter(parent=user).values_list("student_id", flat=True)
+        )
+        # Lọc theo con cụ thể nếu có
+        if selected_student_id:
+            try:
+                sid = int(selected_student_id)
+                if sid in children_ids:
+                    children_ids = [sid]
+            except (TypeError, ValueError):
+                pass
+        sessions_qs = sessions_qs.filter(klass__enrollments__student_id__in=children_ids, klass__enrollments__active=True)
+        # Danh sách con để chọn
+        children = User.objects.filter(id__in=children_ids)
+    elif user_role == "STUDENT":
+        sessions_qs = sessions_qs.filter(klass__enrollments__student=user, klass__enrollments__active=True)
+        children = None
+    else:
+        # Vai trò khác: cho xem lịch nếu có enroll (hiếm) – hoặc để trống
+        sessions_qs = sessions_qs.filter(klass__enrollments__student=user, klass__enrollments__active=True)
+        children = None
+
+    sessions = sessions_qs.order_by("date", "start_time", "klass__name").distinct()
+
+    context = {
+        "sessions": sessions,
+        "start": start,
+        "end": end,
+        "is_parent": user_role == "PARENT",
+        "children": children,
+        "selected_student": selected_student_id,
+        "today": today,
+    }
+    if is_htmx_request(request):
+        return render(request, "_schedule_table.html", context)
+    return render(request, "my_schedule.html", context)
+
+
+@login_required
+def teaching_schedule_view(request):
+    """Lịch dạy theo TUẦN (tuần chứa ngày được chọn). Admin có thể xem theo teacher_id."""
+    today = date.today()
+    try:
+        selected_date = date.fromisoformat(request.GET.get("date")) if request.GET.get("date") else today
+    except ValueError:
+        selected_date = today
+    # Xác định tuần (T2..CN)
+    start_of_week = selected_date - timedelta(days=selected_date.weekday())
+    end_of_week = start_of_week + timedelta(days=6)
+
+    viewer = request.user
+    teacher_id = request.GET.get("teacher")
+
+    # Chỉ cho phép xem lịch người khác khi có quyền xem classsession
+    teacher = viewer
+    if teacher_id and viewer.has_perm("class_sessions.view_classsession"):
+        try:
+            teacher = User.objects.get(pk=int(teacher_id))
+        except (User.DoesNotExist, ValueError, TypeError):
+            teacher = viewer
+
+    base = ClassSession.objects.select_related(
+        "klass", "klass__subject", "klass__center", "klass__main_teacher", "lesson"
+    ).prefetch_related("assistants").filter(date__isnull=False, date__range=(start_of_week, end_of_week))
+
+    sessions = base.filter(
+        Q(teacher_override=teacher) |
+        Q(klass__main_teacher=teacher) |
+        Q(assistants=teacher) |
+        Q(klass__assistants=teacher)
+    ).order_by("date", "start_time", "klass__name").distinct()
+
+    # Nếu admin, cung cấp danh sách GV để chọn
+    teachers = None
+    if viewer.has_perm("class_sessions.view_classsession"):
+        teachers = User.objects.filter(Q(groups__name__in=["Teacher", "TEACHER"]) | Q(role__iexact="TEACHER")).distinct()
+
+    context = {
+        "sessions": sessions,
+        "date": selected_date,
+        "start": start_of_week,
+        "end": end_of_week,
+        "teacher": teacher,
+        "teachers": teachers,
+        "today": today,
+    }
+    if is_htmx_request(request):
+        return render(request, "_schedule_table.html", context)
+    return render(request, "teaching_schedule.html", context)
+
+
+@login_required
+def teaching_classes_view(request):
+    """Danh sách các lớp ĐANG DẠY (GV chính hoặc trợ giảng)."""
+    from apps.classes.models import Class
+
+    viewer = request.user
+    teacher_id = request.GET.get("teacher")
+    teacher = viewer
+    if teacher_id and viewer.has_perm("classes.view_class"):
+        try:
+            teacher = User.objects.get(pk=int(teacher_id))
+        except (User.DoesNotExist, ValueError, TypeError):
+            teacher = viewer
+
+    qs = Class.objects.select_related("center", "subject", "main_teacher") \
+        .prefetch_related("assistants") \
+        .filter(
+            Q(main_teacher=teacher) | Q(assistants=teacher),
+            status__in=["PLANNED", "ONGOING"]
+        ) \
+        .order_by("center__name", "name") \
+        .distinct()
+
+    teachers = None
+    if viewer.has_perm("classes.view_class"):
+        teachers = User.objects.filter(Q(groups__name__in=["Teacher", "TEACHER"]) | Q(role__iexact="TEACHER")).distinct()
+
+    context = {
+        "classes": qs,
+        "teacher": teacher,
+        "teachers": teachers,
+    }
+    if is_htmx_request(request):
+        return render(request, "_teaching_classes_table.html", context)
+    return render(request, "teaching_classes.html", context)

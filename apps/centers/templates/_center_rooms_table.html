@@ -18,7 +18,7 @@
           {% if perms.centers.change_room %}
           <button type="button" class="btn btn-sm btn-warning"
                   hx-get="{% url 'centers:room_edit' room.id %}"
-                  hx-target="#center-modal #modal-content" hx-swap="innerHTML"
+                  hx-target="#center-modal-content" hx-swap="innerHTML"
                   @click="modalTitle = 'Chỉnh sửa Phòng học: {{ room.name|escapejs }}'">
             <i class="bi bi-pencil-square"></i> Sửa
           </button>

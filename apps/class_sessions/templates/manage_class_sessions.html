@@ -36,7 +36,7 @@
             {% if perms.class_sessions.add_classsession %}
             <button type="button" class="btn btn-primary btn-sm"
                     hx-get="{% url 'class_sessions:session_add' %}"
-                    hx-target="#sessions-modal #modal-content"
+                    hx-target="#sessions-modal-content"
                     data-bs-toggle="modal"
                     data-bs-target="#sessions-modal"
                     @click="modalTitle = 'Thêm Buổi học mới'">
@@ -81,7 +81,7 @@
             <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <div id="modal-content"> 
+          <div id="sessions-modal-content"> 
              <div class="modal-body"><p>Đang tải...</p></div>
           </div>
         </div>

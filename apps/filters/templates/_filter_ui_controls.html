@@ -34,7 +34,7 @@
       {# #}
       <button type="button" class="btn btn-outline-secondary btn-sm"
               hx-get="{% url 'filters:load_saved_filters' model_name %}?target_id={{ target_id|default:'filterable-content' }}&current_query_params={{ request.GET.urlencode }}&origin_path={{ request.path }}"
-              hx-target="#filter-modal #modal-content"
+              hx-target="#filter-modal-content"
               hx-trigger="click, reload-saved-filters-{{ model_name }} from:body"
               @click="modalTitle = 'Chọn bộ lọc đã lưu'">
         <i class="bi bi-star-fill"></i> Bộ lọc đã lưu
@@ -108,7 +108,7 @@
     <div class="col-12 d-flex justify-content-end gap-2">
       <button type="button" class="btn btn-outline-primary"
               hx-get="{% url 'filters:save_filter' %}?model_name={{ model_name }}&{{ current_query_params }}"
-              hx-target="#filter-modal #modal-content"
+              hx-target="#filter-modal-content"
               hx-swap="innerHTML"
               @click="modalTitle = 'Lưu bộ lọc hiện tại'">
         <i class="bi bi-save"></i> Lưu bộ lọc

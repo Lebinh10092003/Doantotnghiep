@@ -40,7 +40,7 @@
               {% if perms.curriculum.add_lesson %}
               <button type="button" class="btn btn-primary btn-sm"
                       hx-get="{% url 'curriculum:lesson_add' %}"
-                      hx-target="#curriculum-modal #modal-content" hx-swap="innerHTML"
+                      hx-target="#curriculum-modal-content" hx-swap="innerHTML"
                       @click="modalTitle = 'Thêm Bài học mới'">
                 <i class="bi bi-plus-lg"></i> Thêm mới
               </button>
@@ -132,7 +132,7 @@
           <div class="modal-header">
             <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
           </div>
-          <div id="modal-content">
+          <div id="curriculum-modal-content">
             <div class="modal-body">
               <p>Đang tải...</p>
             </div>

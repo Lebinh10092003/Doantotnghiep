@@ -21,14 +21,14 @@
         <td class="d-flex flex-wrap gap-1">
           <button type="button" class="btn btn-sm btn-info"
                   hx-get="{% url 'curriculum:module_detail' m.id %}"
-                  hx-target="#curriculum-modal #modal-content"
+                  hx-target="#curriculum-modal-content"
                   @click="modalTitle = 'Chi tiết Học phần: {{ m.title|escapejs }}'">
             <i class="bi bi-eye"></i>
           </button>
           {% if perms.curriculum.change_module %}
           <button type="button" class="btn btn-sm btn-warning"
                   hx-get="{% url 'curriculum:module_edit' m.id %}"
-                  hx-target="#curriculum-modal #modal-content"
+                  hx-target="#curriculum-modal-content"
                   @click="modalTitle = 'Chỉnh sửa Học phần: {{ m.title|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
           </button>

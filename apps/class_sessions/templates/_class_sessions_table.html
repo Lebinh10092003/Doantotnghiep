@@ -37,7 +37,7 @@
         <td class="text-nowrap">
           <div class="d-flex gap-1">
             <button type="button" class="btn btn-sm btn-info"
-                    hx-get="{% url 'class_sessions:session_detail' session.pk %}" hx-target="#sessions-modal #modal-content"
+                    hx-get="{% url 'class_sessions:session_detail' session.pk %}" hx-target="#sessions-modal-content"
                     data-bs-toggle="modal"
                     data-bs-target="#sessions-modal"
                     @click="modalTitle = 'Chi tiết Buổi học: {{ session.klass.name|escapejs }} - Buổi {{ session.index }}'"
@@ -46,7 +46,7 @@
             </button>
             {% if perms.class_sessions.change_classsession %}
             <button type="button" class="btn btn-sm btn-warning"
-                    hx-get="{% url 'class_sessions:session_edit' session.pk %}" hx-target="#sessions-modal #modal-content"
+                    hx-get="{% url 'class_sessions:session_edit' session.pk %}" hx-target="#sessions-modal-content"
                     data-bs-toggle="modal"
                     data-bs-target="#sessions-modal"
                     @click="modalTitle = 'Cập nhật Buổi học: {{ session.klass.name|escapejs }} - Buổi {{ session.index }}'"

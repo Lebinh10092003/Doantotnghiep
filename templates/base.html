@@ -86,7 +86,7 @@
                                 {% if perms.accounts.view_user %}
                                 <a href="{{ manage_accounts_url }}" class="submenu-link">
                                     <i class="bi bi-person-lines-fill"></i><span>Danh sách người dùng</span>
-                                    {% if users_count is defined %}
+                                    {% if users_count %}
                                     <span class="badge ms-2">{{ users_count }}</span>
                                     {% endif %}
                                 </a>
@@ -131,7 +131,7 @@
                     </li>
                     {% endif %}
 
-                    {% if perms.classes.view_class or perms.class_sessions.view_classsession %}
+                    {% if user.is_authenticated %}
                     <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' %}active{% endif %}">
                       <a href="#" class="sidebar-link"><i class="bi bi-journal-bookmark-fill"></i><span>Lớp & Lịch học</span></a>
                       <ul class="submenu {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' %}active{% endif %}">
@@ -143,6 +143,21 @@
                         {% if perms.class_sessions.view_classsession %}
                         <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:manage_class_sessions' %}active{% endif %}">
                           <a href="{% url 'class_sessions:manage_class_sessions' %}" class="submenu-link">Quản lý Buổi học</a>
+                        </li>
+                        {% endif %}
+                        {% if perms.classes.view_class or user|in_group:'TEACHER' or user|in_group:'Teacher' or user.role|upper == 'TEACHER' or user.role|upper == 'ASSISTANT' %}
+                        <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_classes' %}active{% endif %}">
+                          <a href="{% url 'class_sessions:teaching_classes' %}" class="submenu-link"><i class="bi bi-collection"></i><span>Các lớp đang dạy</span></a>
+                        </li>
+                        {% endif %}
+                        {% if user.role|upper == 'STUDENT' or user|in_group:'Student' or user|in_group:'STUDENT' %}
+                        <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:my_schedule' %}active{% endif %}">
+                          <a href="{% url 'class_sessions:my_schedule' %}" class="submenu-link"><i class="bi bi-calendar-heart"></i><span>Lịch học của tôi</span></a>
+                        </li>
+                        {% endif %}
+                        {% if perms.class_sessions.view_classsession or user|in_group:'TEACHER' or user|in_group:'Teacher' or user.role|upper == 'TEACHER' or user.role|upper == 'ASSISTANT' %}
+                        <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_schedule' %}active{% endif %}">
+                          <a href="{% url 'class_sessions:teaching_schedule' %}" class="submenu-link"><i class="bi bi-easel2"></i><span>Lịch dạy</span></a>
                         </li>
                         {% endif %}
                       </ul>

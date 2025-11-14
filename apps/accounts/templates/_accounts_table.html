@@ -80,7 +80,7 @@
                 {# Nút Xem chi tiết - mở modal bằng Bootstrap và nạp nội dung bằng HTMX #}
                 <button type="button" class="btn btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'"
                     title="Xem chi tiết">
                     <i class="bi bi-eye"></i>
@@ -89,7 +89,7 @@
                 {# Nút Chỉnh sửa - mở modal bằng Bootstrap và nạp nội dung bằng HTMX #}
                 <button type="button" class="btn btn-warning"
                     hx-get="{% url 'accounts:edit_user' user.id %}"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"
                     title="Chỉnh sửa">
                     <i class="bi bi-pencil-square"></i>
@@ -173,14 +173,14 @@
         <td>
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
 
             <button type="button" class="btn btn-sm btn-warning"
                     hx-get="{% url 'accounts:edit_user' user.id %}"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"                    title="Chỉnh sửa">
                 <i class="bi bi-pencil-square"></i>
             </button>
@@ -261,14 +261,14 @@
         <td>
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
 
             <button type="button" class="btn btn-sm btn-warning"
                     hx-get="{% url 'accounts:edit_user' user.id %}"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"                    title="Chỉnh sửa">
                 <i class="bi bi-pencil-square"></i>
             </button>
@@ -343,14 +343,14 @@
         <td>
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
 
             <button type="button" class="btn btn-sm btn-warning"
                     hx-get="{% url 'accounts:edit_user' user.id %}"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"                    title="Chỉnh sửa">
                 <i class="bi bi-pencil-square"></i>
             </button>

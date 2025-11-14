@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Chi tiết Buổi dạy{% endblock %}
+
+{% block content %}
+<div id="main">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-12 col-md-8 order-md-1 order-last">
+          <h3>Buổi {{ session.index }} - {{ session.klass.name }}</h3>
+          <div class="text-muted">Trung tâm {{ session.klass.center.name }} · {{ session.date|date:"d/m/Y" }} · {{ session.start_time|time:"H:i"|default:"-" }}{% if session.end_time %} - {{ session.end_time|time:"H:i" }}{% endif %}</div>
+        </div>
+        <div class="col-12 col-md-4 order-md-2 order-first text-md-end mt-2 mt-md-0">
+          {% if session.status == 'PLANNED' %}
+            <span class="badge bg-info">{{ session.get_status_display }}</span>
+          {% elif session.status == 'COMPLETED' or session.status == 'DONE' %}
+            <span class="badge bg-success">{{ session.get_status_display }}</span>
+          {% elif session.status == 'CANCELLED' %}
+            <span class="badge bg-danger">{{ session.get_status_display }}</span>
+          {% elif session.status == 'MISSED' %}
+            <span class="badge bg-warning text-dark">{{ session.get_status_display }}</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ session.get_status_display }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+            <div class="d-flex flex-wrap gap-3">
+              <span class="text-nowrap"><i class="bi bi-calendar me-1"></i> {{ session.date|date:"d/m/Y" }}</span>
+              <span class="text-nowrap"><i class="bi bi-clock me-1"></i> {{ session.start_time|time:"H:i"|default:"-" }}{% if session.end_time %} - {{ session.end_time|time:"H:i" }}{% endif %}</span>
+              <span class="text-nowrap"><i class="bi bi-building me-1"></i> {{ session.klass.center.name }}</span>
+              <span class="text-nowrap"><i class="bi bi-door-closed me-1"></i> {% if session.room_override %}{{ session.room_override.name }} (Thay){% elif session.klass.room %}{{ session.klass.room.name }}{% else %}-{% endif %}</span>
+              <span class="text-nowrap"><i class="bi bi-person me-1"></i> {% if session.teacher_override %}{{ session.teacher_override.get_full_name|default:session.teacher_override.username }} (Thay){% else %}{{ session.klass.main_teacher.get_full_name|default:"-" }}{% endif %}</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <a href="{% url 'class_sessions:teaching_schedule' %}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Quay lại</a>
+              {% if perms.class_sessions.change_classsession %}
+              <button class="btn btn-primary"
+                      hx-get="{% url 'class_sessions:session_edit' session.pk %}"
+                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal">
+                <i class="bi bi-pencil-square"></i> Chỉnh sửa
+              </button>
+              {% endif %}
+              {% if perms.classes.view_class %}
+              <button class="btn btn-outline-primary"
+                      hx-get="{% url 'classes:class_detail' session.klass.pk %}"
+                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal">
+                <i class="bi bi-journal-bookmark"></i> Chi tiết lớp
+              </button>
+              {% endif %}
+              {% if session.lesson and perms.curriculum.view_lesson %}
+              <button class="btn btn-outline-success"
+                      hx-get="{% url 'curriculum:lesson_detail' session.lesson.id %}"
+                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal">
+                <i class="bi bi-journal-text"></i> Giáo án
+              </button>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if session.assistants.all %}
+          <div class="mb-2">
+            <strong><i class="bi bi-people me-1"></i> Trợ giảng:</strong>
+            {% for a in session.assistants.all %}
+              <span class="badge bg-light text-dark border me-1">{{ a.get_full_name|default:a.username }}</span>
+            {% empty %}<span class="text-muted">Không có</span>{% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if session.lesson %}
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">Giáo án - Bài học</h5>
+          <div class="text-muted small">
+            Bài {{ session.lesson.order }}: {{ session.lesson.title }} · {{ session.lesson.module.subject.name }} / {{ session.lesson.module.title }}
+          </div>
+        </div>
+        <div class="card-body">
+          {% if session.lesson.objectives %}
+          <div class="mb-3">
+            <h6 class="mb-2"><i class="bi bi-bullseye me-1"></i> Mục tiêu bài học</h6>
+            <div class="p-2 bg-light border rounded">{{ session.lesson.objectives|linebreaksbr }}</div>
+          </div>
+          {% endif %}
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <h6 class="mb-2"><i class="bi bi-easel me-1"></i> Bài giảng</h6>
+              {% if session.lesson.lecture %}
+                {% if session.lesson.lecture.content %}
+                <div class="p-2 bg-light border rounded mb-2">{{ session.lesson.lecture.content|linebreaksbr }}</div>
+                {% endif %}
+                <ul class="list-unstyled mb-0">
+                  {% if session.lesson.lecture.file %}
+                  <li class="mb-1"><i class="bi bi-paperclip"></i> <strong>Tệp:</strong> <a href="{{ session.lesson.lecture.file.url }}" target="_blank">{{ session.lesson.lecture.file.name|cut:"lectures/" }}</a></li>
+                  {% endif %}
+                  {% if session.lesson.lecture.video_url %}
+                  <li class="mb-1"><i class="bi bi-link-45deg"></i> <strong>Liên kết:</strong> <a href="{{ session.lesson.lecture.video_url }}" target="_blank">{{ session.lesson.lecture.video_url }}</a></li>
+                  {% endif %}
+                </ul>
+                {% if not session.lesson.lecture.content and not session.lesson.lecture.file and not session.lesson.lecture.video_url %}
+                <p class="text-muted">Chưa có nội dung bài giảng.</p>
+                {% endif %}
+              {% else %}
+                <p class="text-muted">Chưa có bài giảng.</p>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <h6 class="mb-2"><i class="bi bi-clipboard-check me-1"></i> Bài tập</h6>
+              {% if session.lesson.exercise %}
+                <p class="mb-1"><i class="bi bi-check-circle-fill text-success"></i> <strong>Độ khó:</strong> {{ session.lesson.exercise.get_difficulty_display }}</p>
+                {% if session.lesson.exercise.description %}
+                <div class="p-2 bg-light border rounded mb-2">{{ session.lesson.exercise.description|linebreaksbr }}</div>
+                {% endif %}
+                <ul class="list-unstyled mb-0">
+                  {% if session.lesson.exercise.file %}
+                  <li class="mb-1"><i class="bi bi-paperclip"></i> <strong>Tệp:</strong> <a href="{{ session.lesson.exercise.file.url }}" target="_blank">{{ session.lesson.exercise.file.name|cut:"exercises/" }}</a></li>
+                  {% endif %}
+                  {% if session.lesson.exercise.link_url %}
+                  <li class="mb-1"><i class="bi bi-link-45deg"></i> <strong>Liên kết:</strong> <a href="{{ session.lesson.exercise.link_url }}" target="_blank">{{ session.lesson.exercise.link_url }}</a></li>
+                  {% endif %}
+                </ul>
+                {% if not session.lesson.exercise.description and not session.lesson.exercise.file and not session.lesson.exercise.link_url %}
+                <p class="text-muted">Chưa có nội dung bài tập.</p>
+                {% endif %}
+              {% else %}
+                <p class="text-muted">Chưa có bài tập.</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+
+{# Modal để chỉnh sửa/xem chi tiết lớp/bài học ngay trên trang #}
+<div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Chi tiết</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="sessions-modal-content">
+        <div class="modal-body"><p>Đang tải...</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

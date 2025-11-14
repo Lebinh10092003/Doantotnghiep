@@ -223,10 +223,23 @@ def class_edit_view(request, pk):
 @permission_required("classes.view_class", raise_exception=True)
 def class_detail_view(request, pk):
     klass = get_object_or_404(
-        Class.objects.select_related("center", "subject", "main_teacher", "room").prefetch_related("assistants", "sessions", "weekly_schedules"),
-        pk=pk
+        Class.objects
+            .select_related("center", "subject", "main_teacher", "room")
+            .prefetch_related(
+                "assistants",
+                "sessions",
+                "weekly_schedules",
+                "enrollments",
+                "enrollments__student",
+            ),
+        pk=pk,
     )
-    context = {"klass": klass}
+    # Lấy danh sách học sinh của lớp (Cả đang học và đã nghỉ)
+    try:
+        active_enrollments = [e for e in klass.enrollments.all()]
+    except Exception:
+        active_enrollments = []
+    context = {"klass": klass, "active_enrollments": active_enrollments}
     response = render(request, "_class_detail.html", context)
     return response
 
@@ -266,7 +279,7 @@ def class_delete_view(request, pk):
 PLANNED_STATUS = "PLANNED"
 @require_POST
 @login_required
-@permission_required("class_sessions.add_classsession", raise_exception=True)
+@permission_required("class_sessions.change_classsession", raise_exception=True)
 def generate_sessions(request, pk):
     """
     Tạo hoặc cập nhật các buổi học cho một lớp, tự động gán Lesson.
@@ -277,9 +290,6 @@ def generate_sessions(request, pk):
     with transaction.atomic():
         klass = get_object_or_404(Class, pk=pk)
         schedules = klass.weekly_schedules.all()
-        
-        # ... (Kiểm tra điều kiện cần thiết giữ nguyên) ...
-
         # 1. TRUY VẤN VÀ LẬP BẢN ĐỒ LESSONS
         # Lấy tất cả Lesson của môn học, sắp xếp theo thứ tự Module và Lesson
         all_lessons = []
@@ -304,7 +314,7 @@ def generate_sessions(request, pk):
             )
         }
 
-        # Bộ đếm index tạm thời (sử dụng số dương lớn để tránh UniqueViolation và CheckViolation)
+        # Bộ đếm index tạm thời 
         temp_index_counter = 999999 
         sessions_to_create = []
         sessions_to_update = []

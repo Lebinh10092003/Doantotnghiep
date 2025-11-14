@@ -42,7 +42,7 @@ function handleHtmxTriggerEvents(evt) {
         
         const clearModalBody = () => {
             try {
-                const openModals = document.querySelectorAll('.modal.show #modal-content');
+                const openModals = document.querySelectorAll('.modal.show [id$="-modal-content"]');
                 openModals.forEach(el => {
                     el.innerHTML = '';
                 });
@@ -82,7 +82,7 @@ function handleHtmxTriggerEvents(evt) {
             || triggers.closeSubjectModal
             || triggers.closeFilterModal
             || triggers.closeClassModal
-            || triggers.closeSessionModal // <--- Trigger của bạn nằm trong danh sách này
+            || triggers.closeSessionModal 
             || triggers.closeAppModal
         ) {
             try {
@@ -274,6 +274,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Ghi đè confirm mặc định
     document.body.addEventListener('htmx:confirm', handleHtmxConfirm);
 
+    // Helper: only prevent swap/show for the same modal as target
+    function isClosingTargetModal(triggers, targetModalEl) {
+        try {
+            if (!triggers || !targetModalEl) return false;
+            const id = targetModalEl.id || '';
+            const closeMap = {
+                'user-modal': 'closeUserModal',
+                'group-modal': 'closeGroupModal',
+                'center-modal': 'closeCenterModal',
+                'room-modal': 'closeRoomModal',
+                'curriculum-modal': 'closeSubjectModal',
+                'filter-modal': 'closeFilterModal',
+                'classes-modal': 'closeClassModal',
+                'sessions-modal': 'closeSessionModal',
+                'password-modal': 'closePasswordModal',
+                'app-modal': 'closeAppModal',
+            };
+            const key = closeMap[id];
+            return key ? !!triggers[key] : false;
+        } catch(_) { return false; }
+    }
+
     // Xử lý thêm/xóa formset
     document.body.addEventListener('click', handleFormsetActions);
 
@@ -284,25 +306,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Logic 1: Tự động mở modal ---
         // Tự động mở modal nếu nội dung được swap vào #modal-content
-        if (target.id === 'modal-content' || (target.closest && target.closest('#modal-content'))) {
+        const contentEl = (target.matches && target.matches('[id$="-modal-content"]')) ? target : (target.closest && target.closest('[id$="-modal-content"]'));
+        if (contentEl) {
+            const modalEl = contentEl.closest('.modal');
             let shouldShow = true;
             try {
                 // Kiểm tra xem response này có *đồng thời* yêu cầu đóng modal không
                 const header = evt.detail?.xhr?.getResponseHeader('HX-Trigger');
                 if (header) {
                     const triggers = JSON.parse(header);
-                    if (triggers.closeUserModal || triggers.closeGroupModal || 
-                        triggers.closeCenterModal || triggers.closeRoomModal || 
-                        triggers.closeSubjectModal || triggers.closeFilterModal ||
-                        triggers.closeClassModal || triggers.closeSessionModal ||
-                        triggers.closeAppModal) {
+                    if (isClosingTargetModal(triggers, modalEl)) {
                         shouldShow = false;
                     }
                 }
             } catch (_) { /* noop */ }
 
             if (shouldShow) {
-                const modalEl = target.closest('.modal');
                 // Chỉ show nếu modal chưa được hiển thị
                 if (modalEl && !modalEl.classList.contains('show')) { 
                     const instance = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -320,6 +339,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 initializeTomSelect(newElements);
             }
         }
+
+        // --- Logic 3: Đặt tiêu đề modal khi nội dung đã load ---
+        try {
+            const modalContent = (target.id && target.id.endsWith('-modal-content')) ? target : null;
+            if (modalContent) {
+                let titleText = '';
+                // Ưu tiên tiêu đề có sẵn trong partial (nếu có)
+                const prefer = modalContent.querySelector('h5.modal-title') || modalContent.querySelector('h5') || modalContent.querySelector('h3');
+                if (prefer && prefer.textContent) {
+                    titleText = prefer.textContent.trim();
+                }
+                if (titleText) {
+                    const headerTitle = document.querySelector('#sessions-modal .modal-title');
+                    if (headerTitle) {
+                        headerTitle.textContent = titleText;
+                    }
+                    // Cập nhật Alpine (nếu có) để giữ đồng bộ
+                    try {
+                        const root = document.querySelector('#main');
+                        if (root && root.__x && root.__x.$data) {
+                            root.__x.$data.modalTitle = titleText;
+                        }
+                    } catch (_) { /* noop */ }
+                }
+            }
+        } catch (_) { /* noop */ }
     });
     
     // 4. Xử lý TRƯỚC KHI SWAP 
@@ -328,7 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!target) return;
 
         // Chỉ áp dụng logic này cho các target là modal
-        const isModalTarget = target.id === 'modal-content' || (target.closest && target.closest('#modal-content'));
+        const contentEl = (target.matches && target.matches('[id$="-modal-content"]')) ? target : (target.closest && target.closest('[id$="-modal-content"]'));
+        const isModalTarget = !!contentEl;
         if (!isModalTarget) return;
 
         const xhr = evt.detail.xhr;
@@ -339,6 +385,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const header = xhr?.getResponseHeader('HX-Trigger');
             if (header) {
                 const triggers = JSON.parse(header);
+                // Nếu response không đóng đúng modal mục tiêu, vô hiệu hóa các cờ close* để không hủy swap
+                try {
+                    const modalElGuard = contentEl ? contentEl.closest('.modal') : null;
+                    if (!isClosingTargetModal(triggers, modalElGuard)) {
+                        delete triggers.closeUserModal;
+                        delete triggers.closeGroupModal;
+                        delete triggers.closeCenterModal;
+                        delete triggers.closeRoomModal;
+                        delete triggers.closeSubjectModal;
+                        delete triggers.closeFilterModal;
+                        delete triggers.closeClassModal;
+                        delete triggers.closeSessionModal;
+                        delete triggers.closeAppModal;
+                    }
+                } catch(_) { /* noop */ }
                 if (triggers.closeUserModal || triggers.closeGroupModal || 
                     triggers.closeCenterModal || triggers.closeRoomModal || 
                     triggers.closeSubjectModal || triggers.closeFilterModal ||
@@ -365,3 +426,86 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (_) { /* noop */ }
     });
 });
+
+function _toISO(d) {
+    const z = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+}
+
+function _mondayOf(date) {
+    const d = new Date(date);
+    const day = d.getDay(); // 0..6, 0=CN, 1=T2
+    const diff = (day === 0 ? -6 : 1 - day);
+    d.setDate(d.getDate() + diff);
+    return d;
+}
+
+function bindMySchedule() {
+    const form = document.getElementById('my-schedule-filters');
+    if (!form || form.dataset.bound === '1') return;
+    form.dataset.bound = '1';
+
+    const startInput = () => form.elements['start'];
+    const endInput = () => form.elements['end'];
+
+    function adjustWeek(delta) {
+        const start = startInput().value ? new Date(startInput().value) : new Date();
+        const newStart = new Date(start);
+        newStart.setDate(newStart.getDate() + (7 * delta));
+        const newEnd = new Date(newStart);
+        newEnd.setDate(newEnd.getDate() + 6);
+        startInput().value = _toISO(newStart);
+        endInput().value = _toISO(newEnd);
+        form.requestSubmit();
+    }
+
+    const prevBtn = document.getElementById('prev-week');
+    const nextBtn = document.getElementById('next-week');
+    const thisBtn = document.getElementById('this-week');
+    prevBtn?.addEventListener('click', () => adjustWeek(-1));
+    nextBtn?.addEventListener('click', () => adjustWeek(1));
+    thisBtn?.addEventListener('click', () => {
+        const now = new Date();
+        const mon = _mondayOf(now);
+        const sun = new Date(mon);
+        sun.setDate(mon.getDate() + 6);
+        startInput().value = _toISO(mon);
+        endInput().value = _toISO(sun);
+        form.requestSubmit();
+    });
+}
+
+function bindTeachingSchedule() {
+    const form = document.getElementById('teaching-schedule-filters');
+    if (!form || form.dataset.bound === '1') return;
+    form.dataset.bound = '1';
+
+    const dateInput = () => form.elements['date'];
+
+    function adjustWeek(delta) {
+        const base = dateInput().value ? new Date(dateInput().value) : new Date();
+        base.setDate(base.getDate() + (7 * delta));
+        dateInput().value = _toISO(base);
+        form.requestSubmit();
+    }
+
+    const prevBtn = document.getElementById('prev-week');
+    const nextBtn = document.getElementById('next-week');
+    const thisBtn = document.getElementById('this-week');
+    prevBtn?.addEventListener('click', () => adjustWeek(-1));
+    nextBtn?.addEventListener('click', () => adjustWeek(1));
+    thisBtn?.addEventListener('click', () => { dateInput().value = _toISO(new Date()); form.requestSubmit(); });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    try { bindMySchedule(); } catch(_) {}
+    try { bindTeachingSchedule(); } catch(_) {}
+    try { bindTeachingClasses(); } catch(_) {}
+});
+
+function bindTeachingClasses() {
+    const form = document.getElementById('teaching-classes-filters');
+    if (!form || form.dataset.bound === '1') return;
+    form.dataset.bound = '1';
+    // No extra JS needed; HTMX on form handles submit.
+}

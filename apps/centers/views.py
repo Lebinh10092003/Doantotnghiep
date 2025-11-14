@@ -213,7 +213,7 @@ def room_create_view(request):
         form = RoomForm(request.POST)
         if form.is_valid():
             room = form.save()
-            response = HttpResponse(status=200)
+            response = HttpResponse(status=204)
             response["HX-Trigger"] = json.dumps(
                 {
                     "reload-rooms-table": True,
@@ -254,7 +254,7 @@ def room_edit_view(request, room_id: int):
         if form.is_valid():
             room = form.save()
             # Áp dụng Pattern 1: Đóng modal và tải lại bảng
-            response = HttpResponse(status=200)
+            response = HttpResponse(status=204)
             response["HX-Trigger"] = json.dumps(
                 {
                     "closeRoomModal": True, # Lệnh đóng modal đang mở
@@ -338,16 +338,8 @@ def center_create_view(request):
             })
             return response
         else:
-            # Nếu form không hợp lệ, render lại form với lỗi
-            response = render(request, '_center_form.html', {'form': form, 'is_create': True}, status=422)
-            response['HX-Trigger'] = json.dumps({
-                "show-sweet-alert": {
-                    "icon": "error",
-                    "title": "Invalid data",
-                    "text": "Please check the errors in the form."
-                }
-            })
-            return response
+            # Nếu form không hợp lệ, render lại form với lỗi và status 422
+            return render(request, '_center_form.html', {'form': form, 'is_create': True}, status=422)
     else:
         form = CenterForm()
 
@@ -377,16 +369,8 @@ def center_edit_view(request, center_id):
             })
             return response
         else:
-            # Nếu form không hợp lệ, render lại form với lỗi
-            response = render(request, '_center_form.html', {'form': form, 'center': center, 'is_create': False}, status=422)
-            response['HX-Trigger'] = json.dumps({
-                "show-sweet-alert": {
-                    "icon": "error",
-                    "title": "Invalid data",
-                    "text": "Please check the errors in the form."
-                }
-            })
-            return response
+            # Nếu form không hợp lệ, render lại form với lỗi và status 422
+            return render(request, '_center_form.html', {'form': form, 'center': center, 'is_create': False}, status=422)
     else:
         form = CenterForm(instance=center)
 

@@ -1,6 +1,5 @@
 import json
 from datetime import timedelta
-from pyexpat.errors import messages
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
@@ -434,7 +433,7 @@ def user_delete_view(request):
     response = HttpResponse(status=200)
     response['HX-Trigger'] = json.dumps({
         "reload-accounts-table": True,
-        "closeUserModal": True, # Đóng modal chi tiết nếu xóa từ đó
+        "closeUserModal": True, 
         "show-sweet-alert": alert
     })
     return response

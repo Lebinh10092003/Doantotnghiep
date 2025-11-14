@@ -46,7 +46,7 @@
           <td class="text-nowrap">
             <button type="button" class="btn btn-info btn-sm"
                     hx-get="{% url 'accounts:user_detail' u.id %}?from_group=1"
-                    hx-target="#user-modal #modal-content"
+                    hx-target="#user-modal-content"
                     @click="modalTitle = 'Chi tiết người dùng: {{ u.username|escapejs }}'"
                     title="Xem chi tiết">
               <i class="bi bi-eye"></i>

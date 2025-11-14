@@ -1,6 +1,6 @@
 <div class="modal-body">
   <form hx-post="{% if is_create %}{% url 'curriculum:subject_add' %}{% else %}{% url 'curriculum:subject_edit' subject.id %}{% endif %}"
-        hx-target="#modal-content" hx-swap="innerHTML"
+        hx-target="closest [id$='-modal-content']" hx-swap="innerHTML"
         enctype="multipart/form-data" hx-encoding="multipart/form-data">
     {% csrf_token %}
     <div class="mb-3">

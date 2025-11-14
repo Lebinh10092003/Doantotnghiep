@@ -1,0 +1,110 @@
+<div class="dataTable-container table-responsive">
+  <table class="table table-striped dataTable-table align-middle">
+    <thead>
+      <tr>
+        <th>Thời gian</th>
+        <th>Lớp</th>
+        <th>Môn</th>
+        <th>Trung tâm</th>
+        <th>Phòng</th>
+        <th>GV chính</th>
+        <th>Trạng thái</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if sessions %}
+        {% regroup sessions by date as date_groups %}
+        {% now "Y-m-d" as today_str %}
+        {% for grp in date_groups %}
+          <tr class="table-active">
+            <td colspan="8" class="fw-semibold">
+              {% with d=grp.grouper dstr=grp.grouper|date:"Y-m-d" %}
+                {% with dow=grp.grouper|date:"w" %}
+                  {% if dstr == today_str %}<span class="badge bg-primary me-2">Hôm nay</span>{% endif %}
+                  {% if dow == "1" %}Thứ Hai{% elif dow == "2" %}Thứ Ba{% elif dow == "3" %}Thứ Tư{% elif dow == "4" %}Thứ Năm{% elif dow == "5" %}Thứ Sáu{% elif dow == "6" %}Thứ Bảy{% else %}Chủ nhật{% endif %}
+                  • {{ d|date:"d/m/Y" }}
+                {% endwith %}
+              {% endwith %}
+            </td>
+          </tr>
+          {% for s in grp.list %}
+            <tr>
+              <td class="text-nowrap">{{ s.start_time|time:"H:i"|default:"-" }}{% if s.end_time %} - {{ s.end_time|time:"H:i" }}{% endif %}</td>
+              <td>{{ s.klass.name }}</td>
+              <td>{{ s.klass.subject.name }}</td>
+              <td>{{ s.klass.center.name }}</td>
+              <td>{% if s.room_override %}{{ s.room_override.name }}{% elif s.klass.room %}{{ s.klass.room.name }}{% else %}-{% endif %}</td>
+              <td>
+                {% if s.teacher_override %}
+                  {{ s.teacher_override.get_full_name|default:s.teacher_override.username }}
+                  <span class="badge bg-light text-dark border ms-1">thay</span>
+                {% else %}
+                  {{ s.klass.main_teacher.get_full_name|default:"-" }}
+                {% endif %}
+              </td>
+              <td>
+                {% if s.status == 'PLANNED' %}
+                  <span class="badge bg-info">{{ s.get_status_display }}</span>
+                {% elif s.status == 'COMPLETED' or s.status == 'DONE' %}
+                  <span class="badge bg-success">{{ s.get_status_display }}</span>
+                {% elif s.status == 'CANCELLED' %}
+                  <span class="badge bg-danger">{{ s.get_status_display }}</span>
+                {% elif s.status == 'MISSED' %}
+                  <span class="badge bg-warning text-dark">{{ s.get_status_display }}</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ s.get_status_display }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end text-nowrap">
+                <div class="d-inline-flex gap-1">
+                  {% if perms.class_sessions.view_classsession %}
+                  <button type="button" class="btn btn-sm btn-outline-secondary"
+                          hx-get="{% url 'class_sessions:session_detail' s.pk %}"
+                          hx-target="#sessions-modal-content"
+                          data-bs-toggle="modal"
+                          data-bs-target="#sessions-modal"
+                          @click="modalTitle = 'Chi tiết Buổi: {{ s.klass.name|escapejs }} - Buổi {{ s.index }}'"
+                          title="Chi tiết buổi">
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  {% endif %}
+                  {% if perms.classes.view_class %}
+                  <button type="button" class="btn btn-sm btn-outline-primary"
+                          hx-get="{% url 'classes:class_detail' s.klass.pk %}"
+                          hx-target="#sessions-modal-content"
+                          data-bs-toggle="modal"
+                          data-bs-target="#sessions-modal"
+                          @click="modalTitle = 'Chi tiết Lớp: {{ s.klass.name|escapejs }}'"
+                          title="Chi tiết lớp">
+                    <i class="bi bi-journal-bookmark"></i>
+                  </button>
+                  {% endif %}
+                  {% if perms.class_sessions.view_classsession %}
+                  <a class="btn btn-sm btn-outline-dark" href="{% url 'class_sessions:session_detail' s.pk %}"
+                     title="Mở trang chi tiết">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                  </a>
+                  {% endif %}
+                  {% if s.lesson and perms.curriculum.view_lesson %}
+                  <button type="button" class="btn btn-sm btn-outline-success"
+                          hx-get="{% url 'curriculum:lesson_detail' s.lesson.id %}"
+                          hx-target="#sessions-modal-content"
+                          data-bs-toggle="modal"
+                          data-bs-target="#sessions-modal"
+                          @click="modalTitle = 'Giáo án: {{ s.lesson.title|escapejs }}'"
+                          title="Giáo án / Bài học">
+                    <i class="bi bi-journal-text"></i>
+                  </button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="8" class="text-center text-muted">Không có lịch trong khoảng thời gian này.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
