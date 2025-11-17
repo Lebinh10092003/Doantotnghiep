@@ -1,4 +1,3 @@
-# apps/class_sessions/views.py
 import json
 from datetime import date, timedelta
 from django.shortcuts import render, get_object_or_404
@@ -10,17 +9,13 @@ from django.db.models import Q
 from django.http import HttpResponse, QueryDict, HttpResponseBadRequest
 from django import forms 
 from django.template.loader import render_to_string
-from collections import defaultdict # Import thêm
-
-# === IMPORT THÊM ===
+from collections import defaultdict 
 from apps.accounts.models import User, ParentStudentRelation
 from apps.enrollments.models import Enrollment
 from apps.attendance.models import Attendance
 from apps.assessments.models import Assessment
 from apps.attendance.forms import AttendanceForm
 from apps.assessments.forms import AssessmentForm
-# === KẾT THÚC IMPORT ===
-
 from .models import ClassSession
 from .filters import ClassSessionFilter
 from .forms import ClassSessionForm 
@@ -265,6 +260,34 @@ def session_detail_view(request, pk):
     return render(request, "session_detail.html", context)
 
 
+@login_required
+@permission_required("class_sessions.view_classsession", raise_exception=True)
+def student_attendance_assessment_modal(request, session_id, student_id):
+    """
+    Modal hiển thị form Điểm danh & Đánh giá cho một học sinh trong một buổi học,
+    sử dụng lại các view & template của apps attendance và assessments.
+    """
+    session = get_object_or_404(
+        ClassSession.objects.select_related(
+            "klass", "klass__center", "lesson", "teacher_override", "room_override", "klass__main_teacher"
+        ),
+        pk=session_id,
+    )
+    student = get_object_or_404(User, pk=student_id)
+
+    attendance = Attendance.objects.filter(session=session, student=student).first()
+    assessment = Assessment.objects.filter(session=session, student=student).first()
+
+    context = {
+        "session": session,
+        "student": student,
+        "attendance": attendance,
+        "assessment": assessment,
+    }
+    # Template này nằm trực tiếp dưới apps/class_sessions/templates/
+    return render(request, "_student_attendance_assessment_modal.html", context)
+
+
 @require_POST
 @login_required
 @permission_required("class_sessions.delete_classsession", raise_exception=True)
@@ -328,17 +351,25 @@ def update_student_session_status(request, session_id, student_id):
         
         # Render lại chỉ cái hàng <tr> đó
         html = render_to_string(
-            "class_sessions/_session_student_row.html", 
-            {"data": student_data, "session": session, "request": request, "success": True} 
+            "_session_student_row.html",
+            {"data": student_data, "session": session, "request": request, "success": True},
+            request=request,
         )
         response = HttpResponse(html)
-        response["HX-Trigger"] = "flash-success"
+        # Gửi trigger để hiển thị thông báo và đóng modal
+        response["HX-Trigger"] = json.dumps({
+            "show-sweet-alert": {
+                "icon": "success",
+                "title": "Đã lưu điểm danh & đánh giá!",
+                "timer": 1500,
+            },
+            "closeAttendanceModal": True,
+        })
         return response
 
     return HttpResponseBadRequest("Dữ liệu không hợp lệ")
 
 
-# ========= SCHEDULE VIEWS (Giữ nguyên) =========
 @login_required
 def my_schedule_view(request):
     today = date.today()

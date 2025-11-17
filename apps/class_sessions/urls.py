@@ -14,6 +14,11 @@ urlpatterns = [
     path("<int:pk>/detail/", views.session_detail_view, name="session_detail"),
     path("<int:pk>/delete/", views.session_delete_view, name="session_delete"),
     path(
+        "student-modal/<int:session_id>/<int:student_id>/",
+        views.student_attendance_assessment_modal,
+        name="student_attendance_assessment_modal",
+    ),
+    path(
         "update-student-status/<int:session_id>/<int:student_id>/", 
         views.update_student_session_status, 
         name="update_student_session_status"

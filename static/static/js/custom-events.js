@@ -83,6 +83,7 @@ function handleHtmxTriggerEvents(evt) {
             || triggers.closeFilterModal
             || triggers.closeClassModal
             || triggers.closeSessionModal 
+            || triggers.closeAttendanceModal
             || triggers.closeAppModal
         ) {
             try {
@@ -288,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'filter-modal': 'closeFilterModal',
                 'classes-modal': 'closeClassModal',
                 'sessions-modal': 'closeSessionModal',
+                'attendance-modal': 'closeAttendanceModal',
                 'password-modal': 'closePasswordModal',
                 'app-modal': 'closeAppModal',
             };

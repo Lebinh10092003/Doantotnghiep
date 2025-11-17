@@ -1,54 +1,73 @@
 {% load widget_tweaks %}
 
 <tr 
+  id="student-row-{{ data.student.id }}"
   class="student-row {% if success %}flash-success{% endif %}"
-  hx-target="this"
-  hx-swap="outerHTML"
 >
   <td class="fw-bold">
     {{ data.student.get_full_name|default:data.student.username }}
   </td>
   
-  {# Cột Trạng thái Điểm danh #}
+  {# Cột trạng thái điểm danh #}
   <td>
-    <select name="status" class="form-select form-select-sm" {% if not perms.attendance.change_attendance %}disabled{% endif %}>
-      <option value="P" {% if not data.attendance or data.attendance.status == 'P' %}selected{% endif %}>Có mặt</option>
-      <option value="A" {% if data.attendance.status == 'A' %}selected{% endif %}>Vắng</option>
-      <option value="L" {% if data.attendance.status == 'L' %}selected{% endif %}>Muộn</option>
-    </select>
+    {% if data.attendance %}
+      {% if data.attendance.status == "P" %}
+        <span class="badge bg-success">Có mặt</span>
+      {% elif data.attendance.status == "A" %}
+        <span class="badge bg-danger">Vắng</span>
+      {% elif data.attendance.status == "L" %}
+        <span class="badge bg-warning text-dark">Muộn</span>
+      {% else %}
+        <span class="badge bg-secondary">{{ data.attendance.get_status_display }}</span>
+      {% endif %}
+    {% else %}
+      <span class="badge bg-secondary">Chưa điểm danh</span>
+    {% endif %}
   </td>
   
-  {# Cột Ghi chú Điểm danh #}
+  {# Cột Ghi chú điểm danh #}
   <td>
-    <input type="text" name="note" value="{{ data.attendance.note|default:'' }}" class="form-control form-control-sm" placeholder="Ghi chú điểm danh..." {% if not perms.attendance.change_attendance %}disabled{% endif %}>
+    {% if data.attendance and data.attendance.note %}
+      <span class="text-body">{{ data.attendance.note }}</span>
+    {% else %}
+      <span class="text-muted">-</span>
+    {% endif %}
   </td>
   
   {# Cột Điểm #}
   <td>
-    <input type="number" name="score" value="{{ data.assessment.score|default:'' }}" class="form-control form-control-sm" placeholder="Điểm" step="0.1" min="0" max="10" style="max-width: 80px;" {% if not perms.assessments.change_assessment %}disabled{% endif %}>
+    {% if data.assessment and data.assessment.score is not None %}
+      {{ data.assessment.score }}
+    {% else %}
+      <span class="text-muted">-</span>
+    {% endif %}
   </td>
   
   {# Cột Nhận xét #}
   <td>
-    <input type="text" name="remark" value="{{ data.assessment.remark|default:'' }}" class="form-control form-control-sm" placeholder="Nhận xét..." {% if not perms.assessments.change_assessment %}disabled{% endif %}>
+    {% if data.assessment and data.assessment.remark %}
+      <span class="text-body">{{ data.assessment.remark }}</span>
+    {% else %}
+      <span class="text-muted">-</span>
+    {% endif %}
   </td>
   
-  {# CỘT HÀNH ĐỘNG #}
+  {# Cột Hành động #}
   <td class="text-nowrap">
     <div class="d-flex gap-1">
-      {# Nút Lưu #}
+      {# Mở modal Điểm danh & Đánh giá riêng (attendance-modal riêng) #}
       {% if perms.attendance.change_attendance or perms.assessments.change_assessment %}
       <button type="button" 
               class="btn btn-sm btn-primary"
-              hx-post="{% url 'class_sessions:update_student_session_status' session.id data.student.id %}"
-              hx-include="closest tr"
-              hx-indicator="closest tr"
-              title="Lưu thay đổi cho học sinh này">
-        <i class="bi bi-save"></i>
+              hx-get="{% url 'class_sessions:student_attendance_assessment_modal' session.id data.student.id %}?_={{ data.student.id }}-{% now 'U' %}"
+              hx-target="#attendance-modal-content"
+              hx-on::after-request="if(event.detail.successful) bootstrap.Modal.getOrCreateInstance(document.getElementById('attendance-modal')).show()"
+              title="Điểm danh &amp; đánh giá cho học sinh này">
+        <i class="bi bi-clipboard-check"></i>
       </button>
       {% endif %}
 
-      {# Nút xem chi tiết HS #}
+      {# Nút xem chi tiết HS - dùng sessions-modal chung #}
       {% if perms.accounts.view_user %}
       <button type="button" 
               class="btn btn-sm btn-info"
@@ -62,9 +81,9 @@
       </button>
       {% endif %}
 
-      {# Nút xem Phụ huynh (chỉ hiển thị nếu có phụ huynh) #}
+      {# Nút xem Phụ huynh (nếu có) - dùng sessions-modal chung #}
       {% if perms.accounts.view_user and data.parents %}
-        {% with parent=data.parents.0 %} {# Lấy phụ huynh đầu tiên làm đại diện #}
+        {% with parent=data.parents.0 %}
         <button type="button" 
                 class="btn btn-sm btn-warning"
                 hx-get="{% url 'accounts:user_detail' parent.id %}"

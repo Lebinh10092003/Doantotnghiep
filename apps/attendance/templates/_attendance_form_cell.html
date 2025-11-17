@@ -1,17 +1,21 @@
 {% load widget_tweaks %}
-<form hx-post="{% url 'attendance:update_attendance' session.id student.id %}" 
-      hx-target="this" 
-      hx-swap="outerHTML" 
-      hx-trigger="change delay:500ms">
-    
-    {% csrf_token %}
-    
-    <div class="input-group input-group-sm">
-        <select name="status" class="form-select" style="max-width: 120px;">
-            <option value="P" {% if not attendance or attendance.status == 'P' %}selected{% endif %}>Có mặt</option>
-            <option value="A" {% if attendance.status == 'A' %}selected{% endif %}>Vắng</option>
-            <option value="L" {% if attendance.status == 'L' %}selected{% endif %}>Muộn</option>
-        </select>
-        <input type="text" name="note" value="{{ attendance.note|default:'' }}" class="form-control" placeholder="Ghi chú...">
-    </div>
-</form>
+
+<div class="mb-2">
+  <label class="form-label form-label-sm mb-1">Trạng thái</label>
+  <select name="status" class="form-select form-select-sm">
+    <option value="P" {% if not attendance or attendance.status == 'P' %}selected{% endif %}>Có mặt</option>
+    <option value="A" {% if attendance and attendance.status == 'A' %}selected{% endif %}>Vắng</option>
+    <option value="L" {% if attendance and attendance.status == 'L' %}selected{% endif %}>Muộn</option>
+  </select>
+</div>
+
+<div class="mb-0">
+  <label class="form-label form-label-sm mb-1">Ghi chú</label>
+  <textarea
+    name="note"
+    class="form-control form-control-sm"
+    rows="2"
+    placeholder="Ghi chú điểm danh..."
+  >{{ attendance.note|default_if_none:'' }}</textarea>
+</div>
+
