@@ -13,4 +13,9 @@ urlpatterns = [
     path("<int:pk>/edit/", views.session_edit_view, name="session_edit"),
     path("<int:pk>/detail/", views.session_detail_view, name="session_detail"),
     path("<int:pk>/delete/", views.session_delete_view, name="session_delete"),
+    path(
+        "update-student-status/<int:session_id>/<int:student_id>/", 
+        views.update_student_session_status, 
+        name="update_student_session_status"
+    ),
 ]

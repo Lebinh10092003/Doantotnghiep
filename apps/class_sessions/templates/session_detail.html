@@ -3,7 +3,7 @@
 {% block title %}Chi tiết Buổi dạy{% endblock %}
 
 {% block content %}
-<div id="main">
+<div id="main" x-data="{ modalTitle: 'Đang tải...' }">
   <div class="page-heading">
     <div class="page-title">
       <div class="row">
@@ -43,21 +43,24 @@
               {% if perms.class_sessions.change_classsession %}
               <button class="btn btn-primary"
                       hx-get="{% url 'class_sessions:session_edit' session.pk %}"
-                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal">
+                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal"
+                      @click="modalTitle = 'Chỉnh sửa Buổi học'">
                 <i class="bi bi-pencil-square"></i> Chỉnh sửa
               </button>
               {% endif %}
               {% if perms.classes.view_class %}
               <button class="btn btn-outline-primary"
                       hx-get="{% url 'classes:class_detail' session.klass.pk %}"
-                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal">
+                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal"
+                      @click="modalTitle = 'Chi tiết Lớp học'">
                 <i class="bi bi-journal-bookmark"></i> Chi tiết lớp
               </button>
               {% endif %}
               {% if session.lesson and perms.curriculum.view_lesson %}
               <button class="btn btn-outline-success"
                       hx-get="{% url 'curriculum:lesson_detail' session.lesson.id %}"
-                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal">
+                      hx-target="#sessions-modal-content" data-bs-toggle="modal" data-bs-target="#sessions-modal"
+                      @click="modalTitle = 'Chi tiết Giáo án'">
                 <i class="bi bi-journal-text"></i> Giáo án
               </button>
               {% endif %}
@@ -140,16 +143,64 @@
         </div>
       </div>
       {% endif %}
-    </section>
+
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Điểm danh & Đánh giá</h5>
+        </div>
+        <div class="card-body">
+          <div class="dataTable-container table-responsive">
+            
+            {# CSS cho hiệu ứng flash và loading #}
+            <style>
+              .student-row.htmx-request {
+                opacity: 0.5;
+                transition: opacity 300ms ease-in-out;
+              }
+              @keyframes flash-success {
+                0% { background-color: inherit; }
+                25% { background-color: #d1e7dd; } /* Màu xanh lá nhạt */
+                100% { background-color: inherit; }
+              }
+              .flash-success {
+                animation: flash-success 1s ease-out;
+              }
+            </style>
+
+            <table class="table table-striped dataTable-table align-middle">
+              <thead>
+                <tr>
+                  <th>Học sinh</th>
+                  <th style="min-width: 120px;">Trạng thái</th>
+                  <th style="min-width: 180px;">Ghi chú</th>
+                  <th style="width: 80px;">Điểm</th>
+                  <th style="min-width: 200px;">Nhận xét</th>
+                  <th style="width: 1%;" class="text-nowrap">Hành động</th>
+                </tr>
+              </thead>
+              <tbody hx-trigger="flash-success from:body">
+                {% for data in student_data_list %}
+                  {% include "_session_student_row.html" with data=data session=session %}
+                {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center text-muted">Lớp học này chưa có học sinh.</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      </section>
   </div>
 </div>
 
-{# Modal để chỉnh sửa/xem chi tiết lớp/bài học ngay trên trang #}
-<div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true">
+{# Modal để chỉnh sửa/xem chi tiết (Đã CÓ SẴN) #}
+<div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Chi tiết</h5>
+        <h5 class="modal-title" x-text="modalTitle">Chi tiết</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div id="sessions-modal-content">

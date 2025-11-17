@@ -1,0 +1,17 @@
+{% load widget_tweaks %}
+<form hx-post="{% url 'attendance:update_attendance' session.id student.id %}" 
+      hx-target="this" 
+      hx-swap="outerHTML" 
+      hx-trigger="change delay:500ms">
+    
+    {% csrf_token %}
+    
+    <div class="input-group input-group-sm">
+        <select name="status" class="form-select" style="max-width: 120px;">
+            <option value="P" {% if not attendance or attendance.status == 'P' %}selected{% endif %}>Có mặt</option>
+            <option value="A" {% if attendance.status == 'A' %}selected{% endif %}>Vắng</option>
+            <option value="L" {% if attendance.status == 'L' %}selected{% endif %}>Muộn</option>
+        </select>
+        <input type="text" name="note" value="{{ attendance.note|default:'' }}" class="form-control" placeholder="Ghi chú...">
+    </div>
+</form>

@@ -1,0 +1,13 @@
+{% load widget_tweaks %}
+<form hx-post="{% url 'assessments:update_assessment' session.id student.id %}" 
+      hx-target="this" 
+      hx-swap="outerHTML" 
+      hx-trigger="change delay:500ms">
+    
+    {% csrf_token %}
+    
+    <div class="input-group input-group-sm">
+        <input type="number" name="score" value="{{ assessment.score|default:'' }}" class="form-control" placeholder="Điểm" step="0.1" min="0" max="10" style="max-width: 80px;">
+        <input type="text" name="remark" value="{{ assessment.remark|default:'' }}" class="form-control" placeholder="Nhận xét...">
+    </div>
+</form>

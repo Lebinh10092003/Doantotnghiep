@@ -10,6 +10,8 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls")),
     path("centers/", include("apps.centers.urls")),
     path("curriculum/", include("apps.curriculum.urls")),
+    path('attendance/', include('apps.attendance.urls')),
+    path('assessments/', include('apps.assessments.urls')),
     path("students/", include("apps.students.urls")),
     path("teachers/", include("apps.teachers.urls")),
     path("parents/", include("apps.parents.urls")),

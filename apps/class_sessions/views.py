@@ -1,3 +1,4 @@
+# apps/class_sessions/views.py
 import json
 from datetime import date, timedelta
 from django.shortcuts import render, get_object_or_404
@@ -6,8 +7,20 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_POST
 from django_filters.views import FilterView
 from django.db.models import Q
-from django.http import HttpResponse, QueryDict
+from django.http import HttpResponse, QueryDict, HttpResponseBadRequest
 from django import forms 
+from django.template.loader import render_to_string
+from collections import defaultdict # Import thêm
+
+# === IMPORT THÊM ===
+from apps.accounts.models import User, ParentStudentRelation
+from apps.enrollments.models import Enrollment
+from apps.attendance.models import Attendance
+from apps.assessments.models import Assessment
+from apps.attendance.forms import AttendanceForm
+from apps.assessments.forms import AssessmentForm
+# === KẾT THÚC IMPORT ===
+
 from .models import ClassSession
 from .filters import ClassSessionFilter
 from .forms import ClassSessionForm 
@@ -15,9 +28,6 @@ from apps.filters.models import SavedFilter
 from django.core.paginator import Paginator, EmptyPage
 from apps.centers.models import Center
 from apps.curriculum.models import Subject, Lesson
-from apps.accounts.models import User
-from apps.enrollments.models import Enrollment
-from apps.accounts.models import ParentStudentRelation
 
 
 def is_htmx_request(request):
@@ -48,7 +58,6 @@ def manage_class_sessions(request):
                 if isinstance(value, (User, Center, Subject, Lesson)):
                     display_value = str(value)
                 elif isinstance(session_filter.form.fields[name], forms.ChoiceField):
-                    # Đã sửa: Thêm kiểm tra 'if value else None'
                     display_value = dict(session_filter.form.fields[name].choices).get(value) if value else None
                 elif isinstance(value, slice): 
                     start, end = value.start, value.stop
@@ -138,10 +147,8 @@ def manage_class_sessions(request):
 
     # 5. Render
     if is_htmx_request(request):
-        # SỬA LỖI: Chỉ dùng tên tệp tương đối
         return render(request, "_session_filterable_content.html", context)
     
-    # Tải trang đầy đủ
     return render(request, "manage_class_sessions.html", context)
 
 
@@ -208,10 +215,52 @@ def session_detail_view(request, pk):
         ).prefetch_related("assistants"),
         pk=pk
     )
-    context = {"session": session}
+    
+    # 1. Lấy danh sách học sinh đã đăng ký (active)
+    enrollments = Enrollment.objects.filter(
+        klass=session.klass, active=True
+    ).select_related('student')
+    student_ids = [e.student_id for e in enrollments] # Lấy ID học sinh
+
+    # 2. Lấy tất cả bản ghi điểm danh & đánh giá cho buổi này
+    attendance_records = {
+        att.student_id: att for att in Attendance.objects.filter(session=session, student_id__in=student_ids)
+    }
+    assessment_records = {
+        asm.student_id: asm for asm in Assessment.objects.filter(session=session, student_id__in=student_ids)
+    }
+    
+    # 3. Lấy thông tin phụ huynh
+    parent_relations = ParentStudentRelation.objects.filter(
+        student_id__in=student_ids
+    ).select_related('parent')
+    
+    # Tạo map: {student_id: [parent1, parent2, ...]}
+    parents_map = defaultdict(list)
+    for rel in parent_relations:
+        parents_map[rel.student_id].append(rel.parent)
+
+    # 4. Chuẩn bị dữ liệu cho template
+    student_data_list = []
+    for enrollment in enrollments:
+        student = enrollment.student
+        student_data_list.append({
+            "student": student,
+            "enrollment": enrollment,
+            "attendance": attendance_records.get(student.id), 
+            "assessment": assessment_records.get(student.id),
+            "parents": parents_map.get(student.id, []), # Thêm phụ huynh vào data
+        })
+
+    context = {
+        "session": session,
+        "student_data_list": student_data_list, 
+    }
+    
     if is_htmx_request(request):
+        context["as_page"] = request.GET.get("as_page", "false") == "true"
         return render(request, "_session_detail.html", context)
-    # Full page view for better usability (non-HTMX)
+    
     context["as_page"] = True
     return render(request, "session_detail.html", context)
 
@@ -235,11 +284,63 @@ def session_delete_view(request, pk):
     })
     return response
 
+#
+# === VIEW MỚI ĐỂ XỬ LÝ LƯU THEO HÀNG ===
+#
+@require_POST
+@login_required
+@permission_required("attendance.change_attendance")
+@permission_required("assessments.change_assessment")
+def update_student_session_status(request, session_id, student_id):
+    """
+    Xử lý một request HTMX POST để cập nhật đồng thời
+    Attendance và Assessment cho một học sinh.
+    """
+    session = get_object_or_404(ClassSession, pk=session_id)
+    student = get_object_or_404(User, pk=student_id)
+    
+    # 1. Lấy hoặc tạo các đối tượng
+    attendance, _ = Attendance.objects.get_or_create(session=session, student=student)
+    assessment, _ = Assessment.objects.get_or_create(session=session, student=student)
+    
+    # 2. Tạo form từ dữ liệu POST
+    attendance_form = AttendanceForm(request.POST, instance=attendance)
+    assessment_form = AssessmentForm(request.POST, instance=assessment)
 
-# ========= SCHEDULE VIEWS =========
+    # 3. Validate và Lưu
+    if attendance_form.is_valid() and assessment_form.is_valid():
+        attendance_form.save()
+        assessment_form.save()
+        
+        # 4. Chuẩn bị context và trả về fragment
+        enrollment = Enrollment.objects.filter(klass=session.klass, student=student).first()
+        
+        # Lấy lại thông tin phụ huynh cho hàng <tr>
+        parents = list(ParentStudentRelation.objects.filter(student=student).select_related('parent'))
+
+        student_data = {
+            "student": student,
+            "enrollment": enrollment,
+            "attendance": attendance,
+            "assessment": assessment,
+            "parents": [rel.parent for rel in parents], # Truyền phụ huynh
+        }
+        
+        # Render lại chỉ cái hàng <tr> đó
+        html = render_to_string(
+            "class_sessions/_session_student_row.html", 
+            {"data": student_data, "session": session, "request": request, "success": True} 
+        )
+        response = HttpResponse(html)
+        response["HX-Trigger"] = "flash-success"
+        return response
+
+    return HttpResponseBadRequest("Dữ liệu không hợp lệ")
+
+
+# ========= SCHEDULE VIEWS (Giữ nguyên) =========
 @login_required
 def my_schedule_view(request):
-    """Lịch học cho Học sinh/Phụ huynh; các vai trò khác vẫn xem lịch cá nhân nếu có."""
     today = date.today()
     try:
         start = date.fromisoformat(request.GET.get("start")) if request.GET.get("start") else today - timedelta(days=today.weekday())
@@ -262,7 +363,6 @@ def my_schedule_view(request):
         children_ids = list(
             ParentStudentRelation.objects.filter(parent=user).values_list("student_id", flat=True)
         )
-        # Lọc theo con cụ thể nếu có
         if selected_student_id:
             try:
                 sid = int(selected_student_id)
@@ -271,13 +371,11 @@ def my_schedule_view(request):
             except (TypeError, ValueError):
                 pass
         sessions_qs = sessions_qs.filter(klass__enrollments__student_id__in=children_ids, klass__enrollments__active=True)
-        # Danh sách con để chọn
         children = User.objects.filter(id__in=children_ids)
     elif user_role == "STUDENT":
         sessions_qs = sessions_qs.filter(klass__enrollments__student=user, klass__enrollments__active=True)
         children = None
     else:
-        # Vai trò khác: cho xem lịch nếu có enroll (hiếm) – hoặc để trống
         sessions_qs = sessions_qs.filter(klass__enrollments__student=user, klass__enrollments__active=True)
         children = None
 
@@ -299,20 +397,17 @@ def my_schedule_view(request):
 
 @login_required
 def teaching_schedule_view(request):
-    """Lịch dạy theo TUẦN (tuần chứa ngày được chọn). Admin có thể xem theo teacher_id."""
     today = date.today()
     try:
         selected_date = date.fromisoformat(request.GET.get("date")) if request.GET.get("date") else today
     except ValueError:
         selected_date = today
-    # Xác định tuần (T2..CN)
     start_of_week = selected_date - timedelta(days=selected_date.weekday())
     end_of_week = start_of_week + timedelta(days=6)
 
     viewer = request.user
     teacher_id = request.GET.get("teacher")
 
-    # Chỉ cho phép xem lịch người khác khi có quyền xem classsession
     teacher = viewer
     if teacher_id and viewer.has_perm("class_sessions.view_classsession"):
         try:
@@ -331,7 +426,6 @@ def teaching_schedule_view(request):
         Q(klass__assistants=teacher)
     ).order_by("date", "start_time", "klass__name").distinct()
 
-    # Nếu admin, cung cấp danh sách GV để chọn
     teachers = None
     if viewer.has_perm("class_sessions.view_classsession"):
         teachers = User.objects.filter(Q(groups__name__in=["Teacher", "TEACHER"]) | Q(role__iexact="TEACHER")).distinct()
@@ -352,7 +446,6 @@ def teaching_schedule_view(request):
 
 @login_required
 def teaching_classes_view(request):
-    """Danh sách các lớp ĐANG DẠY (GV chính hoặc trợ giảng)."""
     from apps.classes.models import Class
 
     viewer = request.user
