@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db.models import Count, Q
+from datetime import date, timedelta # Thêm import
 
 # Domain models
 try:
@@ -14,6 +15,11 @@ try:
     from apps.classes.models import Class
 except Exception:
     Class = None
+# Thêm import cho ClassSession
+try:
+    from apps.class_sessions.models import ClassSession
+except Exception:
+    ClassSession = None
    
 def home(request):
     return render(request, "home.html")
@@ -31,6 +37,10 @@ def dashboard(request):
 
     is_admin = user.is_superuser or role == "ADMIN" or in_group("Admin") or in_group("ADMIN")
     is_center_manager = role == "CENTER_MANAGER" or in_group("Center Manager") or in_group("CENTER_MANAGER")
+    # --- YÊU CẦU 2: Thêm logic phát hiện GV/TG ---
+    is_teacher = role == "TEACHER" or in_group("Teacher") or in_group("TEACHER")
+    is_assistant = role == "ASSISTANT" or in_group("Assistant") or in_group("ASSISTANT")
+
 
     context = {"dashboard_role": "user"}
 
@@ -65,5 +75,28 @@ def dashboard(request):
             )
         else:
             context.update({"dashboard_role": "center_manager"})
+    
+    elif (is_teacher or is_assistant) and Class and ClassSession:
+        today = date.today()
+        # Lấy các buổi dạy sắp tới (planned, từ hôm nay)
+        upcoming_sessions_qs = ClassSession.objects.filter(
+            (Q(klass__main_teacher=user) | Q(klass__assistants=user) | Q(teacher_override=user) | Q(assistants=user)),
+            date__gte=today,
+            status="PLANNED"
+        ).select_related('klass', 'lesson').order_by('date', 'start_time')
+        
+        # Lấy các lớp đang dạy (ongoing)
+        teaching_classes_qs = Class.objects.filter(
+            Q(main_teacher=user) | Q(assistants=user),
+            status="ONGOING"
+        ).distinct()
+
+        context.update({
+            "dashboard_role": "teacher_assistant",
+            "teaching_classes_count": teaching_classes_qs.count(),
+            "upcoming_sessions_count": upcoming_sessions_qs.count(),
+            "upcoming_sessions_list": upcoming_sessions_qs[:5] # Chỉ lấy 5 buổi gần nhất
+        })
+
 
     return render(request, "dashboard/index.html", context)

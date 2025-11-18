@@ -44,6 +44,7 @@
           </td>
           <td>{{ u.center.name|default:"—" }}</td>
           <td class="text-nowrap">
+            {% if perms.accounts.view_user %}
             <button type="button" class="btn btn-info btn-sm"
                     hx-get="{% url 'accounts:user_detail' u.id %}?from_group=1"
                     hx-target="#user-modal-content"
@@ -51,6 +52,7 @@
                     title="Xem chi tiết">
               <i class="bi bi-eye"></i>
             </button>
+            {% endif %}
           </td>
         </tr>
         {% empty %}
@@ -100,4 +102,3 @@
     </nav>
   </div>
 </div>
-

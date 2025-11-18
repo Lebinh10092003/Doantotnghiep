@@ -1,85 +1,183 @@
 {% extends "base.html" %}
 {% load static %}
-
-{% block title %}Khóa học của tôi{% endblock %}
+{% load group_tags %}
+{% block title %}Trang học sinh{% endblock %}
 
 {% block content %}
-<div id="main">
-  <header class="mb-3">
-    <a href="#" class="burger-btn d-block d-xl-none">
-      <i class="bi bi-justify fs-3"></i>
-    </a>
-  </header>
+<div id="student-portal-root" x-data="{ modalTitle: 'Đang tải...' }">
+  <div id="main">
+    <header class="mb-3">
+      <a href="#" class="burger-btn d-block d-xl-none">
+        <i class="bi bi-justify fs-3"></i>
+      </a>
+    </header>
 
-  <div class="page-heading">
-    <h3 class="mb-3">Khóa học</h3>
+    <div class="page-heading">
+      <section class="section">
 
-    <section class="section">
-      <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="card-title mb-0">Lịch học</h5>
-          <span class="text-muted">{{ start|date:"d/m" }} - {{ end|date:"d/m/Y" }}</span>
-        </div>
-        <div class="card-body p-0" id="my-schedule-table">
-          {% include "_schedule_table.html" %}
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title mb-0">Lớp học với giáo viên</h5>
-        </div>
-        <div class="card-body">
-          <div class="row g-3">
-            {% for item in class_cards %}
-            {% with k=item.klass ns=item.next_session %}
-            <div class="col-12 col-md-6 col-xl-4">
-              <div class="card h-100 shadow-sm">
-                {% if k.subject.avatar_url %}
-                  <img src="{{ k.subject.avatar_url }}" class="card-img-top" alt="banner" style="object-fit:cover;height:160px">
-                {% else %}
-                  <img src="{% static 'compiled/jpg/architecture1.jpg' %}" class="card-img-top" alt="banner" style="object-fit:cover;height:160px">
-                {% endif %}
-                <div class="card-body d-flex flex-column">
-                  <h6 class="mb-1">{{ k.subject.name }}</h6>
-                  <h5 class="card-title">{{ k.name }}</h5>
-                  {% if ns %}
-                    <div class="small text-muted mb-2">
-                      Buổi học tiếp theo: {{ ns.date|date:"d/m/Y" }} {{ ns.start_time|time:"H:i"|default:"" }}
-                    </div>
-                  {% else %}
-                    <div class="small text-success mb-2">Khóa học đã kết thúc</div>
-                  {% endif %}
-                  <div class="mt-auto">
-                    <a class="btn btn-success w-100" href="{% url 'students:portal_course_detail' k.id %}">Xem chi tiết</a>
-                  </div>
-                </div>
+        {# ====== LỊCH HỌC (calendar ngang + panel bên phải) ====== #}
+        <div class="card mb-4 border-0 shadow-sm">
+          <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Lịch học</h5>
+            <div class="d-flex align-items-center gap-3">
+              <span class="text-muted small">
+                {{ start|date:"d" }} - {{ end|date:"d F Y" }}
+              </span>
+              <div class="btn-group btn-group-sm" role="group">
+                <a class="btn btn-outline-secondary"
+                   href="?day={{ prev_week_str }}"
+                   title="Tuần trước">
+                  <i class="bi bi-chevron-left"></i>
+                </a>
+                <a class="btn btn-outline-secondary"
+                   href="?day=today"
+                   title="Tuần hiện tại">
+                  Hôm nay
+                </a>
+                <a class="btn btn-outline-secondary"
+                   href="?day={{ next_week_str }}"
+                   title="Tuần sau">
+                  <i class="bi bi-chevron-right"></i>
+                </a>
               </div>
             </div>
-            {% endwith %}
-            {% empty %}
-            <div class="col-12"><p class="text-muted">Bạn chưa đăng ký khóa học nào.</p></div>
-            {% endfor %}
+          </div>
+          <div class="card-body" id="my-schedule-panel">
+            {% include "_student_schedule_table.html" %}
+          </div>
+        </div>
+
+        {# ====== LỚP HỌC VỚI GIÁO VIÊN ====== #}
+        <div class="card mb-4 border-0 shadow-sm">
+          <div class="card-header bg-white border-0">
+            <h5 class="mb-0">Lớp học với giáo viên</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              {% for item in class_cards %}
+                {% with k=item.klass ns=item.next_session %}
+                  <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                      {% if k.subject.avatar_url %}
+                        <img src="{{ k.subject.avatar_url }}"
+                             class="card-img-top"
+                             alt="{{ k.subject.name }}"
+                             style="max-height: 200px; object-fit: cover;">
+                      {% else %}
+                        <img src="{% static 'compiled/jpg/1.jpg' %}"
+                             class="card-img-top"
+                             alt="{{ k.subject.name }}"
+                             style="max-height: 200px; object-fit: cover;">
+                      {% endif %}
+
+                      <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-center mb-2">
+                          <span class="border-start border-3 border-success me-2" style="height: 18px;"></span>
+                          <h6 class="mb-0">{{ k.subject.name }}</h6>
+                        </div>
+                        <h5 class="mb-2">{{ k.name }}</h5>
+
+                        {% if ns %}
+                          <div class="small text-muted mb-3">
+                            <i class="bi bi-calendar-event me-1"></i>
+                            Buổi học tiếp theo:
+                            {{ ns.date|date:"d/m/Y" }}
+                            {{ ns.start_time|time:"H:i"|default:"" }}
+                          </div>
+                        {% else %}
+                          <div class="small text-success mb-3">
+                            <i class="bi bi-check-circle me-1"></i>
+                            Khóa học đã kết thúc
+                          </div>
+                        {% endif %}
+
+                        <div class="mt-auto">
+                          <a href="{% url 'students:portal_course_detail' k.id %}"
+                             class="btn w-100"
+                             style="background-color: #24B273; color: #fff; border-radius: 999px;">
+                            Xem chi tiết
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {% endwith %}
+              {% empty %}
+                <div class="col-12">
+                  <div class="text-center py-4">
+                    <i class="bi bi-emoji-neutral display-6 text-muted mb-2"></i>
+                    <p class="text-muted mb-1">Bạn chưa đăng ký khóa học nào.</p>
+                    <p class="text-muted small mb-0">
+                      Liên hệ trung tâm hoặc giáo viên để được tư vấn và xếp lớp.
+                    </p>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        {# ====== KHÓA HỌC TỰ ÔN (placeholder, để bạn phát triển sau) ====== #}
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white border-0">
+            <h5 class="mb-0">Khóa học tự ôn</h5>
+          </div>
+          <div class="card-body">
+            {% if self_study_courses %}
+              <div class="row g-3">
+                {% for c in self_study_courses %}
+                  <div class="col-12 col-md-6 col-xl-4">
+                      {% static 'compiled/jpg/1.jpg' as fallback %}
+                      <img src="{{ c.thumbnail_url|default:fallback }}"
+                          class="card-img-top"
+                          style="max-height: 200px; object-fit: cover;"
+                          alt="{{ c.title }}">
+                      <div class="card-body d-flex flex-column">
+                        <h6 class="mb-2">{{ c.title }}</h6>
+                        <p class="small text-muted flex-grow-1">{{ c.short_description }}</p>
+                        <a href="{{ c.url }}" class="btn btn-outline-success w-100 mt-auto"
+                           style="border-radius: 999px;">
+                          Bắt đầu học
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="text-muted mb-0 small">
+                Tính năng khóa học tự ôn đang được phát triển.
+              </p>
+            {% endif %}
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  {# Modal xem chi tiết buổi học / bài học #}
+  <div class="modal fade" id="sessions-modal" tabindex="-1"
+       aria-labelledby="sessions-modal-label"
+       aria-hidden="true"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="sessions-modal-label" x-text="modalTitle">
+            Chi tiết
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div id="sessions-modal-content">
+          <div class="modal-body">
+            <p>Đang tải...</p>
           </div>
         </div>
       </div>
-    </section>
-  </div>
-</div>
-
-
-{# Modal chi tiết Buổi học #}
-<div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Chi tiết</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div id="sessions-modal-content">
-        <div class="modal-body"><p>Đang tải...</p></div>
-      </div>
     </div>
   </div>
-  </div>
+</div>
 {% endblock %}

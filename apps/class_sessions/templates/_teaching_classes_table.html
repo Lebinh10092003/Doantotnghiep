@@ -1,3 +1,5 @@
+{% load group_tags %}
+
 <div class="dataTable-container table-responsive">
   <table class="table table-striped dataTable-table">
     <thead>
@@ -18,7 +20,8 @@
       <tr>
         <td>{{ c.code }}</td>
         <td>
-          {% if perms.classes.view_class %}
+          {# Dòng 21 (đã sửa) - cú pháp if vẫn giữ nguyên, chỉ thêm load tag ở đầu file #}
+          {% if perms.classes.view_class and (user|in_group:'teacher' or user|in_group:'assistant') %}
             <a href="#"
                hx-get="{% url 'classes:class_detail' c.pk %}"
                hx-target="#sessions-modal-content"

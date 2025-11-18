@@ -851,7 +851,7 @@ def import_curriculum_view(request):
                             continue
                         exercise, _ = Exercise.objects.get_or_create(lesson=lesson)
                         if description:
-                            exercise.description = description
+                            exercise.description = description if pd.notna(description) else ""
                         exercise.difficulty = difficulty
                         # Try download file
                         if file_url:

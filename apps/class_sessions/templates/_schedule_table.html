@@ -1,3 +1,5 @@
+{% load group_tags %}
+
 <div class="dataTable-container table-responsive">
   <table class="table table-striped dataTable-table align-middle">
     <thead>
@@ -69,7 +71,8 @@
                     <i class="bi bi-eye"></i>
                   </button>
                   {% endif %}
-                  {% if perms.classes.view_class %}
+
+                  {% if perms.classes.view_class and not user|in_group:'student' %}
                   <button type="button" class="btn btn-sm btn-outline-primary"
                           hx-get="{% url 'classes:class_detail' s.klass.pk %}"
                           hx-target="#sessions-modal-content"
@@ -80,16 +83,18 @@
                     <i class="bi bi-journal-bookmark"></i>
                   </button>
                   {% endif %}
-                  {% if perms.class_sessions.view_classsession %}
+
+                  {% if perms.class_sessions.view_classsession and not user|in_group:'student' %}
                   <a class="btn btn-sm btn-outline-dark" href="{% url 'class_sessions:session_detail' s.pk %}"
                      title="Mở trang chi tiết">
                     <i class="bi bi-box-arrow-up-right"></i>
                   </a>
                   {% endif %}
+                  
                   {% if s.lesson and perms.curriculum.view_lesson %}
                   <button type="button" class="btn btn-sm btn-outline-success"
                           hx-get="{% url 'curriculum:lesson_detail' s.lesson.id %}"
-                          hx-target="#sessions-modal-content"
+                          hx-target="#curriculum-modal-content"
                           data-bs-toggle="modal"
                           data-bs-target="#sessions-modal"
                           @click="modalTitle = 'Giáo án: {{ s.lesson.title|escapejs }}'"

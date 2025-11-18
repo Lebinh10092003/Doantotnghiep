@@ -36,6 +36,7 @@
         </td>
         <td class="text-nowrap">
           <div class="d-flex gap-1">
+            {% if perms.class_sessions.view_classsession %}
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'class_sessions:session_detail' session.pk %}" hx-target="#sessions-modal-content"
                     data-bs-toggle="modal"
@@ -44,6 +45,7 @@
                     title="Xem chi tiết">
               <i class="bi bi-eye"></i>
             </button>
+            {% endif %}
             {% if perms.class_sessions.change_classsession %}
             <button type="button" class="btn btn-sm btn-warning"
                     hx-get="{% url 'class_sessions:session_edit' session.pk %}" hx-target="#sessions-modal-content"

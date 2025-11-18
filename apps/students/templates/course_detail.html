@@ -1,93 +1,485 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}{{ klass.name }}{% endblock %}
+{% block title %}Chi tiết khóa học{% endblock %}
 
 {% block content %}
-<div id="main">
+{% now "Y-m-d" as today_str %}
+<div id="main" x-data="{ modalTitle: 'Đang tải...', selectedLessonTitle: null, selectedLessonId: {% if lesson %}{{ lesson.id }}{% else %}null{% endif %}, todayLessonId: {% if upcoming and upcoming.lesson and upcoming.date|date:"Y-m-d" == today_str %}{{ upcoming.lesson.id }}{% else %}null{% endif %} }">
   <header class="mb-3">
-    <a href="#" class="burger-btn d-block d-xl-none">
-      <i class="bi bi-justify fs-3"></i>
+    <a href="{% url 'students:portal_home' %}"
+       class="burger-btn d-inline-flex align-items-center gap-1 text-decoration-none">
+      <i class="bi bi-arrow-left"></i>
+      <span class="d-none d-sm-inline">Quay lại trang học sinh</span>
     </a>
   </header>
 
   <div class="page-heading">
-    <div class="row g-3 align-items-center">
-      <div class="col">
-        <h3 class="mb-1">{{ klass.name }}</h3>
-        <div class="text-secondary small">
-          <i class="bi bi-person-badge me-1"></i> Giáo viên: {{ klass.main_teacher.get_full_name|default:"-" }}
-          <span class="mx-1">•</span>
-          <i class="bi bi-building me-1"></i> {{ klass.center.name }}
-        </div>
-      </div>
-      <div class="col-auto">
-        {% if upcoming %}
-          <span class="badge bg-success">Sắp diễn ra</span>
-        {% else %}
-          <span class="badge bg-secondary">Đã kết thúc</span>
-        {% endif %}
-      </div>
-    </div>
-
-    <section class="section mt-3">
-      <div class="row">
-        <div class="col-12 col-lg-5">
-          <div class="card mb-3">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Chương trình học</h5>
+    <section class="section">
+      <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-body">
+          <div class="row align-items-start">
+            <div class="col-md-6">
+              <h3 class="mb-2">{{ klass.name }}</h3>
+              <p class="text-muted mb-2">
+                Môn học: <strong>{{ subject.name }}</strong>
+              </p>
+              <p class="text-muted mb-1 small">
+                <i class="bi bi-person-badge me-1"></i>
+                Giáo viên:
+                {% if klass.main_teacher %}
+                  <strong>{{ klass.main_teacher.get_full_name }}</strong>
+                {% else %}
+                  <strong>Chưa phân công</strong>
+                {% endif %}
+              </p>
+              <p class="text-muted mb-1 small">
+                <i class="bi bi-building me-1"></i>
+                Cơ sở:
+                <strong>{{ klass.center.name }}</strong>
+              </p>
             </div>
-            <div classs="list-group list-group-flush">
-              {% for m in modules %}
-              <div class="list-group-item">
-                <div class="fw-semibold mb-2">[{{ subject.name }}] {{ m.title }}</div>
-                {% for les in m.lessons.all %}
-                <div class="d-flex align-items-center py-1">
-                  <i class="bi bi-journal-text text-success me-2"></i>
-                  <div>{{ les.title }}</div>
+            <div class="col-md-6">
+              <div class="row g-2 justify-content-md-end">
+                <div class="col-12 col-sm-6">
+                  <div class="border rounded-4 p-3 h-100">
+                    <div class="small text-muted mb-1">Lịch học</div>
+                    {% if upcoming %}
+                      <div class="fw-semibold small">
+                        Buổi tiếp theo: {{ upcoming.date|date:"d/m/Y" }}
+                      </div>
+                    {% else %}
+                      <div class="small text-muted">
+                        Theo lịch từng buổi.
+                      </div>
+                    {% endif %}
+                  </div>
                 </div>
-                {% empty %}
-                <div class="text-muted small">Chưa có bài học.</div>
-                {% endfor %}
+                <div class="col-12 col-sm-6">
+                  <div class="border rounded-4 p-3 h-100">
+                    <div class="small text-muted mb-1">Tình trạng</div>
+                    {% if upcoming %}
+                      <span class="badge rounded-pill bg-primary-subtle text-primary">
+                        Sắp diễn ra
+                      </span>
+                      {% else %}
+                      <span class="badge rounded-pill bg-secondary-subtle text-secondary">
+                        Khóa học đã kết thúc hoặc chưa có lịch tiếp theo
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
               </div>
-              {% endfor %}
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="col-12 col-lg-7">
-          <div class="card mb-3">
-            <div class="card-header">
-              <h5 class="card-title mb-0">Thông tin buổi học</h5>
+      {# ====== CHƯƠNG TRÌNH HỌC + BUỔI HỌC CHI TIẾT ====== #}
+      <div class="row">
+        {# Cột trái: Chương trình học #}
+        <div class="col-12 col-xl-4">
+          <div class="card border-0 shadow-sm mb-4 mb-xl-0">
+            <div class="card-header bg-white border-0">
+              <h5 class="mb-0">Chương trình học</h5>
             </div>
             <div class="card-body">
-              {% if upcoming %}
-                <div class="mb-2"><i class="bi bi-calendar me-2"></i>{{ upcoming.date|date:"d/m/Y" }}</div>
-                <div class="mb-2"><i class="bi bi-clock me-2"></i>{{ upcoming.start_time|time:"H:i"|default:"-" }}{% if upcoming.end_time %} - {{ upcoming.end_time|time:"H:i" }}{% endif %}</div>
-                {% if upcoming.lesson %}
-                  <div class="fw-semibold mb-2">{{ upcoming.lesson.title }}</div>
-                  {% if upcoming.lesson.objectives %}
-                  <div class="text-muted" style="white-space:pre-line">{{ upcoming.lesson.objectives }}</div>
-                  {% endif %}
-                {% endif %}
+              {% if modules %}
+                <div class="accordion" id="modules-accordion">
+                  {% for m in modules %}
+                    <div class="accordion-item mb-2 border-0">
+                      <h2 class="accordion-header" id="heading-{{ m.id }}">
+                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapse-{{ m.id }}"
+                                aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                                aria-controls="collapse-{{ m.id }}">
+                          <span class="fw-semibold">{{ m.title }}</span>
+                        </button>
+                      </h2>
+                      <div id="collapse-{{ m.id }}"
+                           class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                           aria-labelledby="heading-{{ m.id }}"
+                           data-bs-parent="#modules-accordion">
+                        <div class="accordion-body p-0">
+                          <ul class="list-group list-group-flush">
+                            {% for l in m.lessons.all %}
+                              <li class="list-group-item d-flex align-items-center gap-2"
+                                  :class="{
+                                    'bg-primary-subtle border-start border-3 border-primary': selectedLessonId === {{ l.id }},
+                                    'bg-success-subtle border-start border-3 border-success': todayLessonId === {{ l.id }} && selectedLessonId !== {{ l.id }}
+                                  }">
+                                <div class="flex-grow-1 overflow-hidden me-2"
+                                     style="min-width:0; cursor: pointer;"
+                                     role="button"
+                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}"
+                                     hx-target="#pane-knowledge"
+                                     hx-swap="innerHTML"
+                                     @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'">
+                                  <div class="fw-semibold text-truncate text-break">{{ l.title }}</div>
+                                  {% if l.objectives %}
+                                    <div class="small text-muted text-truncate">
+                                      {{ l.objectives|truncatechars:80 }}
+                                    </div>
+                                  {% endif %}
+                                </div>
+                                <div class="d-flex flex-shrink-0 gap-2">
+                                  <button
+                                     class="btn btn-sm btn-outline-secondary"
+                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}"
+                                     hx-target="#pane-knowledge"
+                                     hx-swap="innerHTML"
+                                     @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'">
+                                     <i class="bi bi-eye"></i>
+                                  </button>
+                                  <button
+                                     class="btn btn-sm btn-outline-success"
+                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}"
+                                     hx-target="#pane-knowledge"
+                                     hx-swap="innerHTML"
+                                     @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'">
+                                    <i class="bi bi-journal-text"></i>
+                                  </button>
+                                </div>
+                              </li>
+                            {% empty %}
+                              <li class="list-group-item text-muted small">
+                                Chưa có bài học trong module này.
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
               {% else %}
-                <div class="text-muted">Chưa có lịch học tiếp theo.</div>
+                <p class="text-muted mb-0">
+                  Chưa có chương trình học được cấu hình cho môn này.
+                </p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# Cột phải: Buổi học + Tabs nội dung #}
+        <div class="col-12 col-xl-8">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                <span x-show="selectedLessonTitle" x-text="selectedLessonTitle ? selectedLessonTitle.toUpperCase() : ''"></span>
+                <span x-show="!selectedLessonTitle">
+                  {% if upcoming and lesson %}
+                    {{ lesson.title|upper }}
+                  {% elif upcoming %}
+                    Buổi học tiếp theo
+                  {% else %}
+                    Thông tin buổi học
+                  {% endif %}
+                </span>
+              </h5>
+              {% if upcoming %}
+                <span class="badge bg-primary-subtle text-primary">
+                  Sắp diễn ra
+                </span>
+              {% endif %}
+            </div>
+            <div class="card-body">
+
+              {# Thông tin buổi học #}
+              {% if upcoming %}
+                <div class="row mb-3">
+                  <div class="col-md-4 small mb-2">
+                    <i class="bi bi-calendar3 me-1"></i>
+                    {{ upcoming.date|date:"d/m/Y" }}
+                  </div>
+                  <div class="col-md-4 small mb-2">
+                    <i class="bi bi-clock me-1"></i>
+                    {{ upcoming.start_time|time:"H:i"|default:"--:--" }}
+                    {% if upcoming.end_time %}
+                      - {{ upcoming.end_time|time:"H:i" }}
+                    {% endif %}
+                  </div>
+                  <div class="col-md-4 small mb-2">
+                    <i class="bi bi-person-badge me-1"></i>
+                    {% if klass.main_teacher %}
+                      {{ klass.main_teacher.get_full_name }}
+                    {% else %}
+                      Chưa phân công
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <p class="text-muted mb-3 small">
+                  Chưa có buổi học tiếp theo cho lớp này.
+                </p>
               {% endif %}
 
-              <div class="d-flex flex-wrap gap-2 mt-3">
-                {% if upcoming and upcoming.lesson %}
-                <a class="btn btn-success" href="{% url 'curriculum:lesson_detail' upcoming.lesson.id %}"><i class="bi bi-journal-text me-2"></i>Xem kiến thức</a>
+              {# Dãy nút hành động #}
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if upcoming and lesson %}
+                  <button class="btn btn-success"
+                          hx-get="{% url 'curriculum:lesson_detail' lesson.id %}"
+                          hx-target="#pane-knowledge"
+                          hx-swap="innerHTML"
+                          @click="selectedLessonId={{ lesson.id }}; selectedLessonTitle='{{ lesson.title|escapejs }}'">
+                    Xem kiến thức
+                  </button>
+                {% else %}
+                  <button class="btn btn-success disabled" aria-disabled="true">
+                    Xem kiến thức
+                  </button>
                 {% endif %}
-                <a class="btn btn-outline-success disabled" aria-disabled="true"><i class="bi bi-list-check me-2"></i>Làm bài tập</a>
-                <a class="btn btn-outline-primary disabled" aria-disabled="true"><i class="bi bi-upload me-2"></i>Đăng dự án</a>
-                <a class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-bar-chart me-2"></i>Xem báo cáo</a>
-                <a class="btn btn-outline-warning disabled" aria-disabled="true"><i class="bi bi-chat-left-quote me-2"></i>Gửi đánh giá</a>
+
+                <button class="btn btn-outline-success disabled" aria-disabled="true">
+                  Làm bài tập
+                </button>
+                <button class="btn btn-outline-primary disabled" aria-disabled="true">
+                  Đăng dự án
+                </button>
+                <button class="btn btn-outline-secondary disabled" aria-disabled="true">
+                  Xem báo cáo
+                </button>
+                <button class="btn btn-outline-warning disabled" aria-disabled="true">
+                  Gửi đánh giá
+                </button>
               </div>
+
+              {# Tabs: Kiến thức / Bài tập / Sản phẩm / Báo cáo #}
+              <ul class="nav nav-tabs mb-3" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="tab-knowledge"
+                          data-bs-toggle="tab"
+                          data-bs-target="#pane-knowledge"
+                          type="button" role="tab">
+                    Kiến thức
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-exercise"
+                          data-bs-toggle="tab"
+                          data-bs-target="#pane-exercise"
+                          type="button" role="tab">
+                    Bài tập
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-products"
+                          data-bs-toggle="tab"
+                          data-bs-target="#pane-products"
+                          type="button" role="tab">
+                    Sản phẩm buổi học
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="tab-report"
+                          data-bs-toggle="tab"
+                          data-bs-target="#pane-report"
+                          type="button" role="tab">
+                    Báo cáo buổi học
+                  </button>
+                </li>
+              </ul>
+
+              <div class="tab-content">
+                {# --- Tab 1: Kiến thức --- #}
+                <div class="tab-pane fade show active" id="pane-knowledge" role="tabpanel">
+                  {% if lesson %}
+                    {% if lecture %}
+                      {% if lecture.video_url %}
+                        <div class="mb-3">
+                          <div class="fw-semibold mb-1">
+                            Video bài học
+                          </div>
+                          <div class="ratio ratio-16x9 rounded-3 overflow-hidden mb-2">
+                            <iframe src="{{ lecture.video_url }}"
+                                    title="Video bài học"
+                                    allowfullscreen></iframe>
+                          </div>
+                        </div>
+                      {% endif %}
+
+                      {% if lecture.content %}
+                        <div class="mb-3">
+                          <div class="fw-semibold mb-1">Nội dung bài giảng</div>
+                          <div class="small" style="white-space: pre-line;">
+                            {{ lecture.content }}
+                          </div>
+                        </div>
+                      {% endif %}
+
+                      {% if lecture.file %}
+                        <div class="mb-3">
+                          <i class="bi bi-paperclip me-1"></i>
+                          <a href="{{ lecture.file.url }}" target="_blank" class="small">
+                            Tải tài liệu bài giảng
+                          </a>
+                        </div>
+                      {% endif %}
+                    {% endif %}
+
+                    {% if not lecture and lesson.objectives %}
+                      <div class="mb-0">
+                        <div class="fw-semibold mb-1">Mục tiêu bài học</div>
+                        <div class="small" style="white-space: pre-line;">
+                          {{ lesson.objectives }}
+                        </div>
+                      </div>
+                    {% endif %}
+
+                    {% if not lecture and not lesson.objectives %}
+                      <p class="text-muted small mb-0">
+                        Chưa có nội dung bài giảng cho bài học này.
+                      </p>
+                    {% endif %}
+                  {% else %}
+                    <p class="text-muted small mb-0">
+                      Chưa có buổi học cụ thể để hiển thị kiến thức.
+                    </p>
+                  {% endif %}
+                </div>
+
+                {# --- Tab 2: Bài tập --- #}
+                <div class="tab-pane fade" id="pane-exercise" role="tabpanel">
+                  {% if exercise %}
+                    <div class="mb-2">
+                      <span class="fw-semibold">Mức độ:</span>
+                      <span class="badge bg-light text-muted">
+                        {{ exercise.get_difficulty_display }}
+                      </span>
+                    </div>
+                    {% if exercise.description %}
+                      <div class="mb-2 small" style="white-space: pre-line;">
+                        {{ exercise.description }}
+                      </div>
+                    {% endif %}
+                    {% if exercise.file %}
+                      <p class="small mb-1">
+                        <i class="bi bi-paperclip me-1"></i>
+                        <a href="{{ exercise.file.url }}" target="_blank">
+                          Tải file bài tập
+                        </a>
+                      </p>
+                    {% endif %}
+                    {% if exercise.link_url %}
+                      <p class="small mb-0">
+                        <i class="bi bi-link-45deg me-1"></i>
+                        <a href="{{ exercise.link_url }}" target="_blank">
+                          Mở bài tập online
+                        </a>
+                      </p>
+                    {% endif %}
+                    {% if not exercise.description and not exercise.file and not exercise.link_url %}
+                      <p class="text-muted small mb-0">
+                        Bài tập chưa có nội dung chi tiết.
+                      </p>
+                    {% endif %}
+                  {% else %}
+                    <p class="text-muted small mb-0">
+                      Chưa có bài tập cho bài học này.
+                    </p>
+                  {% endif %}
+                </div>
+
+                {# --- Tab 3: Sản phẩm buổi học --- #}
+                <div class="tab-pane fade" id="pane-products" role="tabpanel">
+                  {% if session_products %}
+                    <h6 class="mb-3">Sản phẩm của bạn trong buổi học này</h6>
+                    <div class="row g-3">
+                      {% for p in session_products %}
+                        <div class="col-12 col-md-6">
+                          <div class="border rounded-3 p-3 h-100">
+                            <div class="fw-semibold mb-1">{{ p.title }}</div>
+                            {% if p.description %}
+                              <div class="small mb-2" style="white-space: pre-line;">
+                                {{ p.description|truncatechars:200 }}
+                              </div>
+                            {% endif %}
+                            {% if p.image %}
+                              <div class="mb-2">
+                                <img src="{{ p.image.url }}" alt="{{ p.title }}"
+                                     class="img-fluid rounded-3">
+                              </div>
+                            {% endif %}
+                            {% if p.file %}
+                              <p class="small mb-1">
+                                <i class="bi bi-paperclip me-1"></i>
+                                <a href="{{ p.file.url }}" target="_blank">Tệp đính kèm</a>
+                              </p>
+                            {% endif %}
+                            {% if p.video %}
+                              <p class="small mb-0">
+                                <i class="bi bi-film me-1"></i>
+                                <a href="{{ p.video.url }}" target="_blank">Video sản phẩm</a>
+                              </p>
+                            {% endif %}
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <p class="text-muted small mb-2">
+                      Bạn chưa có sản phẩm nào cho buổi học này.
+                    </p>
+                  {% endif %}
+
+                  {% if my_products and not session_products %}
+                    <hr>
+                    <h6 class="mb-2">Sản phẩm của bạn trong các buổi khác của khóa này</h6>
+                    <ul class="list-group">
+                      {% for p in my_products %}
+                        <li class="list-group-item small">
+                          <div class="fw-semibold">{{ p.title }}</div>
+                          <div class="text-muted">
+                            Buổi {{ p.session.index }} – {{ p.session.date|date:"d/m/Y" }}
+                          </div>
+                        </li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
+                </div>
+
+                {# --- Tab 4: Báo cáo buổi học (placeholder) --- #}
+                <div class="tab-pane fade" id="pane-report" role="tabpanel">
+                  <p class="text-muted small mb-0">
+                    Khu vực này có thể hiển thị báo cáo buổi học:
+                    điểm danh, nhận xét của giáo viên, mức độ hoàn thành, v.v.
+                    Bạn có thể kết nối với model báo cáo sau này.
+                  </p>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
       </div>
+
     </section>
+  </div>
+
+  {# Modal dùng chung #}
+  <div class="modal fade" id="sessions-modal" tabindex="-1"
+       aria-labelledby="sessions-modal-label"
+       aria-hidden="true"
+       data-bs-backdrop="static"
+       data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="sessions-modal-label" x-text="modalTitle">
+            Chi tiết
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div id="sessions-modal-content">
+          <div class="modal-body">
+            <p>Đang tải...</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

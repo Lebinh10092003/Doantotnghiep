@@ -17,12 +17,14 @@
         <td>{{ s.code }}</td>
         <td>{{ s.description|default:"-" }}</td>
         <td class="d-flex flex-wrap gap-1">
+          {% if perms.curriculum.view_subject %}
           <button type="button" class="btn btn-sm btn-info"
                   hx-get="{% url 'curriculum:subject_detail' s.id %}"
                   hx-target="#curriculum-modal-content"
                   @click="modalTitle = 'Chi tiết Môn học: {{ s.name|escapejs }}'">
             <i class="bi bi-eye"></i>
           </button>
+          {% endif %}
           {% if perms.curriculum.change_subject %}
           <button type="button" class="btn btn-sm btn-warning"
                   hx-get="{% url 'curriculum:subject_edit' s.id %}"

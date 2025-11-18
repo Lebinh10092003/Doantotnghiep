@@ -77,16 +77,6 @@
                         </a>
                     </li>
 
-                    {# KHÓA HỌC – menu riêng cho STUDENT, tách khỏi Chương trình học #}
-                    {% if user.role|upper == 'STUDENT' or user|in_group:'Student' or user|in_group:'STUDENT' %}
-                    <li class="sidebar-item {% if '/students/portal/' in request.path %}active{% endif %}">
-                        <a href="{% url 'students:portal_home' %}" class="sidebar-link">
-                            <i class="bi bi-journal-text"></i>
-                            <span>Khóa học</span>
-                        </a>
-                    </li>
-                    {% endif %}
-
                     {# TÀI KHOẢN: chỉ cho thấy các trang quản lý khi có FULL quyền User/Group #}
                     <li class="sidebar-item has-sub {% if '/accounts/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
@@ -112,7 +102,6 @@
                             </li>
                             {% endif %}
 
-                            {# Quản lý nhóm & Roles – cần đủ 4 quyền trên Group #}
                             {% if perms.auth.view_group and perms.auth.add_group and perms.auth.change_group and perms.auth.delete_group %}
                             <li class="submenu-item {% if request.path == manage_groups_url %}active{% endif %}">
                                 <a href="{{ manage_groups_url }}" class="submenu-link">
@@ -122,7 +111,6 @@
                             </li>
                             {% endif %}
 
-                            {# Hồ sơ cá nhân – ai đăng nhập cũng xem được #}
                             <li class="submenu-item {% if request.path == profile_url %}active{% endif %}">
                                 <a href="{{ profile_url }}" class="submenu-link">
                                     <i class="bi bi-person-circle"></i>
@@ -133,7 +121,6 @@
                         </ul>
                     </li>
 
-                    {# TRUNG TÂM – trang quản lý, yêu cầu FULL quyền trên Center #}
                     {% if perms.centers.view_center and perms.centers.add_center and perms.centers.change_center and perms.centers.delete_center %}
                     <li class="sidebar-item has-sub {% if '/centers/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
@@ -158,7 +145,6 @@
                     </li>
                     {% endif %}
 
-                    {# CHƯƠNG TRÌNH HỌC – từng trang quản lý check FULL quyền riêng #}
                     {% if perms.curriculum.view_subject or perms.curriculum.view_module or perms.curriculum.view_lesson %}
                     <li class="sidebar-item has-sub {% if '/curriculum/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
@@ -170,8 +156,8 @@
                             {% url 'curriculum:modules_manage' as modules_manage_url %}
                             {% url 'curriculum:lessons_manage' as lessons_manage_url %}
 
-                            {# Môn học – FULL quyền Subject #}
-                            {% if perms.curriculum.view_subject and perms.curriculum.add_subject and perms.curriculum.change_subject and perms.curriculum.delete_subject %}
+
+                            {% if perms.curriculum.view_subject %}
                             <li class="submenu-item {% if request.path == subjects_manage_url %}active{% endif %}">
                                 <a href="{{ subjects_manage_url }}" class="submenu-link">
                                     <i class="bi bi-journal-bookmark"></i>
@@ -180,8 +166,7 @@
                             </li>
                             {% endif %}
 
-                            {# Học phần – FULL quyền Module #}
-                            {% if perms.curriculum.view_module and perms.curriculum.add_module and perms.curriculum.change_module and perms.curriculum.delete_module %}
+                            {% if perms.curriculum.view_module %}
                             <li class="submenu-item {% if request.path == modules_manage_url %}active{% endif %}">
                                 <a href="{{ modules_manage_url }}" class="submenu-link">
                                     <i class="bi bi-grid-1x2-fill"></i>
@@ -190,8 +175,7 @@
                             </li>
                             {% endif %}
 
-                            {# Bài học – FULL quyền Lesson #}
-                            {% if perms.curriculum.view_lesson and perms.curriculum.add_lesson and perms.curriculum.change_lesson and perms.curriculum.delete_lesson %}
+                            {% if perms.curriculum.view_lesson %}
                             <li class="submenu-item {% if request.path == lessons_manage_url %}active{% endif %}">
                                 <a href="{{ lessons_manage_url }}" class="submenu-link">
                                     <i class="bi bi-file-earmark-text"></i>
@@ -204,14 +188,13 @@
                     {% endif %}
 
                     {% if user.is_authenticated %}
-                    <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' %}active{% endif %}">
+                    <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-journal-bookmark-fill"></i>
                             <span>Lớp & Lịch học</span>
                         </a>
-                        <ul class="submenu {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' %}active{% endif %}">
+                        <ul class="submenu {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' %}active{% endif %}">
 
-                            {# Quản lý Lớp học – FULL quyền Class #}
                             {% if perms.classes.view_class and perms.classes.add_class and perms.classes.change_class and perms.classes.delete_class %}
                             <li class="submenu-item {% if request.resolver_match.view_name == 'classes:manage_classes' %}active{% endif %}">
                                 <a href="{% url 'classes:manage_classes' %}" class="submenu-link">
@@ -221,7 +204,6 @@
                             </li>
                             {% endif %}
 
-                            {# Quản lý Buổi học – FULL quyền ClassSession #}
                             {% if perms.class_sessions.view_classsession and perms.class_sessions.add_classsession and perms.class_sessions.change_classsession and perms.class_sessions.delete_classsession %}
                             <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:manage_class_sessions' %}active{% endif %}">
                                 <a href="{% url 'class_sessions:manage_class_sessions' %}" class="submenu-link">
@@ -231,8 +213,7 @@
                             </li>
                             {% endif %}
 
-                            {# Các lớp đang dạy – quyền giáo viên/trợ giảng, không cần full manage #}
-                            {% if perms.classes.view_class or user|in_group:'TEACHER' or user|in_group:'Teacher' or user.role|upper == 'TEACHER' or user.role|upper == 'ASSISTANT' %}
+                            {% if user|in_group:'teacher' or user|in_group:'assistant' %}
                             <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_classes' %}active{% endif %}">
                                 <a href="{% url 'class_sessions:teaching_classes' %}" class="submenu-link">
                                     <i class="bi bi-collection"></i>
@@ -241,8 +222,7 @@
                             </li>
                             {% endif %}
 
-                            {# Lịch học của tôi – student #}
-                            {% if user.role|upper == 'STUDENT' or user|in_group:'Student' or user|in_group:'STUDENT' %}
+                            {% if user|in_group:'student' %}
                             <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:my_schedule' %}active{% endif %}">
                                 <a href="{% url 'class_sessions:my_schedule' %}" class="submenu-link">
                                     <i class="bi bi-calendar-heart"></i>
@@ -251,8 +231,7 @@
                             </li>
                             {% endif %}
 
-                            {# Lịch dạy – giáo viên #}
-                            {% if perms.class_sessions.view_classsession or user|in_group:'TEACHER' or user|in_group:'Teacher' or user.role|upper == 'TEACHER' or user.role|upper == 'ASSISTANT' %}
+                            {% if user|in_group:'teacher' or user|in_group:'assistant' %}
                             <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_schedule' %}active{% endif %}">
                                 <a href="{% url 'class_sessions:teaching_schedule' %}" class="submenu-link">
                                     <i class="bi bi-easel2"></i>
@@ -261,8 +240,7 @@
                             </li>
                             {% endif %}
 
-                            {# Menu dành cho Phụ huynh – không phải trang quản lý #}
-                            {% if user.role|upper == 'PARENT' or user|in_group:'Parent' or user|in_group:'PARENT' %}
+                            {% if user|in_group:'parent' %}
                             <li class="submenu-item">
                                 <a href="#" class="submenu-link">
                                     <i class="bi bi-people"></i>
@@ -277,24 +255,19 @@
                             </li>
                             {% endif %}
 
-                            {# Menu dành cho Student – không phải trang quản lý hệ thống #}
-                            {% if user.role|upper == 'STUDENT' or user|in_group:'Student' or user|in_group:'STUDENT' %}
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            {% if user|in_group:'student' %}
+                            
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'students:portal_home' %}active{% endif %}">
+                                <a href="{% url 'students:portal_home' %}" class="submenu-link">
                                     <i class="bi bi-card-image"></i>
-                                    <span>Sản phẩm của tôi</span>
+                                    <span>Lớp học của tôi</span>
                                 </a>
                             </li>
+
                             <li class="submenu-item">
                                 <a href="#" class="submenu-link">
                                     <i class="bi bi-bar-chart-line"></i>
                                     <span>Kết quả học tập</span>
-                                </a>
-                            </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
-                                    <i class="bi bi-calendar"></i>
-                                    <span>Lịch & Bài tập</span>
                                 </a>
                             </li>
                             {% endif %}
@@ -302,7 +275,6 @@
                     </li>
                     {% endif %}
 
-                    {# ĐÁNH GIÁ – trang quản lý, yêu cầu FULL quyền Assessment #}
                     {% if perms.assessments.view_assessment and perms.assessments.add_assessment and perms.assessments.change_assessment and perms.assessments.delete_assessment %}
                     <li class="sidebar-item has-sub {% if '/assessments/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
@@ -331,8 +303,6 @@
                         </ul>
                     </li>
                     {% endif %}
-
-                    {# SẢN PHẨM HỌC SINH – hiện giữ nguyên vì chưa có permission cụ thể trong file #}
                     {% if user.is_authenticated %}
                     <li class="sidebar-item has-sub {% if '/student_products/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
@@ -346,7 +316,7 @@
                                     <span>Danh sách sản phẩm</span>
                                 </a>
                             </li>
-                            {% if user.role|upper == 'STUDENT' or user|in_group:'Student' or user|in_group:'STUDENT' %}
+                            {% if user|in_group:'student' %}
                             <li class="submenu-item">
                                 <a href="#" class="submenu-link">
                                     <i class="bi bi-person-lines-fill"></i>
@@ -358,7 +328,6 @@
                     </li>
                     {% endif %}
 
-                    {# THƯỞNG & ĐIỂM – trang quản lý, yêu cầu FULL quyền PointAccount, RewardItem #}
                     {% if perms.rewards.view_pointaccount and perms.rewards.add_pointaccount and perms.rewards.change_pointaccount and perms.rewards.delete_pointaccount %}
                     <li class="sidebar-item has-sub {% if '/rewards/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
@@ -403,7 +372,7 @@
                         </a>
                     </li>
 
-                    {% if perms.reports %} {# Giả định có app 'reports' #}
+                    {% if perms.reports %} 
                     <li class="sidebar-item has-sub {% if '/reports/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-bar-chart-line"></i>
@@ -426,7 +395,7 @@
                     </li>
                     {% endif %}
 
-                    {% if perms.billing %} {# Giả định có app 'billing' #}
+                    {% if perms.billing %} 
                     <li class="sidebar-item has-sub {% if '/billing/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-wallet2"></i>

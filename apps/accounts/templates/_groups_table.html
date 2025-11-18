@@ -39,19 +39,24 @@
         </td>
         
         <td>
+          {% if perms.auth.view_group %}
           <button type="button" class="btn btn-sm btn-info"
                   hx-get="{% url 'accounts:group_view' group.id %}"
                   hx-target="#group-modal-content"
                   @click="modalTitle = 'Chi tiết nhóm: {{ group.name|escapejs }}'">
             <i class="bi bi-eye"></i>
           </button>
+          {% endif %}
+          {% if perms.auth.change_group %}
           <button type="button" class="btn btn-sm btn-warning" 
                   hx-get="{% url 'accounts:group_edit' group.id %}"
                   hx-target="#group-modal-content" 
                   @click="modalTitle = 'Chỉnh sửa nhóm: {{ group.name|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
           </button>
+          {% endif %}
           
+          {% if perms.auth.delete_group %}
           <form hx-post="{% url 'accounts:group_delete' %}" hx-swap="none" class="d-inline"
                 data-confirm-title="Xác nhận xóa"
                 data-confirm-text="Bạn chắc chắn muốn xóa nhóm '{{ group.name }}'? (Chỉ xóa được nếu nhóm trống và không phải nhóm hệ thống)">
@@ -66,6 +71,7 @@
               <i class="bi bi-trash"></i>
             </button>
           </form>
+          {% endif %}
         </td>
       </tr>
       {% endwith %}
@@ -116,4 +122,3 @@
     </ul>
   </nav>
 </div>
-

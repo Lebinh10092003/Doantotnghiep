@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
+{% load group_tags %} 
+
 {% block title %}Lịch dạy của tôi{% endblock %}
 
 {% block content %}
@@ -48,8 +50,6 @@
   </div>
 </div>
 
-
-{# Modal chi tiết Buổi học #}
 <div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
