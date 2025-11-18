@@ -113,11 +113,14 @@
                                 <div class="flex-grow-1 overflow-hidden me-2"
                                      style="min-width:0; cursor: pointer;"
                                      role="button"
-                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}"
+                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}?as=inline"
                                      hx-target="#pane-knowledge"
                                      hx-swap="innerHTML"
                                      @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'">
                                   <div class="fw-semibold text-truncate text-break">{{ l.title }}</div>
+                                  {% if upcoming and upcoming.lesson and upcoming.date|date:"Y-m-d" == today_str and l.id == upcoming.lesson.id %}
+                                    <span class="badge bg-success-subtle text-success">Hôm nay</span>
+                                  {% endif %}
                                   {% if l.objectives %}
                                     <div class="small text-muted text-truncate">
                                       {{ l.objectives|truncatechars:80 }}
@@ -127,19 +130,11 @@
                                 <div class="d-flex flex-shrink-0 gap-2">
                                   <button
                                      class="btn btn-sm btn-outline-secondary"
-                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}"
+                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}?as=inline"
                                      hx-target="#pane-knowledge"
                                      hx-swap="innerHTML"
                                      @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'">
                                      <i class="bi bi-eye"></i>
-                                  </button>
-                                  <button
-                                     class="btn btn-sm btn-outline-success"
-                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}"
-                                     hx-target="#pane-knowledge"
-                                     hx-swap="innerHTML"
-                                     @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'">
-                                    <i class="bi bi-journal-text"></i>
                                   </button>
                                 </div>
                               </li>
@@ -167,7 +162,7 @@
         <div class="col-12 col-xl-8">
           <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-              <h5 class="mb-0">
+              <h5 class="mb-0 d-flex align-items-center gap-2">
                 <span x-show="selectedLessonTitle" x-text="selectedLessonTitle ? selectedLessonTitle.toUpperCase() : ''"></span>
                 <span x-show="!selectedLessonTitle">
                   {% if upcoming and lesson %}
@@ -178,6 +173,10 @@
                     Thông tin buổi học
                   {% endif %}
                 </span>
+                <span class="badge bg-success-subtle text-success" x-show="selectedLessonId && todayLessonId && selectedLessonId === todayLessonId">Hôm nay</span>
+                {% if upcoming and upcoming.date|date:"Y-m-d" == today_str %}
+                  <span class="badge bg-success-subtle text-success" x-show="!selectedLessonTitle">Hôm nay</span>
+                {% endif %}
               </h5>
               {% if upcoming %}
                 <span class="badge bg-primary-subtle text-primary">
@@ -220,7 +219,7 @@
               <div class="d-flex flex-wrap gap-2 mb-3">
                 {% if upcoming and lesson %}
                   <button class="btn btn-success"
-                          hx-get="{% url 'curriculum:lesson_detail' lesson.id %}"
+                         hx-get="{% url 'curriculum:lesson_detail' lesson.id %}?as=inline"
                           hx-target="#pane-knowledge"
                           hx-swap="innerHTML"
                           @click="selectedLessonId={{ lesson.id }}; selectedLessonTitle='{{ lesson.title|escapejs }}'">
@@ -285,6 +284,14 @@
               <div class="tab-content">
                 {# --- Tab 1: Kiến thức --- #}
                 <div class="tab-pane fade show active" id="pane-knowledge" role="tabpanel">
+                  {% if lesson %}
+                    <div
+                      hx-get="{% url 'curriculum:lesson_detail' lesson.id %}?as=inline"
+                      hx-target="#pane-knowledge"
+                      hx-swap="innerHTML"
+                      hx-trigger="load">
+                    </div>
+                  {% endif %}
                   {% if lesson %}
                     {% if lecture %}
                       {% if lecture.video_url %}

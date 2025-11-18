@@ -392,7 +392,18 @@ def lesson_edit_view(request, lesson_id: int):
 def lesson_detail_view(request, lesson_id: int):
     lesson = get_object_or_404(Lesson.objects.select_related('module', 'module__subject', 'lecture', 'exercise'), id=lesson_id)
     context = {"lesson": lesson}
-    return render(request, "_lesson_detail.html", context)
+    # Serve different templates depending on caller context
+    # - HTMX inline (e.g., Students app right pane): body-only without modal chrome
+    # - HTMX modal or non-HTMX full page: keep modal version or full page as appropriate
+    as_param = request.GET.get("as")
+    if is_htmx_request(request):
+        if as_param == "inline":
+            return render(request, "lesson_detail.html", context)
+        else:
+            # default for HTMX callers expecting modal markup
+            return render(request, "_lesson_detail.html", context)
+    # Non-HTMX: render the full page variant
+    return render(request, "lesson_detail.html", context)
 
 
 @login_required
