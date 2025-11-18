@@ -1,8 +1,10 @@
 from django.urls import path
 from . import views
-from django.contrib.auth import views as auth_views
-from django.conf import settings
-from django.conf.urls.static import static
 
 app_name = "students"
-urlpatterns = []
+
+urlpatterns = [
+    # Student portal
+    path("", views.portal_home, name="portal_home"),
+    path("course/<int:class_id>/", views.portal_course_detail, name="portal_course_detail"),
+]

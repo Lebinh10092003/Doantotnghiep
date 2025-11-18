@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ klass.name }}{% endblock %}
+
+{% block content %}
+<div id="main">
+  <header class="mb-3">
+    <a href="#" class="burger-btn d-block d-xl-none">
+      <i class="bi bi-justify fs-3"></i>
+    </a>
+  </header>
+
+  <div class="page-heading">
+    <div class="row g-3 align-items-center">
+      <div class="col">
+        <h3 class="mb-1">{{ klass.name }}</h3>
+        <div class="text-secondary small">
+          <i class="bi bi-person-badge me-1"></i> Giáo viên: {{ klass.main_teacher.get_full_name|default:"-" }}
+          <span class="mx-1">•</span>
+          <i class="bi bi-building me-1"></i> {{ klass.center.name }}
+        </div>
+      </div>
+      <div class="col-auto">
+        {% if upcoming %}
+          <span class="badge bg-success">Sắp diễn ra</span>
+        {% else %}
+          <span class="badge bg-secondary">Đã kết thúc</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <section class="section mt-3">
+      <div class="row">
+        <div class="col-12 col-lg-5">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title mb-0">Chương trình học</h5>
+            </div>
+            <div classs="list-group list-group-flush">
+              {% for m in modules %}
+              <div class="list-group-item">
+                <div class="fw-semibold mb-2">[{{ subject.name }}] {{ m.title }}</div>
+                {% for les in m.lessons.all %}
+                <div class="d-flex align-items-center py-1">
+                  <i class="bi bi-journal-text text-success me-2"></i>
+                  <div>{{ les.title }}</div>
+                </div>
+                {% empty %}
+                <div class="text-muted small">Chưa có bài học.</div>
+                {% endfor %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-7">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title mb-0">Thông tin buổi học</h5>
+            </div>
+            <div class="card-body">
+              {% if upcoming %}
+                <div class="mb-2"><i class="bi bi-calendar me-2"></i>{{ upcoming.date|date:"d/m/Y" }}</div>
+                <div class="mb-2"><i class="bi bi-clock me-2"></i>{{ upcoming.start_time|time:"H:i"|default:"-" }}{% if upcoming.end_time %} - {{ upcoming.end_time|time:"H:i" }}{% endif %}</div>
+                {% if upcoming.lesson %}
+                  <div class="fw-semibold mb-2">{{ upcoming.lesson.title }}</div>
+                  {% if upcoming.lesson.objectives %}
+                  <div class="text-muted" style="white-space:pre-line">{{ upcoming.lesson.objectives }}</div>
+                  {% endif %}
+                {% endif %}
+              {% else %}
+                <div class="text-muted">Chưa có lịch học tiếp theo.</div>
+              {% endif %}
+
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                {% if upcoming and upcoming.lesson %}
+                <a class="btn btn-success" href="{% url 'curriculum:lesson_detail' upcoming.lesson.id %}"><i class="bi bi-journal-text me-2"></i>Xem kiến thức</a>
+                {% endif %}
+                <a class="btn btn-outline-success disabled" aria-disabled="true"><i class="bi bi-list-check me-2"></i>Làm bài tập</a>
+                <a class="btn btn-outline-primary disabled" aria-disabled="true"><i class="bi bi-upload me-2"></i>Đăng dự án</a>
+                <a class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-bar-chart me-2"></i>Xem báo cáo</a>
+                <a class="btn btn-outline-warning disabled" aria-disabled="true"><i class="bi bi-chat-left-quote me-2"></i>Gửi đánh giá</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
