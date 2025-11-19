@@ -107,5 +107,15 @@
       Chưa có bài tập cho bài học này.
     </p>
   {% endif %}
+  {% if exercise_submissions %}
+    {% with submission=exercise_submissions.0 %}
+      <div class="mt-3">
+        <a class="btn btn-outline-primary btn-sm"
+           href="{% url 'students:submission_update' submission.id %}?{% if submission.session %}session_id={{ submission.session.id }}&{% endif %}{% if class_id %}class_id={{ class_id }}{% endif %}">
+          Chỉnh sửa bài tập
+        </a>
+      </div>
+    {% endwith %}
+  {% endif %}
   {% include "_exercise_submissions_list.html" %}
 </div>

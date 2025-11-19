@@ -1,9 +1,15 @@
 from django.db import models
 from apps.common.models import NamedModel
+from steam_center.storages import MediaStorage
 
 
 class Subject(NamedModel):
-    avatar = models.ImageField(upload_to='subjects/avatars/', blank=True, null=True, verbose_name="Ảnh đại diện")
+    avatar = models.ImageField(
+        upload_to='subjects/avatars/',
+        storage=MediaStorage(),
+        blank=True, 
+        null=True, 
+        verbose_name="Ảnh đại diện")
     description = models.TextField(blank=True)
 
     def __str__(self):
@@ -23,7 +29,12 @@ class Module(models.Model):
     order = models.PositiveIntegerField()
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    image = models.ImageField(upload_to='modules/images/', blank=True, null=True, verbose_name="Ảnh minh họa")
+    image = models.ImageField(
+        upload_to='modules/images/', 
+        storage=MediaStorage(),
+        blank=True, 
+        null=True, 
+        verbose_name="Ảnh minh họa")
 
 
     class Meta:
@@ -62,7 +73,11 @@ class Lecture(models.Model):
         Lesson, on_delete=models.CASCADE, related_name="lecture"
     )
     content = models.TextField(blank=True)
-    file = models.FileField(upload_to="lectures/", blank=True, null=True)
+    file = models.FileField(
+        upload_to="lectures/", 
+        storage=MediaStorage(),
+        blank=True, 
+        null=True)
     video_url = models.URLField(blank=True, null=True)
 
 
@@ -75,7 +90,11 @@ class Exercise(models.Model):
         Lesson, on_delete=models.CASCADE, related_name="exercise"
     )
     description = models.TextField(blank=True)
-    file = models.FileField(upload_to="exercises/", blank=True, null=True)
+    file = models.FileField(
+        upload_to="exercises/", 
+        storage=MediaStorage(),
+        blank=True, 
+        null=True)
     link_url = models.URLField(blank=True, null=True)
     difficulty = models.CharField(
         max_length=20,

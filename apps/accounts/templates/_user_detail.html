@@ -5,7 +5,7 @@
             {% if user.avatar %}
             <img src="{{ user.avatar.url }}" class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;" alt="Avatar">
             {% else %}
-            <img src="{% static 'static/images/faces/1.jpg' %}" class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px;" alt="Default Avatar">
+            <img src="{% static 'assets/images/faces/1.jpg' %}" class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px;" alt="Default Avatar">
             {% endif %}
             <h5 class="mb-1">{{ user.get_full_name|default:user.username }}</h5>
             <p class="text-muted mb-0">@{{ user.username }}</p>

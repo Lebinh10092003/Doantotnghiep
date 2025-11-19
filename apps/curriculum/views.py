@@ -401,9 +401,11 @@ def lesson_detail_view(request, lesson_id: int):
             .select_related("session")
             .order_by("-created_at")
         )
+    class_id = request.GET.get("class_id")
     context = {
         "lesson": lesson,
         "exercise_submissions": exercise_submissions,
+        "class_id": class_id,
     }
     # Serve different templates depending on caller context
     as_param = request.GET.get("as")

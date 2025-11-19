@@ -36,11 +36,16 @@
                 enctype="multipart/form-data"
                 class="needs-validation"
                 novalidate
+                data-global-loader="true"
+                data-global-loader-message="Đang gửi bài tập..."
                 hx-post="."
                 hx-target="#submission-form-container"
                 hx-swap="outerHTML"
                 hx-encoding="multipart/form-data">
           {% csrf_token %}
+          {% if return_class_id %}
+            <input type="hidden" name="class_id" value="{{ return_class_id }}">
+          {% endif %}
           {% if form.non_field_errors %}
           <div class="alert alert-warning" role="alert">{{ form.non_field_errors|first }}</div>
           {% endif %}
@@ -74,7 +79,9 @@
           </div>
 
           <div class="mt-4 d-flex justify-content-end gap-2">
-            {% if session %}
+            {% if return_class_id %}
+              <a class="btn btn-light" href="{% url 'students:portal_course_detail' return_class_id %}">Hủy</a>
+            {% elif session %}
               <a class="btn btn-light" href="{% url 'students:portal_course_detail' session.klass.id %}">Hủy</a>
             {% else %}
               <a class="btn btn-light" href="{% url 'students:portal_home' %}">Hủy</a>

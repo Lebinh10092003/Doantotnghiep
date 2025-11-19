@@ -20,7 +20,12 @@
         <div class="text-muted small">Lớp: {{ session.klass.name }} • Ngày: {{ session.date|date:"d/m/Y" }}</div>
       </div>
       <div class="card-body">
-        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+        <form method="post"
+              enctype="multipart/form-data"
+              class="needs-validation"
+              novalidate
+              data-global-loader="true"
+              data-global-loader-message="Đang lưu sản phẩm...">
           {% csrf_token %}
           {% if form.non_field_errors %}
           <div class="alert alert-warning" role="alert">{{ form.non_field_errors|first }}</div>
@@ -142,4 +147,3 @@
   })();
 </script>
 {% endblock %}
-

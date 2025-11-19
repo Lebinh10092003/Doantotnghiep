@@ -4,7 +4,7 @@
     {% if subject.avatar_url %}
       <img src="{{ subject.avatar_url }}" alt="Ảnh môn học" class="rounded border" style="max-height: 100px; object-fit: cover;">
     {% else %}
-      <img src="{% static 'static/images/faces/1.jpg' %}" alt="Ảnh mặc định" class="rounded border" style="max-height: 100px; object-fit: cover;">
+      <img src="{% static 'assets/images/faces/1.jpg' %}" alt="Ảnh mặc định" class="rounded border" style="max-height: 100px; object-fit: cover;">
     {% endif %}
   </div>
   <div class="row">
@@ -29,7 +29,7 @@
         {% if module.image_url %}
           <img src="{{ module.image_url }}" alt="Ảnh" class="rounded border" style="width:48px;height:48px;object-fit:cover;">
         {% else %}
-          <img src="{% static 'static/images/faces/1.jpg' %}" alt="Ảnh mặc định" class="rounded border" style="width:48px;height:48px;object-fit:cover;">
+          <img src="{% static 'assets/images/faces/1.jpg' %}" alt="Ảnh mặc định" class="rounded border" style="width:48px;height:48px;object-fit:cover;">
         {% endif %}
       </div>
       <div class="flex-grow-1">

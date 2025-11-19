@@ -1,7 +1,10 @@
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.db import models
+
 from apps.class_sessions.models import ClassSession
 from apps.curriculum.models import Exercise
-
+from steam_center.storages import MediaStorage
 
 class StudentProduct(models.Model):
     session = models.ForeignKey(
@@ -15,10 +18,16 @@ class StudentProduct(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     image = models.ImageField(
-        upload_to="student_products/images/", null=True, blank=True
+        upload_to="student_products/images/",
+        storage=MediaStorage(),
+        null=True,
+        blank=True,
     )
     video = models.FileField(
-        upload_to="student_products/videos/", null=True, blank=True
+        upload_to="student_products/videos/",
+        storage=MediaStorage(),
+        null=True,
+        blank=True,
     )
     embed_code = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -52,7 +61,11 @@ class StudentExerciseSubmission(models.Model):
     )
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    file = models.FileField(upload_to="exercise_submissions/files/", null=True, blank=True)
+    file = models.FileField(
+        upload_to="exercise_submissions/files/", 
+        storage=MediaStorage(),
+        null=True, 
+        blank=True)
     link_url = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

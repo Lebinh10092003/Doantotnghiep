@@ -34,7 +34,7 @@
               {% if u.avatar %}
                 <img src="{{ u.avatar.url }}" class="rounded-circle me-2" style="width:32px; height:32px; object-fit:cover;" alt="Avatar">
               {% else %}
-                <img src="{% static 'static/images/faces/1.jpg' %}" class="rounded-circle me-2" style="width:32px; height:32px;" alt="Avatar">
+                <img src="{% static 'assets/images/faces/1.jpg' %}" class="rounded-circle me-2" style="width:32px; height:32px;" alt="Avatar">
               {% endif %}
               <div>
                 <div class="fw-semibold">{{ u.get_full_name|default:u.username }}</div>

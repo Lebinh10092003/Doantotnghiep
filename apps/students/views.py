@@ -17,6 +17,8 @@ from django.urls import reverse
 
 
 
+
+
 def _week_range(center_date: date | None = None):
     """
     Trả về (start, end) là thứ 2 -> CN của tuần chứa center_date.
@@ -242,6 +244,11 @@ def submission_create(request, exercise_id: int):
         session = get_object_or_404(ClassSession, id=session_id)
         if not Enrollment.objects.filter(student=request.user, klass=session.klass, active=True).exists():
             return HttpResponseForbidden("Bạn không có quyền nộp bài cho lớp này.")
+    return_class_id = (
+        request.GET.get("class_id")
+        or request.POST.get("class_id")
+        or (session.klass.id if session else None)
+    )
 
     if request.method == "POST":
         form = StudentExerciseSubmissionForm(request.POST, request.FILES)
@@ -252,7 +259,7 @@ def submission_create(request, exercise_id: int):
             submission.session = session
             submission.save()
 
-            class_id = session.klass.id if session else request.GET.get("class_id")
+            class_id = return_class_id
             redirect_to_course = None
             if class_id:
                 redirect_to_course = request.build_absolute_uri(
@@ -289,6 +296,7 @@ def submission_create(request, exercise_id: int):
             "session": session,
             "klass": session.klass if session else None,
             "is_create": True,
+            "return_class_id": return_class_id,
         },
     )
 
@@ -299,12 +307,22 @@ def submission_update(request, pk: int):
     if submission.student_id != request.user.id:
         return HttpResponseForbidden("Bạn chỉ có thể chỉnh sửa bài tập của mình.")
 
+    return_class_id = (
+        request.GET.get("class_id")
+        or request.POST.get("class_id")
+        or (submission.session.klass.id if submission.session else None)
+    )
+
     if request.method == "POST":
         form = StudentExerciseSubmissionForm(request.POST, request.FILES, instance=submission)
         if form.is_valid():
+            new_file = form.cleaned_data.get("file")
+            old_file = submission.file
             form.save()
+            if new_file and old_file and old_file.name != new_file.name:
+                old_file.delete(save=False)
 
-            class_id = submission.session.klass.id if submission.session else request.GET.get("class_id")
+            class_id = return_class_id
             redirect_to_course = None
             if class_id:
                 redirect_to_course = request.build_absolute_uri(
@@ -342,6 +360,7 @@ def submission_update(request, pk: int):
             "klass": submission.session.klass if submission.session else None,
             "is_create": False,
             "submission": submission,
+            "return_class_id": return_class_id,
         },
     )
 
@@ -355,7 +374,11 @@ def product_update(request, pk: int):
     if request.method == "POST":
         form = StudentProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
+            new_file = form.cleaned_data.get("file")
+            old_file = product.file
             form.save()
+            if new_file and old_file and old_file.name != new_file.name:
+                old_file.delete(save=False)
             return redirect("students:portal_course_detail", class_id=product.session.klass.id)
     else:
         form = StudentProductForm(instance=product)

@@ -2,13 +2,11 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+from google.oauth2 import service_account
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")  # <— tự động nạp .env
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key")
@@ -23,8 +21,8 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "common:dashboard"
 
-# Application definition
 
+# Application definition
 INSTALLED_APPS = [
     # Django mặc định
     "django.contrib.admin",
@@ -57,11 +55,13 @@ INSTALLED_APPS = [
     "apps.reports",
     "apps.rewards",
     "apps.filters",
+    "storages",
 ]
 INSTALLED_APPS += ["django_seed"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -141,13 +141,31 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 # Static files (CSS, JS, Images)
+STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]  # chứa source CSS/JS trong project
 STATIC_ROOT = BASE_DIR / "staticfiles"  # thư mục collectstatic (deploy)
 
 # Media files (upload: ảnh, tài liệu,…)
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+if DEBUG:
+    # Cấu hình cho local development
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
+else:
+    # Cấu hình cho production: Media trên GCS, Static ở local (dùng WhiteNoise)
+    DEFAULT_FILE_STORAGE = "steam_center.storages.MediaStorage"
+    FIREBASE_STORAGE_BUCKET = os.getenv("FIREBASE_STORAGE_BUCKET") or os.getenv("GS_BUCKET_NAME")
+    FIREBASE_MEDIA_LOCATION = os.getenv("FIREBASE_MEDIA_LOCATION", "media")
+    MEDIA_URL = os.getenv(
+        "FIREBASE_MEDIA_URL",
+        f"https://firebasestorage.googleapis.com/v0/b/{FIREBASE_STORAGE_BUCKET}/o/{FIREBASE_MEDIA_LOCATION}/"
+        if FIREBASE_STORAGE_BUCKET
+        else "/media/",
+    )
+
+    # Đảm bảo tệp credentials JSON nằm ở BASE_DIR và được trỏ đến bởi biến môi trường
+    firebase_credentials = os.getenv("FIREBASE_SERVICE_ACCOUNT") or os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if firebase_credentials:
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(BASE_DIR / firebase_credentials)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
