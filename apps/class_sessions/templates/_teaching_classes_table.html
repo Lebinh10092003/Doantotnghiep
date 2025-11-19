@@ -20,17 +20,20 @@
       <tr>
         <td>{{ c.code }}</td>
         <td>
-          {# Dòng 21 (đã sửa) - cú pháp if vẫn giữ nguyên, chỉ thêm load tag ở đầu file #}
-          {% if perms.classes.view_class and (user|in_group:'teacher' or user|in_group:'assistant') %}
-            <a href="#"
-               hx-get="{% url 'classes:class_detail' c.pk %}"
-               hx-target="#sessions-modal-content"
-               data-bs-toggle="modal"
-               data-bs-target="#sessions-modal"
-               @click="modalTitle = 'Chi tiết Lớp: {{ c.name|escapejs }}'"
-               title="Chi tiết lớp">
+          {% if perms.classes.view_class %}
+            {% if user|in_group:"TEACHER" or user|in_group:"ASSISTANT" %}
+              <a href="#"
+                 hx-get="{% url 'classes:class_detail' c.pk %}"
+                 hx-target="#sessions-modal-content"
+                 data-bs-toggle="modal"
+                 data-bs-target="#sessions-modal"
+                 @click="modalTitle = 'Chi tiết Lớp: {{ c.name|escapejs }}'"
+                 title="Chi tiết lớp">
+                {{ c.name }}
+              </a>
+            {% else %}
               {{ c.name }}
-            </a>
+            {% endif %}
           {% else %}
             {{ c.name }}
           {% endif %}
@@ -40,15 +43,21 @@
         <td>{{ c.main_teacher.get_full_name|default:c.main_teacher.username }}</td>
         <td>
           {% for a in c.assistants.all %}
-            <span class="badge bg-light text-dark border me-1">{{ a.get_full_name|default:a.username }}</span>
-          {% empty %}<span class="text-muted">-</span>{% endfor %}
+            <span class="badge bg-light text-dark border me-1">
+              {{ a.get_full_name|default:a.username }}
+            </span>
+          {% empty %}
+            <span class="text-muted">-</span>
+          {% endfor %}
         </td>
         <td>{{ c.get_status_display }}</td>
         <td>{{ c.start_date|date:"d/m/Y"|default:"-" }}</td>
         <td>{{ c.end_date|date:"d/m/Y"|default:"-" }}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" class="text-center text-muted">Không có lớp nào phù hợp.</td></tr>
+      <tr>
+        <td colspan="9" class="text-center text-muted">Không có lớp nào phù hợp.</td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>

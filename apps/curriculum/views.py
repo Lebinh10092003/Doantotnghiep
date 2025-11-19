@@ -15,6 +15,7 @@ import requests
 from django import forms
 
 from .models import Subject, Module, Lesson, Lecture, Exercise
+from apps.students.models import StudentExerciseSubmission
 from .forms import SubjectForm, ModuleForm, LessonForm, LectureForm, ExerciseForm, ImportCurriculumForm
 
 
@@ -391,10 +392,20 @@ def lesson_edit_view(request, lesson_id: int):
 @permission_required("curriculum.view_lesson", raise_exception=True)
 def lesson_detail_view(request, lesson_id: int):
     lesson = get_object_or_404(Lesson.objects.select_related('module', 'module__subject', 'lecture', 'exercise'), id=lesson_id)
-    context = {"lesson": lesson}
+    exercise_submissions = []
+    if lesson.exercise and request.user.is_authenticated:
+        exercise_submissions = (
+            StudentExerciseSubmission.objects.filter(
+                student=request.user, exercise=lesson.exercise
+            )
+            .select_related("session")
+            .order_by("-created_at")
+        )
+    context = {
+        "lesson": lesson,
+        "exercise_submissions": exercise_submissions,
+    }
     # Serve different templates depending on caller context
-    # - HTMX inline (e.g., Students app right pane): body-only without modal chrome
-    # - HTMX modal or non-HTMX full page: keep modal version or full page as appropriate
     as_param = request.GET.get("as")
     if is_htmx_request(request):
         if as_param == "inline":

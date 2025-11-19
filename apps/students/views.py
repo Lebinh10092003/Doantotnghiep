@@ -2,13 +2,18 @@
 from datetime import date, datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
+from django.http import HttpResponseForbidden
 
 from apps.classes.models import Class
 from apps.class_sessions.models import ClassSession
 from apps.enrollments.models import Enrollment
-from .models import StudentProduct
+from .models import StudentProduct, StudentExerciseSubmission
+from .forms import StudentProductForm, StudentExerciseSubmissionForm
 from django.core.exceptions import ObjectDoesNotExist
+import json
+from django.http import HttpResponse
+from django.urls import reverse
 
 
 
@@ -153,21 +158,30 @@ def portal_course_detail(request, class_id: int):
             exercise = None
 
     # Sản phẩm học sinh trong buổi sắp tới
+    session_products = StudentProduct.objects.none()
+    latest_product = None
     if upcoming:
         session_products = (
             StudentProduct.objects.filter(session=upcoming, student=user)
-            .select_related("session")
+            .select_related("session", "student")
             .all()
         )
-    else:
-        session_products = StudentProduct.objects.none()
-
-    # Tất cả sản phẩm của học sinh trong toàn bộ khóa (mọi buổi)
+        latest_product = session_products.first()
     my_products = (
         StudentProduct.objects.filter(student=user, session__klass=klass)
-        .select_related("session")
+        .select_related("session", "student")
         .order_by("-created_at")
     )
+
+    exercise_submissions = StudentExerciseSubmission.objects.none()
+    latest_submission = None
+    if exercise:
+        exercise_submissions = (
+            StudentExerciseSubmission.objects.filter(student=user, exercise=exercise)
+            .select_related("session")
+            .order_by("-created_at")
+        )
+        latest_submission = exercise_submissions.first()
 
     context = {
         "klass": klass,
@@ -177,7 +191,209 @@ def portal_course_detail(request, class_id: int):
         "lesson": lesson,
         "lecture": lecture,
         "exercise": exercise,
+        "exercise_submissions": exercise_submissions,
+        "latest_submission": latest_submission,
         "session_products": session_products,
+        "latest_product": latest_product,
         "my_products": my_products,
     }
     return render(request, "course_detail.html", context)
+
+
+@login_required
+def product_create(request, session_id: int):
+    session = get_object_or_404(ClassSession, id=session_id)
+    if not Enrollment.objects.filter(student=request.user, klass=session.klass, active=True).exists():
+        return HttpResponseForbidden("Bạn không có quyền đăng sản phẩm cho lớp này.")
+    existing_product = StudentProduct.objects.filter(session=session, student=request.user).first()
+    if existing_product:
+        return redirect("students:product_update", pk=existing_product.pk)
+
+    if request.method == "POST":
+        form = StudentProductForm(request.POST, request.FILES)
+        if form.is_valid():
+            product = form.save(commit=False)
+            product.session = session
+            product.student = request.user
+            product.save()
+            return redirect("students:portal_course_detail", class_id=session.klass.id)
+    else:
+        form = StudentProductForm()
+
+    return render(
+        request,
+        "student_product_form.html",
+        {
+            "form": form,
+            "session": session,
+            "is_create": True,
+        },
+    )
+
+
+@login_required
+def submission_create(request, exercise_id: int):
+    from apps.curriculum.models import Exercise
+
+    exercise = get_object_or_404(Exercise, id=exercise_id)
+    session_id = request.GET.get("session_id")
+    session = None
+    if session_id:
+        session = get_object_or_404(ClassSession, id=session_id)
+        if not Enrollment.objects.filter(student=request.user, klass=session.klass, active=True).exists():
+            return HttpResponseForbidden("Bạn không có quyền nộp bài cho lớp này.")
+
+    if request.method == "POST":
+        form = StudentExerciseSubmissionForm(request.POST, request.FILES)
+        if form.is_valid():
+            submission = form.save(commit=False)
+            submission.exercise = exercise
+            submission.student = request.user
+            submission.session = session
+            submission.save()
+
+            class_id = session.klass.id if session else request.GET.get("class_id")
+            redirect_to_course = None
+            if class_id:
+                redirect_to_course = request.build_absolute_uri(
+                    reverse("students:portal_course_detail", kwargs={"class_id": class_id})
+                )
+                redirect_to_course += "#pane-exercise"
+
+            if request.headers.get("HX-Request") == "true":
+                resp = HttpResponse("")
+                trigger = {
+                    "show-sweet-alert": {
+                        "icon": "success",
+                        "title": "Đã nộp bài tập",
+                        "text": f"Bản nộp của bạn đã được lưu \"{submission.title}\".",
+                        "redirect": redirect_to_course
+                            or request.build_absolute_uri(reverse("students:portal_home")),
+                    }
+                }
+                resp["HX-Trigger"] = json.dumps(trigger)
+                return resp
+
+            if class_id:
+                return redirect("students:portal_course_detail", class_id=class_id)
+            return redirect("students:portal_home")
+    else:
+        form = StudentExerciseSubmissionForm()
+
+    return render(
+        request,
+        "student_submission_form.html",
+        {
+            "form": form,
+            "exercise": exercise,
+            "session": session,
+            "klass": session.klass if session else None,
+            "is_create": True,
+        },
+    )
+
+
+@login_required
+def submission_update(request, pk: int):
+    submission = get_object_or_404(StudentExerciseSubmission, pk=pk)
+    if submission.student_id != request.user.id:
+        return HttpResponseForbidden("Bạn chỉ có thể chỉnh sửa bài tập của mình.")
+
+    if request.method == "POST":
+        form = StudentExerciseSubmissionForm(request.POST, request.FILES, instance=submission)
+        if form.is_valid():
+            form.save()
+
+            class_id = submission.session.klass.id if submission.session else request.GET.get("class_id")
+            redirect_to_course = None
+            if class_id:
+                redirect_to_course = request.build_absolute_uri(
+                    reverse("students:portal_course_detail", kwargs={"class_id": class_id})
+                )
+                redirect_to_course += "#pane-exercise"
+
+            if request.headers.get("HX-Request") == "true":
+                resp = HttpResponse("")
+                trigger = {
+                    "show-sweet-alert": {
+                        "icon": "success",
+                        "title": "Bài tập đã được cập nhật",
+                        "text": f"Bản nộp \"{submission.title}\" đã cập nhật.",
+                        "redirect": redirect_to_course
+                            or request.build_absolute_uri(reverse("students:portal_home")),
+                    }
+                }
+                resp["HX-Trigger"] = json.dumps(trigger)
+                return resp
+
+            if class_id:
+                return redirect("students:portal_course_detail", class_id=class_id)
+            return redirect("students:portal_home")
+    else:
+        form = StudentExerciseSubmissionForm(instance=submission)
+
+    return render(
+        request,
+        "student_submission_form.html",
+        {
+            "form": form,
+            "exercise": submission.exercise,
+            "session": submission.session,
+            "klass": submission.session.klass if submission.session else None,
+            "is_create": False,
+            "submission": submission,
+        },
+    )
+
+
+@login_required
+def product_update(request, pk: int):
+    product = get_object_or_404(StudentProduct, pk=pk)
+    if product.student_id != request.user.id:
+        return HttpResponseForbidden("Bạn chỉ có thể sửa sản phẩm của mình.")
+
+    if request.method == "POST":
+        form = StudentProductForm(request.POST, request.FILES, instance=product)
+        if form.is_valid():
+            form.save()
+            return redirect("students:portal_course_detail", class_id=product.session.klass.id)
+    else:
+        form = StudentProductForm(instance=product)
+
+    return render(
+        request,
+        "student_product_form.html",
+        {
+            "form": form,
+            "session": product.session,
+            "is_create": False,
+        },
+    )
+
+
+@login_required
+def product_delete(request, pk: int):
+    product = get_object_or_404(StudentProduct, pk=pk)
+    if product.student_id != request.user.id:
+        return HttpResponseForbidden("Bạn chỉ có thể xóa sản phẩm của mình.")
+
+    class_id = product.session.klass.id
+    if request.method == "POST":
+        product.delete()
+        # If HTMX, use HX-Trigger to show alert and redirect via custom-events
+        if request.headers.get("HX-Request"):
+            resp = HttpResponse("")
+            trigger = {
+                "show-sweet-alert": {
+                    "icon": "success",
+                    "title": "Đã xóa dự án",
+                    "redirect": request.build_absolute_uri(
+                        redirect("students:portal_course_detail", class_id=class_id).url
+                    ),
+                }
+            }
+            resp["HX-Trigger"] = json.dumps(trigger)
+            return resp
+        return redirect("students:portal_course_detail", class_id=class_id)
+
+    return redirect("students:portal_course_detail", class_id=class_id)

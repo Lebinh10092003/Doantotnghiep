@@ -1,0 +1,58 @@
+{% comment %}
+  Partial template này chứa nội dung chi tiết của một bài học.
+  Nó được dùng để render lần đầu và cho các request từ HTMX.
+{% endcomment %}
+
+{% if lesson %}
+  {% if lecture %}
+    {% if lecture.video_url %}
+      <div class="mb-3">
+        <div class="fw-semibold mb-1">
+          Video bài học
+        </div>
+        <div class="ratio ratio-16x9 rounded-3 overflow-hidden mb-2">
+          <iframe src="{{ lecture.video_url }}"
+                  title="Video bài học"
+                  allowfullscreen></iframe>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if lecture.content %}
+      <div class="mb-3">
+        <div class="fw-semibold mb-1">Nội dung bài giảng</div>
+        <div class="small" style="white-space: pre-line;">
+          {{ lecture.content }}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if lecture.file %}
+      <div class="mb-3">
+        <i class="bi bi-paperclip me-1"></i>
+        <a href="{{ lecture.file.url }}" target="_blank" class="small">
+          Tải tài liệu bài giảng
+        </a>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  {% if not lecture and lesson.objectives %}
+    <div class="mb-0">
+      <div class="fw-semibold mb-1">Mục tiêu bài học</div>
+      <div class="small" style="white-space: pre-line;">
+        {{ lesson.objectives }}
+      </div>
+    </div>
+  {% endif %}
+
+  {% if not lecture and not lesson.objectives %}
+    <p class="text-muted small mb-0">
+      Chưa có nội dung bài giảng cho bài học này.
+    </p>
+  {% endif %}
+{% else %}
+  <p class="text-muted small mb-0">
+    Chưa có buổi học cụ thể để hiển thị kiến thức.
+  </p>
+{% endif %}

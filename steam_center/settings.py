@@ -14,7 +14,6 @@ load_dotenv(BASE_DIR / ".env")  # <— tự động nạp .env
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key")
 DEBUG = os.getenv("DEBUG", "1") == "1"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-
 # Custom user model
 AUTH_USER_MODEL = "accounts.User"
 
@@ -154,3 +153,23 @@ MEDIA_ROOT = BASE_DIR / "media"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Allowed student embed hosts (for safe iframe rendering)
+# Extend this set per your needs (e.g., 'play.unity.com', 'glitch.me')
+ALLOWED_STUDENT_EMBED_HOSTS = set([
+    "youtube.com",
+    "www.youtube.com",
+    "youtu.be",
+    "vimeo.com",
+    "player.vimeo.com",
+    "itch.io",
+    "www.itch.io",
+    "scratch.mit.edu",
+    "codepen.io",
+    "play.unity.com",
+    "drive.google.com",
+    "docs.google.com",
+    "loom.com",
+    "www.loom.com",
+    "streamable.com",
+])

@@ -1,5 +1,6 @@
 from django.db import models
 from apps.class_sessions.models import ClassSession
+from apps.curriculum.models import Exercise
 
 
 class StudentProduct(models.Model):
@@ -31,3 +32,33 @@ class StudentProduct(models.Model):
 
     def __str__(self):
         return f"{self.student.username} - {self.title}"
+
+
+class StudentExerciseSubmission(models.Model):
+    exercise = models.ForeignKey(
+        Exercise,
+        on_delete=models.CASCADE,
+        related_name="submissions",
+    )
+    session = models.ForeignKey(
+        ClassSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="exercise_submissions",
+    )
+    student = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="exercise_submissions"
+    )
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    file = models.FileField(upload_to="exercise_submissions/files/", null=True, blank=True)
+    link_url = models.URLField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student.username} -> Exercise #{self.exercise_id}"

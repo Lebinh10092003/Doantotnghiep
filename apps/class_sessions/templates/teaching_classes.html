@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
+{% load group_tags %}
+
 {% block title %}Các lớp đang dạy{% endblock %}
 
 {% block content %}
@@ -7,52 +9,167 @@
   <div class="page-heading">
     <div class="page-title">
       <div class="row">
-        <div class="col-12 col-md-6 order-md-1 order-last">
-          <h3>Các lớp đang dạy</h3>
-          <p class="text-subtitle text-muted">Danh sách lớp bạn đang phụ trách</p>
+        <div class="col-12 col-md-8 order-md-1 order-last">
+          <h3 class="mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-easel2 text-primary"></i>
+            Các lớp đang dạy
+          </h3>
+          <p class="text-subtitle text-muted mb-0">
+            Danh sách lớp bạn đang phụ trách. Lọc nhanh theo giáo viên (nếu có quyền xem nhiều giáo viên).
+          </p>
         </div>
       </div>
     </div>
 
     <section class="section">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="card-title mb-0">Bộ lọc</h5>
-          <form id="teaching-classes-filters" class="d-flex gap-2 align-items-center"
-                hx-get="{% url 'class_sessions:teaching_classes' %}"
-                hx-target="#teaching-classes-table"
-                hx-swap="innerHTML">
-            {% if teachers %}
-            <select name="teacher" class="form-select form-select-sm w-auto">
-              {% for t in teachers %}
-              <option value="{{ t.id }}" {% if teacher and teacher.id == t.id %}selected{% endif %}>{{ t.get_full_name|default:t.username }}</option>
-              {% endfor %}
-            </select>
-            {% endif %}
-            <button type="submit" class="btn btn-sm btn-primary">Áp dụng</button>
-          </form>
-        </div>
-        <div class="card-body" id="teaching-classes-table">
-          {% include "_teaching_classes_table.html" %}
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body">
+
+          <div x-data="{ showFilters: true }">
+
+            {# --- THANH TRÊN: GIỐNG STYLE FILTER Ở QUẢN LÝ LỚP HỌC --- #}
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div class="d-flex flex-column">
+                <span class="small text-muted text-uppercase fw-semibold ls-1 mb-1">
+                  Giáo viên
+                </span>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <span class="fw-semibold">
+                    {{ teacher.get_full_name|default:teacher.username }}
+                  </span>
+                  <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">
+                    Đang phụ trách lớp
+                  </span>
+                </div>
+              </div>
+
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        @click="showFilters = !showFilters">
+                  <i class="bi bi-funnel-fill"></i>
+                  <span x-text="showFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'">Bộ lọc</span>
+                </button>
+              </div>
+            </div>
+
+            {# --- HÀNG BADGE "NGỮ CẢNH" (THAM KHẢO TEMPLATE FILTER) --- #}
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 small">
+              <span class="text-muted">Đang xem:</span>
+
+              <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
+                <span>
+                  <strong>Giáo viên:</strong>
+                  {{ teacher.get_full_name|default:teacher.username }}
+                </span>
+              </span>
+
+              <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
+                <span>
+                  <strong>Trạng thái:</strong> Lớp đang / sắp dạy
+                </span>
+              </span>
+
+              <a href="{% url 'class_sessions:teaching_classes' %}"
+                 class="btn btn-sm btn-link text-danger text-decoration-none px-1">
+                <i class="bi bi-x-lg"></i> Xóa lọc
+              </a>
+            </div>
+
+            {# --- KHỐI FILTER CHI TIẾT GIỐNG KHUNG LỌC Ở QUẢN LÝ LỚP --- #}
+            <div x-show="showFilters"
+                 x-transition
+                 class="card card-body bg-light border mb-3"
+                 style="display: none;">
+              <h6 class="mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-sliders"></i>
+                Tùy chọn lọc lớp đang dạy
+              </h6>
+
+              <form id="teaching-classes-filters"
+                    method="get"
+                    class="row g-3"
+                    hx-get="{% url 'class_sessions:teaching_classes' %}"
+                    hx-target="#teaching-classes-table"
+                    hx-swap="innerHTML">
+
+                {% if teachers %}
+                  <div class="col-12 col-md-6 col-lg-4">
+                    <label class="form-label small mb-1">Giáo viên</label>
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text border-end-0">
+                        <i class="bi bi-people"></i>
+                      </span>
+                      <select name="teacher"
+                              class="form-select border-start-0">
+                        {% for t in teachers %}
+                          <option value="{{ t.id }}"
+                                  {% if teacher and teacher.id == t.id %}selected{% endif %}>
+                            {{ t.get_full_name|default:t.username }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="form-text small">
+                      Chỉ hiển thị lớp do giáo viên này phụ trách.
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="col-12">
+                    <p class="text-muted small mb-0">
+                      Bạn chỉ xem được lớp của mình.
+                    </p>
+                  </div>
+                {% endif %}
+
+                <div class="col-12 col-md-6 d-flex align-items-end justify-content-md-end gap-2">
+                  <a href="{% url 'class_sessions:teaching_classes' %}"
+                     class="btn btn-sm btn-light-secondary">
+                    Xóa lọc
+                  </a>
+                  <button type="submit"
+                          class="btn btn-sm btn-primary d-flex align-items-center gap-1">
+                    <i class="bi bi-check2"></i>
+                    Áp dụng
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {# --- BẢNG LỚP ĐANG DẠY --- #}
+            <div id="teaching-classes-table" class="table-responsive">
+              {% include "_teaching_classes_table.html" %}
+            </div>
+
+          </div>
         </div>
       </div>
     </section>
   </div>
+
+  {# Modal cho chi tiết lớp/buổi dùng chung (giữ nguyên ID) #}
+  <div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header border-0 border-bottom">
+          <h5 class="modal-title d-flex align-items-center gap-2" x-text="modalTitle">
+            Chi tiết
+          </h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div id="sessions-modal-content">
+          <div class="modal-body">
+            <p class="text-muted mb-0">Đang tải...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 {% block extra_js %}{% endblock %}
 {% endblock %}
-{# Modal cho chi tiết lớp/buổi dùng chung #}
-<div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" x-text="modalTitle">Chi tiết</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div id="sessions-modal-content">
-        <div class="modal-body"><p>Đang tải...</p></div>
-      </div>
-    </div>
-  </div>
-</div>

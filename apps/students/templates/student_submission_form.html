@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if is_create %}Nộp bài tập{% else %}Cập nhật bài nộp{% endif %}{% endblock %}
+
+{% block content %}
+<div id="main">
+  <header class="mb-3">
+    {% if session %}
+      <a href="{% url 'students:portal_course_detail' session.klass.id %}"
+         class="btn btn-light btn-sm d-inline-flex align-items-center gap-2 shadow-sm">
+        <i class="bi bi-arrow-left"></i>
+        <span>Quay lại khóa học</span>
+      </a>
+    {% else %}
+      <a href="{% url 'students:portal_home' %}"
+         class="btn btn-light btn-sm d-inline-flex align-items-center gap-2 shadow-sm">
+        <i class="bi bi-arrow-left"></i>
+        <span>Quay lại trang học sinh</span>
+      </a>
+    {% endif %}
+  </header>
+
+  <section class="section">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0">
+        <h5 class="mb-0">{% if is_create %}Nộp bài tập{% else %}Cập nhật bài nộp{% endif %}</h5>
+        <div class="text-muted small">
+          Bài học: {{ exercise.lesson.title }}
+          {% if session %} · Buổi: {{ session.index }} · Ngày: {{ session.date|date:"d/m/Y" }}{% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="submission-form-container">
+          <form method="post"
+                enctype="multipart/form-data"
+                class="needs-validation"
+                novalidate
+                hx-post="."
+                hx-target="#submission-form-container"
+                hx-swap="outerHTML"
+                hx-encoding="multipart/form-data">
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+          <div class="alert alert-warning" role="alert">{{ form.non_field_errors|first }}</div>
+          {% endif %}
+          {% if klass %}
+            <input type="hidden" name="class_id" value="{{ klass.id }}">
+          {% endif %}
+
+          <div class="mb-3">
+            <label class="form-label" for="id_title">Tiêu đề</label>
+            {{ form.title }}
+            {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors|first }}</div>{% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="id_description">Mô tả</label>
+            {{ form.description }}
+            {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors|first }}</div>{% endif %}
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="id_file">Tệp đính kèm</label>
+              {{ form.file }}
+              {% if form.file.errors %}<div class="invalid-feedback d-block">{{ form.file.errors|first }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="id_link_url">Liên kết</label>
+              {{ form.link_url }}
+              {% if form.link_url.errors %}<div class="invalid-feedback d-block">{{ form.link_url.errors|first }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="mt-4 d-flex justify-content-end gap-2">
+            {% if session %}
+              <a class="btn btn-light" href="{% url 'students:portal_course_detail' session.klass.id %}">Hủy</a>
+            {% else %}
+              <a class="btn btn-light" href="{% url 'students:portal_home' %}">Hủy</a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Lưu</button>
+          </div>
+        </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

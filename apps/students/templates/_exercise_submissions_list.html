@@ -1,0 +1,39 @@
+{% if exercise_submissions %}
+  <div class="mt-4 border rounded-3 bg-white p-3 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">Lịch sử nộp bài</h6>
+      <span class="text-muted small">{{ exercise_submissions|length }} bản</span>
+    </div>
+    <ul class="list-group list-group-flush">
+      {% for submission in exercise_submissions %}
+        <li class="list-group-item px-0 py-2 border-top-0 bg-transparent">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <div>
+              <strong>{{ submission.title }}</strong>
+              <div class="small text-muted">
+                {{ submission.created_at|date:"H:i d/m/Y" }}
+                {% if submission.session %}
+                  · Buổi {{ submission.session.index }}
+                {% endif %}
+              </div>
+            </div>
+            <span class="badge bg-primary-subtle text-primary">{{ submission.created_at|date:"d/m" }}</span>
+          </div>
+          <p class="mb-1 small text-muted" style="white-space: pre-line;">{{ submission.description }}</p>
+          <div class="d-flex flex-wrap gap-2 small">
+            {% if submission.file %}
+              <a class="text-decoration-none" href="{{ submission.file.url }}" target="_blank">
+                <i class="bi bi-paperclip me-1"></i>Tệp đính kèm
+              </a>
+            {% endif %}
+            {% if submission.link_url %}
+              <a class="text-decoration-none" href="{{ submission.link_url }}" target="_blank">
+                <i class="bi bi-link-45deg me-1"></i>Liên kết
+              </a>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
