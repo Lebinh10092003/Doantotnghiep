@@ -314,26 +314,18 @@
                     </li>
                     {% endif %}
                     {% if user.is_authenticated %}
-                    <li class="sidebar-item has-sub {% if '/student_products/' in request.path %}active{% endif %}">
+                    <li class="sidebar-item has-sub {% if request.resolver_match.view_name == 'students:student_products_list' %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-images"></i>
                             <span>Sản phẩm học sinh</span>
                         </a>
                         <ul class="submenu">
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'students:student_products_list' %}active{% endif %}">
+                                <a href="{% url 'students:student_products_list' %}" class="submenu-link">
                                     <i class="bi bi-card-image"></i>
                                     <span>Danh sách sản phẩm</span>
                                 </a>
                             </li>
-                            {% if user|in_group:'student' %}
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
-                                    <i class="bi bi-person-lines-fill"></i>
-                                    <span>Sản phẩm của tôi</span>
-                                </a>
-                            </li>
-                            {% endif %}
                         </ul>
                     </li>
                     {% endif %}

@@ -10,7 +10,7 @@ from apps.class_sessions.models import ClassSession
 from apps.enrollments.models import Enrollment
 from .models import StudentProduct, StudentExerciseSubmission
 from .forms import StudentProductForm, StudentExerciseSubmissionForm
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 import json
 from django.http import HttpResponse
 from django.urls import reverse
@@ -420,3 +420,97 @@ def product_delete(request, pk: int):
         return redirect("students:portal_course_detail", class_id=class_id)
 
     return redirect("students:portal_course_detail", class_id=class_id)
+
+
+@login_required
+def student_products_list(request):
+    user = request.user
+    is_student = user.groups.filter(name="student").exists()
+
+    if not is_student and not user.has_perm("students.view_studentproduct"):
+        raise PermissionDenied("Bạn không có quyền xem danh sách sản phẩm.")
+
+    q = request.GET.get("q", "")
+    klass_id = request.GET.get("klass_id")
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    order = request.GET.get("order", "desc")
+
+    products = (
+        StudentProduct.objects.select_related(
+            "student",
+            "session",
+            "session__klass",
+            "session__klass__subject",
+            "session__klass__center",
+        )
+    )
+
+    if is_student:
+        products = products.filter(student=user)
+
+    if q:
+        products = products.filter(title__icontains=q)
+
+    if klass_id:
+        products = products.filter(session__klass_id=klass_id)
+
+    if start_date:
+        products = products.filter(session__date__gte=start_date)
+
+    if end_date:
+        products = products.filter(session__date__lte=end_date)
+
+    sort_field = "created_at" if order == "asc" else "-created_at"
+    products = products.order_by(sort_field)
+
+    klasses = Class.objects.order_by("name")
+
+    return render(
+        request,
+        "student_products_list.html",
+        {
+            "products": products,
+            "is_student": is_student,
+            "can_view_all": not is_student,
+            "filter_params": {
+                "q": q,
+                "klass_id": klass_id,
+                "start_date": start_date,
+                "end_date": end_date,
+                "order": order,
+            },
+            "klasses": klasses,
+        },
+    )
+
+
+@login_required
+def student_product_detail(request, pk: int):
+    product = get_object_or_404(
+        StudentProduct.objects.select_related(
+            "student",
+            "session",
+            "session__klass",
+            "session__klass__subject",
+            "session__klass__center",
+        ),
+        pk=pk,
+    )
+    user = request.user
+    is_student = user.groups.filter(name="student").exists()
+    if is_student:
+        if product.student_id != user.id:
+            raise PermissionDenied("Bạn không có quyền xem sản phẩm này.")
+    else:
+        if not user.has_perm("students.view_studentproduct"):
+            raise PermissionDenied("Bạn không có quyền xem sản phẩm này.")
+
+    return render(
+        request,
+        "student_product_detail.html",
+        {
+            "product": product,
+            "can_edit": product.student_id == user.id,
+        },
+    )

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chi tiết sản phẩm học sinh{% endblock %}
+
+{% block content %}
+<div id="student-portal-root" x-data>
+  <div id="main">
+    <header class="mb-3">
+      <a href="#" class="burger-btn d-block d-xl-none">
+        <i class="bi bi-justify fs-3"></i>
+      </a>
+    </header>
+    <div class="page-heading">
+      <section class="section">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white border-0">
+            <h5 class="mb-0">Chi tiết sản phẩm</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-4">
+              {% if product.image %}
+                <div class="col-12 col-lg-5">
+                  <img src="{{ product.image.url }}" alt="{{ product.title }}" class="w-100 rounded shadow-sm" style="height: 320px; object-fit: cover;">
+                </div>
+              {% endif %}
+              <div class="col">
+                <p class="text-muted small mb-1">{{ product.created_at|date:"H:i d/m/Y" }}</p>
+                <h4 class="mb-3">{{ product.title }}</h4>
+                <p class="text-muted mb-3">{{ product.description|linebreaksbr|default:"Không có mô tả" }}</p>
+                <dl class="row small text-muted mb-3">
+                  <dt class="col-4 fw-semibold">Học sinh</dt>
+                  <dd class="col-8">{{ product.student.get_full_name|default:product.student.username }}</dd>
+                  <dt class="col-4 fw-semibold">Lớp</dt>
+                  <dd class="col-8">{{ product.session.klass.name }} - {{ product.session.klass.subject.name }}</dd>
+                  <dt class="col-4 fw-semibold">Buổi học</dt>
+                  <dd class="col-8">
+                    {{ product.session.date|date:"d/m/Y" }},
+                    {{ product.session.start_time|time:"H:i"|default:"--" }} -
+                    {{ product.session.end_time|time:"H:i"|default:"--" }}
+                  </dd>
+                </dl>
+                {% if product.video %}
+                  <p class="mb-2">
+                    <span class="fw-semibold">Video liên kết:</span>
+                    <a href="{{ product.video.url }}" target="_blank" class="link-primary">Xem video</a>
+                  </p>
+                {% endif %}
+                {% if product.embed_code %}
+                  <div class="mb-3">
+                    <h6 class="mb-2">Embed</h6>
+                    <div class="ratio ratio-16x9">
+                      {{ product.embed_code|safe }}
+                    </div>
+                  </div>
+                {% endif %}
+                <div class="d-flex flex-wrap gap-2">
+                  <a href="{% url 'students:student_products_list' %}" class="btn btn-outline-secondary btn-sm">
+                    Quay lại
+                  </a>
+                  {% if can_edit %}
+                    <a href="{% url 'students:product_update' pk=product.pk %}" class="btn btn-primary btn-sm">
+                      Chỉnh sửa
+                    </a>
+                  {% endif %}
+                  <a href="{% url 'students:portal_course_detail' class_id=product.session.klass.id %}" class="btn btn-outline-info btn-sm">
+                    Xem lớp
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
