@@ -12,6 +12,7 @@ from apps.classes.models import Class
 from apps.centers.models import Center
 from apps.enrollments.forms import EnrollmentForm
 from apps.enrollments.models import Enrollment, EnrollmentStatus
+from apps.enrollments.services import auto_update_status, create_purchase_entry, record_status_change
 from apps.enrollments.filters import EnrollmentFilter
 from django.http import QueryDict, HttpResponse
 from apps.filters.models import SavedFilter
@@ -274,6 +275,9 @@ def enrollment_create(request):
         )
         if form.is_valid():
             enrollment = form.save()
+            discount = form.cleaned_data.get("discount")
+            create_purchase_entry(enrollment, discount=discount, note="Auto từ ghi danh")
+            auto_update_status(enrollment)
             if is_htmx_request(request):
                 response = HttpResponse(status=204)
                 response["HX-Trigger"] = json.dumps(
@@ -314,6 +318,9 @@ def enrollment_update(request, pk):
         )
         if form.is_valid():
             enrollment = form.save()
+            discount = form.cleaned_data.get("discount")
+            create_purchase_entry(enrollment, discount=discount, note="Auto từ cập nhật ghi danh")
+            auto_update_status(enrollment)
             if is_htmx_request(request):
                 response = HttpResponse(status=204)
                 response["HX-Trigger"] = json.dumps(
@@ -349,7 +356,10 @@ def enrollment_cancel(request, pk):
     enrollment = get_object_or_404(Enrollment, pk=pk)
     _ensure_scope(enrollment, user, flags)
 
-    enrollment.status = EnrollmentStatus.CANCELLED
-    enrollment.save()
+    record_status_change(
+        enrollment, EnrollmentStatus.CANCELLED, reason="MANUAL_CANCEL", note=str(user)
+    )
+    enrollment.active = False
+    enrollment.save(update_fields=["status", "active"])
     messages.success(request, "Đã hủy ghi danh.")
     return redirect("enrollments:list")

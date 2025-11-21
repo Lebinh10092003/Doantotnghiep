@@ -6,6 +6,7 @@ from django.contrib.auth.models import Group
 
 from apps.accounts.forms import cccd_validator
 from apps.accounts.models import ParentStudentRelation, UserCodeCounter
+from apps.billing.models import Discount
 from apps.enrollments.models import Enrollment, EnrollmentStatus
 
 User = get_user_model()
@@ -74,14 +75,41 @@ class EnrollmentForm(forms.ModelForm):
         label="Địa chỉ phụ huynh",
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
+    discount = forms.ModelChoiceField(
+        queryset=Discount.objects.none(),
+        required=False,
+        label="Mã giảm giá",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
 
     class Meta:
         model = Enrollment
-        fields = ["student", "klass", "status", "start_date", "end_date", "note"]
+        fields = [
+            "student",
+            "klass",
+            "status",
+            "start_date",
+            "end_date",
+            "fee_per_session",
+            "sessions_purchased",
+            "amount_paid",
+            "discount",
+            "note",
+        ]
         widgets = {
             "note": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
             "start_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "end_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "fee_per_session": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": 1000}),
+            "sessions_purchased": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
+            "amount_paid": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": 0,
+                    "step": 1000,
+                }
+            ),
+            "discount": forms.Select(attrs={"class": "form-select"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -121,6 +149,7 @@ class EnrollmentForm(forms.ModelForm):
         if klass_queryset is not None:
             self.fields["klass"].queryset = klass_queryset
 
+        self.fields["discount"].queryset = Discount.objects.filter(active=True).order_by("code")
     def clean(self):
         cleaned = super().clean()
         student = cleaned.get("student")
@@ -191,6 +220,14 @@ class EnrollmentForm(forms.ModelForm):
                 qs = qs.exclude(pk=self.instance.pk)
             if qs.exists():
                 raise ValidationError("Học viên này đã có ghi danh đang hoạt động trong lớp.")
+
+        fee = cleaned.get("fee_per_session") or 0
+        sessions = cleaned.get("sessions_purchased") or 0
+        amount = cleaned.get("amount_paid") or 0
+        if sessions <= 0 and amount <= 0:
+            self.add_error("sessions_purchased", "Nhập số buổi mua hoặc số tiền.")
+        if sessions <= 0 and amount > 0 and fee:
+            cleaned["sessions_purchased"] = int(amount // fee) or 0
         return cleaned
 
     def _unique_username(self, base: str) -> str:

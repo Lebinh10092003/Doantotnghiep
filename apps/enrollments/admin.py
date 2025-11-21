@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Enrollment
+from .models import Enrollment, EnrollmentStatusLog
 
 
 @admin.register(Enrollment)
@@ -16,3 +16,12 @@ class EnrollmentAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("klass", "student")
     ordering = ("-joined_at",)
+
+
+@admin.register(EnrollmentStatusLog)
+class EnrollmentStatusLogAdmin(admin.ModelAdmin):
+    list_display = ("enrollment", "old_status", "new_status", "reason", "created_at")
+    list_filter = ("new_status", "reason")
+    search_fields = ("enrollment__student__username", "enrollment__klass__code", "note")
+    autocomplete_fields = ("enrollment",)
+    ordering = ("-created_at",)

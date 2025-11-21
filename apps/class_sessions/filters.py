@@ -1,18 +1,18 @@
 import django_filters
 from django_filters import rest_framework as filters
 from django import forms
+from django.db.models import Q
 from .models import ClassSession, SESSION_STATUS
 from apps.centers.models import Center
 from apps.curriculum.models import Subject, Lesson
 from apps.accounts.models import User
 
 class ClassSessionFilter(filters.FilterSet):
-    # Lọc lồng ghép (nested) từ app 'classes'
-    klass__name = filters.CharFilter(
-        field_name="klass__name", 
-        lookup_expr="icontains",
-        label="Tên lớp",
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+    # Lọc lớp theo tên/mã
+    klass_query = filters.CharFilter(
+        method="filter_klass_query",
+        label="Tên/Mã lớp",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nhập tên/mã lớp'})
     )
     klass__center = filters.ModelChoiceFilter(
         field_name="klass__center",
@@ -52,6 +52,14 @@ class ClassSessionFilter(filters.FilterSet):
         })
     )
 
+    def filter_klass_query(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(
+            Q(klass__name__icontains=value) |
+            Q(klass__code__icontains=value)
+        )
+
     class Meta:
         model = ClassSession
-        fields = ['klass__name', 'klass__center', 'klass__subject', 'status', 'lesson__title', 'date']
+        fields = ['klass_query', 'klass__center', 'klass__subject', 'status', 'lesson__title', 'date']

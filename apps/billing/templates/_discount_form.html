@@ -1,0 +1,58 @@
+{% url 'billing:discount_create' as default_discount_action %}
+<form method="post"
+      hx-post="{{ action_url|default:default_discount_action }}"
+      hx-target="#discount-modal-content"
+      hx-swap="innerHTML">
+  {% csrf_token %}
+  <div class="modal-body">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Code</label>
+        {{ form.code }}
+        {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors }}</div>{% endif %}
+      </div>
+      <div class="col-md-8">
+        <label class="form-label">Tên</label>
+        {{ form.name }}
+        {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">% giảm</label>
+        {{ form.percent }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Giảm tiền</label>
+        {{ form.amount }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Giảm tối đa</label>
+        {{ form.max_amount }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Hiệu lực từ</label>
+        {{ form.start_date }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Hiệu lực đến</label>
+        {{ form.end_date }}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Giới hạn lượt</label>
+        {{ form.usage_limit }}
+      </div>
+      <div class="col-md-3 d-flex align-items-center">
+        <div class="form-check mt-4">
+          {{ form.active }} <label class="form-check-label">Kích hoạt</label>
+        </div>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Ghi chú</label>
+        {{ form.note }}
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-light" type="button" data-bs-dismiss="modal">Hủy</button>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-check2"></i> Lưu</button>
+  </div>
+</form>

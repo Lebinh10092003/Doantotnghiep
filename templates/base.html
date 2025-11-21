@@ -88,7 +88,7 @@
 
                     {# TÀI KHOẢN: chỉ cho thấy các trang quản lý khi có FULL quyền User/Group #}
                     <li class="sidebar-item has-sub {% if '/accounts/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link">
+                        <a href="{% url 'billing:home' %}" class="sidebar-link">
                             <i class="bi bi-people"></i>
                             <span>Tài khoản</span>
                         </a>
@@ -430,27 +430,21 @@
 
                     {% if perms.billing %} 
                     <li class="sidebar-item has-sub {% if '/billing/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link">
+                        <a href="{% url 'billing:home' %}" class="sidebar-link">
                             <i class="bi bi-wallet2"></i>
                             <span>Tài chính</span>
                         </a>
                         <ul class="submenu">
                             <li class="submenu-item">
-                                <a href="#" class="submenu-link">
-                                    <i class="bi bi-receipt-cutoff"></i>
-                                    <span>Hóa đơn</span>
+                                <a href="{% url 'billing:home' %}" class="submenu-link">
+                                    <i class="bi bi-list-columns"></i>
+                                    <span>Ghi danh và Phiếu thu</span>
                                 </a>
                             </li>
                             <li class="submenu-item">
-                                <a href="#" class="submenu-link">
-                                    <i class="bi bi-credit-card"></i>
-                                    <span>Thanh toán</span>
-                                </a>
-                            </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
-                                    <i class="bi bi-graph-down"></i>
-                                    <span>Báo cáo doanh thu</span>
+                                <a href="{% url 'billing:discount_list' %}" class="submenu-link">
+                                    <i class="bi bi-percent"></i>
+                                    <span>Giảm giá</span>
                                 </a>
                             </li>
                         </ul>

@@ -53,6 +53,37 @@
         </div>
       </div>
     </div>
+            <div class="row">
+              <input type="hidden" id="fee-per-session" name="{{ form.fee_per_session.html_name }}" value="{{ form.fee_per_session.value|default_if_none:300000 }}">
+              <div class="col-md-3">
+                <div class="mb-3">
+                  <label for="{{ form.sessions_purchased.id_for_label }}" class="form-label">Số buổi mua</label>
+                  <input type="number" min="0" step="1" class="form-control" id="sessions-purchased" name="{{ form.sessions_purchased.html_name }}" value="{{ form.sessions_purchased.value|default_if_none:'' }}">
+                  {% if form.sessions_purchased.errors %}<div class="invalid-feedback d-block">{{ form.sessions_purchased.errors|first }}</div>{% endif %}
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="mb-3">
+                  <label class="form-label">Mã giảm giá</label>
+                  {% render_field form.discount class+="form-select" id="discount-select" %}
+                  {% if form.discount.errors %}<div class="invalid-feedback d-block">{{ form.discount.errors|first }}</div>{% endif %}
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="mb-3">
+                  <label class="form-label">Tiền trước giảm</label>
+                  <input type="text" class="form-control" id="amount-before" readonly>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="mb-3">
+                  <label for="{{ form.amount_paid.id_for_label }}" class="form-label">Tiền sau giảm (đóng)</label>
+                  <input type="text" class="form-control" id="amount-paid" name="{{ form.amount_paid.html_name }}" value="{{ form.amount_paid.value|default_if_none:'' }}" readonly>
+                  {% if form.amount_paid.errors %}<div class="invalid-feedback d-block">{{ form.amount_paid.errors|first }}</div>{% endif %}
+                  <div class="form-text">Tự tính: (buổi * đơn giá) - giảm giá.</div>
+                </div>
+              </div>
+            </div>
 
     <div class="mb-3">
       <label for="{{ form.note.id_for_label }}" class="form-label">Ghi chú</label>
@@ -182,3 +213,35 @@
     <button type="submit" class="btn btn-primary">{{ is_create|yesno:"Tạo mới,Lưu thay đổi" }}</button>
   </div>
 </form>
+<script>
+  (() => {
+    const feeInput = document.getElementById("fee-per-session");
+    const sessionsInput = document.getElementById("sessions-purchased");
+    const amountInput = document.getElementById("amount-paid");
+    const amountBefore = document.getElementById("amount-before");
+    if (!feeInput || !amountInput || !sessionsInput || !amountBefore) return;
+
+    const fmt = (val) => {
+      const n = parseInt(val || "0", 10);
+      if (!n) return "";
+      return n.toLocaleString("vi-VN") + " ₫";
+    };
+
+    const autoCalc = () => {
+      const fee = parseInt(feeInput.value || "0", 10);
+      const sessions = parseInt(sessionsInput.value || "0", 10);
+      if (fee > 0 && sessions > 0) {
+        const before = fee * sessions;
+        amountBefore.value = fmt(before);
+        // discount_amount is not known client-side; assume 0 for now
+        amountInput.value = fmt(before);
+      } else {
+        amountBefore.value = "";
+        amountInput.value = "";
+      }
+    };
+
+    sessionsInput.addEventListener("input", autoCalc);
+    autoCalc();
+  })();
+</script>

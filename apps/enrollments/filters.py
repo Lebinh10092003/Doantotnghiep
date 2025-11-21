@@ -19,6 +19,13 @@ class EnrollmentFilter(django_filters.FilterSet):
         field_name="klass__center",
         widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
+    klass_code = django_filters.CharFilter(
+        method="filter_klass_code",
+        label="Mã lớp",
+        widget=forms.TextInput(
+            attrs={"class": "form-control", "placeholder": "Nhập mã lớp"}
+        ),
+    )
     status = django_filters.ChoiceFilter(
         choices=EnrollmentStatus.choices,
         label="Trạng thái",
@@ -55,7 +62,14 @@ class EnrollmentFilter(django_filters.FilterSet):
             | Q(student__phone__icontains=value)
             | Q(student__user_code__icontains=value)
         )
+    
+    def filter_klass_code(self, queryset, name, value):
+        if not value:
+            return queryset
+        return queryset.filter(
+            Q(klass__code__icontains=value) | Q(klass__name__icontains=value)
+        )
 
     class Meta:
         model = Enrollment
-        fields = ["klass", "center", "status", "student", "start_date", "end_date"]
+        fields = ["klass", "klass_code", "center", "status", "student", "start_date", "end_date"]

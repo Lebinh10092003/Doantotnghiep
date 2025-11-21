@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="main">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-12 col-md-8 order-md-1 order-last">
+          <h3>Phiếu thu - {{ enrollment }}</h3>
+          <p class="text-muted mb-0">Còn lại: <strong>{{ remaining }}</strong> buổi</p>
+        </div>
+        <div class="col-12 col-md-4 order-md-2 order-first text-end">
+          <a class="btn btn-primary" href="{% url 'billing:purchase' enrollment.id %}">
+            <i class="bi bi-plus-circle"></i> Tạo phiếu thu
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table mb-0 table-striped table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Loại</th>
+                  <th>Buổi</th>
+                  <th>Đơn giá</th>
+                  <th>Giảm</th>
+                  <th>Thành tiền</th>
+                  <th>Ghi chú</th>
+                  <th>Thời gian</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for e in entries %}
+                <tr>
+                  <td>{{ e.get_entry_type_display }}</td>
+                  <td>{{ e.sessions }}</td>
+                  <td>{{ e.unit_price|default:0 }}</td>
+                  <td>{{ e.discount_amount|default:0 }}</td>
+                  <td>{{ e.amount }}</td>
+                  <td>{{ e.note }}</td>
+                  <td>{{ e.created_at }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-3">Chưa có phiếu.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

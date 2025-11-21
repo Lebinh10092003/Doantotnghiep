@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="main">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-12 col-md-6 order-md-1 order-last">
+          <h3>Mã giảm giá</h3>
+          <p class="text-muted mb-0">Quản lý ưu đãi cho phiếu thu.</p>
+        </div>
+        <div class="col-12 col-md-6 order-md-2 order-first text-end">
+          <button class="btn btn-primary"
+                  type="button"
+                  hx-get="{% url 'billing:discount_create' %}"
+                  hx-target="#discount-modal-content"
+                  data-bs-toggle="modal"
+                  data-bs-target="#discount-modal"
+                  data-modal-title="Tạo mã giảm giá">
+            <i class="bi bi-plus-circle"></i> Tạo mã
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table mb-0 table-striped table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Code</th>
+                  <th>Tên</th>
+                  <th>%</th>
+                  <th>Giảm tiền</th>
+                  <th>Trần</th>
+                  <th>Hiệu lực</th>
+                  <th>Ghi chú</th>
+                  <th class="text-end">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for d in discounts %}
+                <tr class="{% if not d.active %}text-muted{% endif %}">
+                  <td>{{ d.code }}</td>
+                  <td>{{ d.name }}</td>
+                  <td>{{ d.percent }}</td>
+                  <td>{{ d.amount }}</td>
+                  <td>{{ d.max_amount|default:"-" }}</td>
+                  <td>
+                    {% if d.active %}Hoạt động{% else %}Ngừng{% endif %}<br>
+                    {% if d.start_date %}Từ {{ d.start_date }}{% endif %}
+                    {% if d.end_date %}<br>Đến {{ d.end_date }}{% endif %}
+                  </td>
+                  <td>{{ d.note }}</td>
+                  <td class="text-end">
+                    <div class="d-flex justify-content-end gap-2">
+                      <button class="btn btn-sm btn-outline-primary"
+                              type="button"
+                              title="Sửa"
+                              hx-get="{% url 'billing:discount_update' d.pk %}"
+                              hx-target="#discount-modal-content"
+                              data-bs-toggle="modal"
+                              data-bs-target="#discount-modal"
+                              data-modal-title="Chỉnh sửa mã giảm giá">
+                        <i class="bi bi-pencil-square"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger"
+                              type="button"
+                              title="Xóa"
+                              hx-post="{% url 'billing:discount_delete' d.pk %}"
+                              hx-swap="none"
+                              hx-confirm="Bạn chắc chắn muốn xóa mã này?">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" class="text-center text-muted py-3">Chưa có mã giảm giá.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal fade" id="discount-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="discount-modal-title">Tạo mã giảm giá</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="discount-modal-content">
+        <div class="modal-body"><p>Đang tải...</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  (function() {
+    const modalEl = document.getElementById("discount-modal");
+    if (!modalEl) return;
+    modalEl.addEventListener("show.bs.modal", function (event) {
+      const button = event.relatedTarget;
+      const titleEl = document.getElementById("discount-modal-title");
+      if (button && titleEl) {
+        const newTitle = button.getAttribute("data-modal-title");
+        titleEl.textContent = newTitle || "Tạo mã giảm giá";
+      }
+    });
+  })();
+</script>
+{% endblock %}

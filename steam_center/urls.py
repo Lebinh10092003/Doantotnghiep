@@ -20,6 +20,7 @@ urlpatterns = [
     path("filters/", include("apps.filters.urls")),
     path("enrollments/", include("apps.enrollments.urls")),
     path("reports/", include("apps.reports.urls")),
+    path("billing/", include("apps.billing.urls")),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
