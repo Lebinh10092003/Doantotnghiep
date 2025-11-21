@@ -1,0 +1,60 @@
+{% load widget_tweaks %}
+<div class="p-3 p-md-4">
+  <form
+    hx-post="{% if is_create %}{% url 'students:product_create' 0 %}{% else %}{% url 'students:product_update' pk=form.instance.pk %}{% endif %}"
+    hx-target="this"
+    hx-swap="outerHTML"
+    enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="alert alert-warning" role="alert">{{ form.non_field_errors|first }}</div>
+    {% endif %}
+
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label" for="id_session">Chọn buổi học <span class="text-danger">*</span></label>
+        <select name="session_id" id="id_session" class="form-select tom-select">
+          <option value="">-- Chọn buổi --</option>
+          {% for s in available_sessions %}
+            <option value="{{ s.id }}"
+                    {% if session and s.id == session.id %}selected{% endif %}
+                    {% if form.instance.session_id and s.id == form.instance.session_id %}selected{% endif %}>
+              Buổi {{ s.index|default:"?" }} - {{ s.klass.name }} ({{ s.date|date:"d/m/Y" }}{% if s.klass.main_teacher %} • GV: {{ s.klass.main_teacher.get_full_name|default:s.klass.main_teacher.username }}{% endif %})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="form-label" for="{{ form.title.id_for_label }}">Tiêu đề <span class="text-danger">*</span></label>
+        {% render_field form.title class+="form-control" %}
+        {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors|first }}</div>{% endif %}
+      </div>
+      <div class="col-12">
+        <label class="form-label" for="{{ form.description.id_for_label }}">Mô tả</label>
+        {% render_field form.description class+="form-control" rows="3" %}
+        {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors|first }}</div>{% endif %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="{{ form.image.id_for_label }}">Ảnh minh họa</label>
+        {% render_field form.image class+="form-control" %}
+        {% if form.image.errors %}<div class="invalid-feedback d-block">{{ form.image.errors|first }}</div>{% endif %}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="{{ form.video.id_for_label }}">Video</label>
+        {% render_field form.video class+="form-control" %}
+        {% if form.video.errors %}<div class="invalid-feedback d-block">{{ form.video.errors|first }}</div>{% endif %}
+      </div>
+      <div class="col-12">
+        <label class="form-label" for="{{ form.embed_code.id_for_label }}">Mã nhúng</label>
+        {% render_field form.embed_code class+="form-control" rows="3" %}
+        <div class="form-text">Dán iframe (YouTube, Vimeo, itch.io...) nếu có.</div>
+        {% if form.embed_code.errors %}<div class="invalid-feedback d-block">{{ form.embed_code.errors|first }}</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="modal-footer px-0 pt-4">
+      <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Hủy</button>
+      <button type="submit" class="btn btn-primary">Lưu</button>
+    </div>
+  </form>
+</div>

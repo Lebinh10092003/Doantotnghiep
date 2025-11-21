@@ -14,14 +14,14 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.code.id_for_label }}" class="form-label">Mã lớp</label>
+                    <label for="{{ form.code.id_for_label }}" class="form-label">Mã lớp{% if form.code.field.required %} <span class="text-danger">*</span>{% endif %}</label>
                     {% render_field form.code class="form-control" %}
                     {% if form.code.errors %}<div class="invalid-feedback d-block">{{ form.code.errors|first }}</div>{% endif %}
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.name.id_for_label }}" class="form-label">Tên lớp</label>
+                    <label for="{{ form.name.id_for_label }}" class="form-label">Tên lớp{% if form.name.field.required %} <span class="text-danger">*</span>{% endif %}</label>
                     {% render_field form.name class="form-control" required="required" %}
                     {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors|first }}</div>{% endif %}
                 </div>
@@ -29,22 +29,22 @@
         </div>
         
         <div class="row">
-            <div class="col-md-6 mb-3"><label for="{{ form.center.id_for_label }}" class="form-label">{{ form.center.label }}</label>{% render_field form.center class="form-select" %}{% if form.center.errors %}<div class="invalid-feedback d-block">{{ form.center.errors|first }}</div>{% endif %}</div>
-            <div class="col-md-6 mb-3"><label for="{{ form.subject.id_for_label }}" class="form-label">{{ form.subject.label }}</label>{% render_field form.subject class="form-select" %}{% if form.subject.errors %}<div class="invalid-feedback d-block">{{ form.subject.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.center.id_for_label }}" class="form-label">{{ form.center.label }}{% if form.center.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% render_field form.center class="form-select" %}{% if form.center.errors %}<div class="invalid-feedback d-block">{{ form.center.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.subject.id_for_label }}" class="form-label">{{ form.subject.label }}{% if form.subject.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% render_field form.subject class="form-select" %}{% if form.subject.errors %}<div class="invalid-feedback d-block">{{ form.subject.errors|first }}</div>{% endif %}</div>
         </div>
 
         <div class="row">
-            <div class="col-md-6 mb-3"><label for="{{ form.start_date.id_for_label }}" class="form-label">{{ form.start_date.label }}</label>{% render_field form.start_date class="form-control" %}{% if form.start_date.errors %}<div class="invalid-feedback d-block">{{ form.start_date.errors|first }}</div>{% endif %}</div>
-            <div class="col-md-6 mb-3"><label for="{{ form.end_date.id_for_label }}" class="form-label">{{ form.end_date.label }}</label>{% render_field form.end_date class="form-control" %}{% if form.end_date.errors %}<div class="invalid-feedback d-block">{{ form.end_date.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.start_date.id_for_label }}" class="form-label">{{ form.start_date.label }}{% if form.start_date.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% render_field form.start_date class="form-control" %}{% if form.start_date.errors %}<div class="invalid-feedback d-block">{{ form.start_date.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.end_date.id_for_label }}" class="form-label">{{ form.end_date.label }}{% if form.end_date.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% render_field form.end_date class="form-control" %}{% if form.end_date.errors %}<div class="invalid-feedback d-block">{{ form.end_date.errors|first }}</div>{% endif %}</div>
         </div>
 
         <div class="row">
-            <div class="col-md-6 mb-3"><label for="{{ form.main_teacher.id_for_label }}" class="form-label">{{ form.main_teacher.label }}</label>{% render_field form.main_teacher class="form-select tom-select" %}{% if form.main_teacher.errors %}<div class="invalid-feedback d-block">{{ form.main_teacher.errors|first }}</div>{% endif %}</div>
-            <div class="col-md-6 mb-3"><label for="{{ form.status.id_for_label }}" class="form-label">{{ form.status.label }}</label>{% render_field form.status class="form-select" %}{% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.main_teacher.id_for_label }}" class="form-label">{{ form.main_teacher.label }}{% if form.main_teacher.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% render_field form.main_teacher class="form-select tom-select" %}{% if form.main_teacher.errors %}<div class="invalid-feedback d-block">{{ form.main_teacher.errors|first }}</div>{% endif %}</div>
+            <div class="col-md-6 mb-3"><label for="{{ form.status.id_for_label }}" class="form-label">{{ form.status.label }}{% if form.status.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% render_field form.status class="form-select" %}{% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors|first }}</div>{% endif %}</div>
         </div>
 
         <div class="mb-3">
-            <label for="{{ form.assistants.id_for_label }}" class="form-label">{{ form.assistants.label }}</label>
+            <label for="{{ form.assistants.id_for_label }}" class="form-label">{{ form.assistants.label }}{% if form.assistants.field.required %} <span class="text-danger">*</span>{% endif %}</label>
             {% render_field form.assistants class="form-select tom-select" %}
             {% if form.assistants.errors %}<div class="invalid-feedback d-block">{{ form.assistants.errors|first }}</div>{% endif %}
         </div>
@@ -58,15 +58,15 @@
                 <div class="row align-items-center schedule-form mb-2" id="schedule-{{ forloop.counter0 }}">
                     {{ schedule_form.id }}
                     <div class="col-4">
-                        {% if forloop.first %}<label class="form-label small">Ngày trong tuần</label>{% endif %}
+                        {% if forloop.first %}<label class="form-label small">Ngày trong tuần{% if schedule_form.day_of_week.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% endif %}
                         {% render_field schedule_form.day_of_week class="form-select form-select-sm" %}
                     </div>
                     <div class="col-3">
-                        {% if forloop.first %}<label class="form-label small">Bắt đầu</label>{% endif %}
+                        {% if forloop.first %}<label class="form-label small">Bắt đầu{% if schedule_form.start_time.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% endif %}
                         {% render_field schedule_form.start_time class="form-control form-control-sm" %}
                     </div>
                     <div class="col-3">
-                        {% if forloop.first %}<label class="form-label small">Kết thúc</label>{% endif %}
+                        {% if forloop.first %}<label class="form-label small">Kết thúc{% if schedule_form.end_time.field.required %} <span class="text-danger">*</span>{% endif %}</label>{% endif %}
                         {% render_field schedule_form.end_time class="form-control form-control-sm" %}
                     </div>
                     <div class="col-2 text-center">

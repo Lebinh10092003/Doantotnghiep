@@ -256,9 +256,13 @@
                 </button>
 
                 {% if upcoming %}
-                  <a class="btn btn-outline-primary" href="{% url 'students:product_create' upcoming.id %}">
+                  <button class="btn btn-outline-primary"
+                          hx-get="{% url 'students:product_create' upcoming.id %}"
+                          hx-target="#student-product-modal-content"
+                          data-bs-toggle="modal"
+                          data-bs-target="#student-product-modal">
                     Đăng dự án
-                  </a>
+                  </button>
                 {% else %}
                   <button class="btn btn-primary" disabled aria-disabled="true">
                     Đăng dự án
@@ -384,17 +388,23 @@
                 {% if upcoming %}
                   <div class="d-flex justify-content-end mb-3">
                     {% if latest_product %}
-                      <a class="btn btn-primary btn-sm" href="{% url 'students:product_update' latest_product.id %}">
+                      <button class="btn btn-primary btn-sm"
+                              hx-get="{% url 'students:product_update' latest_product.id %}"
+                              hx-target="#student-product-modal-content"
+                              data-bs-toggle="modal"
+                              data-bs-target="#student-product-modal">
                         <i class="bi bi-pencil me-1"></i>
                         Chỉnh sửa sản phẩm buổi {{ upcoming.index }}
-                      </a>
+                      </button>
                     {% else %}
-                      <form method="get" action="{% url 'students:product_create' upcoming.id %}">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                          <i class="bi bi-plus-lg me-1"></i>
-                          Đăng sản phẩm cho buổi {{ upcoming.index }}
-                        </button>
-                      </form>
+                      <button class="btn btn-primary btn-sm"
+                              hx-get="{% url 'students:product_create' upcoming.id %}"
+                              hx-target="#student-product-modal-content"
+                              data-bs-toggle="modal"
+                              data-bs-target="#student-product-modal">
+                        <i class="bi bi-plus-lg me-1"></i>
+                        Đăng sản phẩm cho buổi {{ upcoming.index }}
+                      </button>
                     {% endif %}
                   </div>
                 {% endif %}
@@ -515,5 +525,26 @@
       </div>
     </div>
   </div>
+
+  {# Modal đăng/chỉnh sửa sản phẩm #}
+  <div class="modal fade" id="student-product-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Dự án học sinh</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div id="student-product-modal-content">
+          <div class="p-4 text-center text-muted">
+            <div class="spinner-border text-primary mb-2" role="status"></div>
+            <div class="small">Đang tải...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+{% include "_student_product_modal_helpers.html" %}
 {% endblock %}

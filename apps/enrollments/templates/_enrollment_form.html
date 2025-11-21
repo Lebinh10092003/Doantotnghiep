@@ -1,0 +1,184 @@
+{% load widget_tweaks %}
+
+<form
+  hx-post="{% if is_create %}{% url 'enrollments:create' %}{% else %}{% url 'enrollments:update' enrollment.pk %}{% endif %}"
+  hx-target="this"
+  hx-swap="outerHTML">
+  {% csrf_token %}
+  <div class="modal-body" style="max-height: 75vh; overflow-y: auto;" x-data="{ createCustomer: {{ form.create_customer.value|yesno:'true,false' }} }">
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="mb-3">
+          <label for="{{ form.student.id_for_label }}" class="form-label">Học viên</label>
+          {% render_field form.student class+="form-select tom-select" %}
+          <div class="form-text">Chọn học viên cũ hoặc bật "Tạo mới khách hàng" bên dưới.</div>
+          {% if form.student.errors %}<div class="invalid-feedback d-block">{{ form.student.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="mb-3">
+          <label for="{{ form.klass.id_for_label }}" class="form-label">Lớp</label>
+          {% render_field form.klass class+="form-select tom-select" %}
+          {% if form.klass.errors %}<div class="invalid-feedback d-block">{{ form.klass.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4">
+        <div class="mb-3">
+          <label for="{{ form.status.id_for_label }}" class="form-label">Trạng thái</label>
+          {% render_field form.status class+="form-select" %}
+          {% if form.status.errors %}<div class="invalid-feedback d-block">{{ form.status.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="mb-3">
+          <label for="{{ form.start_date.id_for_label }}" class="form-label">Ngày bắt đầu</label>
+          {% render_field form.start_date class+="form-control" %}
+          {% if form.start_date.errors %}<div class="invalid-feedback d-block">{{ form.start_date.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="mb-3">
+          <label for="{{ form.end_date.id_for_label }}" class="form-label">Ngày kết thúc</label>
+          {% render_field form.end_date class+="form-control" %}
+          {% if form.end_date.errors %}<div class="invalid-feedback d-block">{{ form.end_date.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="{{ form.note.id_for_label }}" class="form-label">Ghi chú</label>
+      {% render_field form.note class+="form-control" %}
+      {% if form.note.errors %}<div class="invalid-feedback d-block">{{ form.note.errors|first }}</div>{% endif %}
+    </div>
+
+    <hr>
+    <div class="mb-3">
+      <div class="form-check form-switch">
+        {% render_field form.create_customer class+="form-check-input" x-model="createCustomer" %}
+        <label class="form-check-label" for="{{ form.create_customer.id_for_label }}">{{ form.create_customer.label }}</label>
+      </div>
+    </div>
+
+    <div class="border rounded p-3 mb-3 bg-light" x-show="createCustomer" x-cloak>
+      <h6 class="mb-3">Thông tin học sinh mới</h6>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.student_username.id_for_label }}" class="form-label">Tên đăng nhập <span class="text-danger">*</span></label>
+          {% render_field form.student_username class+="form-control" %}
+          {% if form.student_username.errors %}<div class="invalid-feedback d-block">{{ form.student_username.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.student_password.id_for_label }}" class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+          {% render_field form.student_password class+="form-control" %}
+          {% if form.student_password.errors %}<div class="invalid-feedback d-block">{{ form.student_password.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.student_full_name.id_for_label }}" class="form-label">Họ tên học sinh <span class="text-danger">*</span></label>
+          {% render_field form.student_full_name class+="form-control" %}
+          {% if form.student_full_name.errors %}<div class="invalid-feedback d-block">{{ form.student_full_name.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-3 mb-3">
+          <label for="{{ form.student_phone.id_for_label }}" class="form-label">Số điện thoại</label>
+          {% render_field form.student_phone class+="form-control" %}
+          <div class="form-text">Có thể bỏ trống, sẽ dùng số điện thoại phụ huynh để liên lạc.</div>
+          {% if form.student_phone.errors %}<div class="invalid-feedback d-block">{{ form.student_phone.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-3 mb-3">
+          <label for="{{ form.student_email.id_for_label }}" class="form-label">Email</label>
+          {% render_field form.student_email class+="form-control" %}
+          {% if form.student_email.errors %}<div class="invalid-feedback d-block">{{ form.student_email.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label for="{{ form.student_dob.id_for_label }}" class="form-label">Ngày sinh <span class="text-danger">*</span></label>
+          {% render_field form.student_dob class+="form-control" %}
+          {% if form.student_dob.errors %}<div class="invalid-feedback d-block">{{ form.student_dob.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="{{ form.student_gender.id_for_label }}" class="form-label">Giới tính <span class="text-danger">*</span></label>
+          {% render_field form.student_gender class+="form-select" %}
+          {% if form.student_gender.errors %}<div class="invalid-feedback d-block">{{ form.student_gender.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="{{ form.student_national_id.id_for_label }}" class="form-label">CCCD/CMND <span class="text-danger">*</span></label>
+          {% render_field form.student_national_id class+="form-control" %}
+          {% if form.student_national_id.errors %}<div class="invalid-feedback d-block">{{ form.student_national_id.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12 mb-3">
+          <label for="{{ form.student_address.id_for_label }}" class="form-label">Địa chỉ <span class="text-danger">*</span></label>
+          {% render_field form.student_address class+="form-control" %}
+          {% if form.student_address.errors %}<div class="invalid-feedback d-block">{{ form.student_address.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="{{ form.parent_existing.id_for_label }}" class="form-label">Phụ huynh hiện có</label>
+        {% render_field form.parent_existing class+="form-select tom-select" %}
+        <div class="form-text">Chọn phụ huynh có sẵn hoặc để trống và nhập phụ huynh mới bên dưới.</div>
+        {% if form.parent_existing.errors %}<div class="invalid-feedback d-block">{{ form.parent_existing.errors|first }}</div>{% endif %}
+      </div>
+
+      <h6 class="mb-3">Thông tin phụ huynh mới</h6>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.parent_full_name.id_for_label }}" class="form-label">Họ tên phụ huynh <span class="text-danger">*</span></label>
+          {% render_field form.parent_full_name class+="form-control" %}
+          {% if form.parent_full_name.errors %}<div class="invalid-feedback d-block">{{ form.parent_full_name.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-3 mb-3">
+          <label for="{{ form.parent_phone.id_for_label }}" class="form-label">Số điện thoại <span class="text-danger">*</span></label>
+          {% render_field form.parent_phone class+="form-control" %}
+          {% if form.parent_phone.errors %}<div class="invalid-feedback d-block">{{ form.parent_phone.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-3 mb-3">
+          <label for="{{ form.parent_email.id_for_label }}" class="form-label">Email <span class="text-danger">*</span></label>
+          {% render_field form.parent_email class+="form-control" %}
+          {% if form.parent_email.errors %}<div class="invalid-feedback d-block">{{ form.parent_email.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label for="{{ form.parent_dob.id_for_label }}" class="form-label">Ngày sinh <span class="text-danger">*</span></label>
+          {% render_field form.parent_dob class+="form-control" %}
+          {% if form.parent_dob.errors %}<div class="invalid-feedback d-block">{{ form.parent_dob.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="{{ form.parent_gender.id_for_label }}" class="form-label">Giới tính <span class="text-danger">*</span></label>
+          {% render_field form.parent_gender class+="form-select" %}
+          {% if form.parent_gender.errors %}<div class="invalid-feedback d-block">{{ form.parent_gender.errors|first }}</div>{% endif %}
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="{{ form.parent_national_id.id_for_label }}" class="form-label">CCCD/CMND <span class="text-danger">*</span></label>
+          {% render_field form.parent_national_id class+="form-control" %}
+          {% if form.parent_national_id.errors %}<div class="invalid-feedback d-block">{{ form.parent_national_id.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12 mb-3">
+          <label for="{{ form.parent_address.id_for_label }}" class="form-label">Địa chỉ <span class="text-danger">*</span></label>
+          {% render_field form.parent_address class+="form-control" %}
+          {% if form.parent_address.errors %}<div class="invalid-feedback d-block">{{ form.parent_address.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="form-text">Nếu đã chọn phụ huynh hiện có, có thể bỏ trống các trường phụ huynh mới.</div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Hủy</button>
+    <button type="submit" class="btn btn-primary">{{ is_create|yesno:"Tạo mới,Lưu thay đổi" }}</button>
+  </div>
+</form>

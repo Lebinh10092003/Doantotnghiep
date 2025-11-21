@@ -39,10 +39,19 @@ def in_any_group(user, group_names):
         return False
     try:
         names = [g.strip() for g in group_names.split(",")]
-        # SỬA LỖI: Xây dựng truy vấn không phân biệt chữ hoa/thường cho nhiều nhóm
         query = Q()
         for name in names:
             query |= Q(name__iexact=name)
         return user.groups.filter(query).exists()
     except Exception:
         return False
+
+@register.filter
+def get_item(mapping, key):
+    """
+    Safe way to fetch a key from a mapping inside templates.
+    """
+    try:
+        return mapping.get(key)
+    except Exception:
+        return None

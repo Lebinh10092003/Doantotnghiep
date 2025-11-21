@@ -130,13 +130,20 @@ def manage_classes(request):
                 except (json.JSONDecodeError, TypeError):
                     continue
 
+    # Xử lý query params cho phân trang / đổi số dòng
+    query_params_no_page = request.GET.copy()
+    for key in ["page", "per_page"]:
+        if key in query_params_no_page:
+            del query_params_no_page[key]
+
     # 4. Xây dựng Context
     context = {
         "page_obj": page_obj,
         "paginator": paginator,
+        "per_page": per_page,
         "filter": class_filter,
         "model_name": "Class",
-        "current_query_params": request.GET.urlencode(),
+        "current_query_params": query_params_no_page.urlencode(),
         "quick_filters": quick_filters,
         "active_filter_name": active_filter_name,
         "active_filter_badges": active_filter_badges, # <-- Thêm dòng này

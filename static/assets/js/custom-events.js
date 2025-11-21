@@ -17,6 +17,21 @@ function initializeTomSelect(elements) {
   });
 }
 
+// Dọn dẹp trạng thái modal còn sót (modal-open/backdrop)
+function forceModalCleanup() {
+    try {
+        const anyOpen = document.querySelector('.modal.show');
+        if (anyOpen) return;
+        if (!document.body.classList.contains('modal-open') && document.querySelectorAll('.modal-backdrop').length === 0) {
+            return;
+        }
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    } catch (_) { /* noop */ }
+}
+
 /**
  * Xử lý các tác vụ sau khi HTMX request hoàn thành, bao gồm:
  * 1. Hiển thị thông báo SweetAlert.
@@ -84,6 +99,8 @@ function handleHtmxTriggerEvents(evt) {
             || triggers.closeClassModal
             || triggers.closeSessionModal 
             || triggers.closeAttendanceModal
+            || triggers.closeEnrollmentModal
+            || triggers.closeProductModal
             || triggers.closeAppModal
         ) {
             try {
@@ -119,6 +136,8 @@ function handleHtmxTriggerEvents(evt) {
                 });
                 Promise.all(hidePromises).then(() => {
                     setTimeout(cleanup, 0);
+                    // Fallback: ensure cleanup even nếu hidden.bs.modal không fired
+                    setTimeout(forceModalCleanup, 50);
                 });
             } catch (_) { /* noop */ }
         }
@@ -155,6 +174,8 @@ function handleHtmxTriggerEvents(evt) {
         dispatchCustomEvent('reload-lessons-table');
         dispatchCustomEvent('reload-classes-table');
         dispatchCustomEvent('reload-sessions-table');
+        dispatchCustomEvent('reload-enrollments-table');
+        dispatchCustomEvent('reload-products');
 
         // 7. Kích hoạt sự kiện tải lại bộ lọc đã lưu
         Object.keys(triggers).forEach(key => {
@@ -249,21 +270,12 @@ function handleFormsetActions(evt) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // --- Hàm dọn dẹp modal (từ file gốc) ---
-    const forceModalCleanup = () => {
-        try {
-            const anyOpen = document.querySelector('.modal.show');
-            if (anyOpen) return;
-            if (document.body.classList.contains('modal-open')) return;
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
-            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-        } catch (_) { /* noop */ }
-    };
-
     document.addEventListener('hidden.bs.modal', () => {
+        setTimeout(forceModalCleanup, 0);
+    });
+
+    // Fallback khi body kẹt modal-open nhưng không modal nào show
+    document.body.addEventListener('htmx:afterSettle', () => {
         setTimeout(forceModalCleanup, 0);
     });
     
@@ -289,7 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 'filter-modal': 'closeFilterModal',
                 'classes-modal': 'closeClassModal',
                 'sessions-modal': 'closeSessionModal',
+                'enrollment-modal': 'closeEnrollmentModal',
                 'attendance-modal': 'closeAttendanceModal',
+                'student-product-modal': 'closeProductModal',
                 'password-modal': 'closePasswordModal',
                 'app-modal': 'closeAppModal',
             };
@@ -399,6 +413,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         delete triggers.closeFilterModal;
                         delete triggers.closeClassModal;
                         delete triggers.closeSessionModal;
+                        delete triggers.closeEnrollmentModal;
+                        delete triggers.closeProductModal;
                         delete triggers.closeAppModal;
                     }
                 } catch(_) { /* noop */ }
@@ -406,6 +422,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     triggers.closeCenterModal || triggers.closeRoomModal || 
                     triggers.closeSubjectModal || triggers.closeFilterModal ||
                     triggers.closeClassModal || triggers.closeSessionModal || // <--- Trigger của bạn
+                    triggers.closeEnrollmentModal ||
+                    triggers.closeProductModal ||
                     triggers.closeAppModal) 
                 {
                     evt.detail.shouldSwap = false; // Hủy swap

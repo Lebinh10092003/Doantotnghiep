@@ -35,8 +35,14 @@ class ClassSessionForm(forms.ModelForm):
             'klass': forms.Select(attrs={'class': 'form-select'}),
             'index': forms.NumberInput(attrs={'class': 'form-control'}),
             'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
-            'end_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'start_time': forms.TimeInput(
+                format="%H:%M",
+                attrs={'type': 'time', 'class': 'form-control', 'lang': 'en-GB', 'inputmode': 'numeric'}
+            ),
+            'end_time': forms.TimeInput(
+                format="%H:%M",
+                attrs={'type': 'time', 'class': 'form-control', 'lang': 'en-GB', 'inputmode': 'numeric'}
+            ),
             'lesson': forms.Select(attrs={'class': 'form-select tom-select'}),
             'status': forms.Select(attrs={'class': 'form-select tom-select'}),
             'room_override': forms.Select(attrs={'class': 'form-select tom-select'}),
@@ -44,6 +50,9 @@ class ClassSessionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Force 24h clock display/input regardless of locale defaults
+        self.fields['start_time'].input_formats = ["%H:%M"]
+        self.fields['end_time'].input_formats = ["%H:%M"]
         # Tự động chọn lớp học nếu được truyền vào
         if 'initial' in kwargs and 'klass' in kwargs['initial']:
             self.fields['klass'].queryset = self.fields['klass'].queryset.filter(pk=kwargs['initial']['klass'])

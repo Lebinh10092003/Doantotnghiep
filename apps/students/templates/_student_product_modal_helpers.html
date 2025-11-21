@@ -1,0 +1,8 @@
+<script>
+  document.body.addEventListener('closeProductModal', function() {
+    const modalEl = document.getElementById('student-product-modal');
+    if (!modalEl) return;
+    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+    modal.hide();
+  });
+</script>

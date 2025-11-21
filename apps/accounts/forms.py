@@ -69,6 +69,7 @@ class AdminUserCreateForm(forms.ModelForm):
         self.fields['last_name'].label = "Tên"
         self.fields['email'].label = "Email"
         self.fields['phone'].label = "Số điện thoại"
+        self.fields['phone'].required = False 
         self.fields['is_active'].label = "Kích hoạt"
         self.fields['is_staff'].label = "Quản trị viên"
         self.fields['dob'].label = "Ngày sinh"
@@ -94,6 +95,13 @@ class AdminUserCreateForm(forms.ModelForm):
         p2 = cleaned.get('password2')
         if p1 and p2 and p1 != p2:
             raise forms.ValidationError("Mật khẩu và xác nhận mật khẩu không trùng.")
+
+        groups = cleaned.get("groups") or []
+        phone = (cleaned.get("phone") or "").strip()
+        is_student_role = any(getattr(g, "name", "").upper() == "STUDENT" for g in groups)
+        if not is_student_role and not phone:
+            self.add_error("phone", "Số điện thoại là bắt buộc cho vai trò này.")
+        cleaned["phone"] = phone
         return cleaned
 
     def save(self, commit=True):
@@ -156,6 +164,7 @@ class AdminUserUpdateForm(forms.ModelForm):
         self.fields['last_name'].label = "Tên"
         self.fields['email'].label = "Email"
         self.fields['phone'].label = "Số điện thoại"
+        self.fields['phone'].required = False  
         self.fields['is_active'].label = "Kích hoạt"
         self.fields['is_staff'].label = "Quản trị viên"
         self.fields['avatar'].label = "Ảnh đại diện"
@@ -170,6 +179,18 @@ class AdminUserUpdateForm(forms.ModelForm):
         if User.objects.filter(national_id=nid).exclude(pk=self.instance.pk).exists():
             raise ValidationError("CCCD đã tồn tại trong hệ thống.")
         return nid
+
+    def clean(self):
+        cleaned = super().clean()
+        groups = cleaned.get("groups")
+        # Khi form edit không chọn groups mới, dùng nhóm hiện tại của instance
+        effective_groups = list(groups) if groups is not None else list(self.instance.groups.all())
+        phone = (cleaned.get("phone") or "").strip()
+        is_student_role = any(getattr(g, "name", "").upper() == "STUDENT" for g in effective_groups)
+        if not is_student_role and not phone:
+            self.add_error("phone", "Số điện thoại là bắt buộc cho vai trò này.")
+        cleaned["phone"] = phone
+        return cleaned
 
     def save(self, commit=True):
         user = super().save(commit=False)

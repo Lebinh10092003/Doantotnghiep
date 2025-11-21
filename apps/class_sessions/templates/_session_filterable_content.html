@@ -1,7 +1,25 @@
 {% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
+
+<div class="dataTable-dropdown d-flex align-items-center gap-2 mb-2">
+  <select name="per_page"
+          class="dataTable-selector form-select form-select-sm w-auto"
+          hx-get="{% url 'class_sessions:manage_class_sessions' %}"
+          hx-target="#filterable-content"
+          hx-swap="innerHTML"
+          hx-push-url="true"
+          hx-include="#filter-form"
+          hx-trigger="change"
+          hx-vals='{"page":"1"}'>
+    <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+    <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+    <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+    <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+  </select>
+  <label class="mb-0">mục trên trang</label>
+</div>
 <div id="session-table-container" 
      class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns"
      hx-trigger="reload-sessions-table from:body"
      hx-swap="innerHTML">
-  {% include "_class_sessions_table.html" with page_obj=page_obj paginator=paginator current_query_params=current_query_params target_id='filterable-content' %}
+  {% include "_class_sessions_table.html" with page_obj=page_obj paginator=paginator per_page=per_page current_query_params=current_query_params target_id='filterable-content' %}
 </div>

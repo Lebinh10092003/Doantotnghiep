@@ -21,7 +21,7 @@ from tablib import Dataset
 from .forms import SimpleGroupForm
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from django.contrib.auth import update_session_auth_hash 
 from django import forms as dj_forms
 User = get_user_model()
@@ -57,14 +57,31 @@ def login_view(request):
         password = request.POST.get("password", "")
         remember = request.POST.get("remember")
 
-        # Tìm user theo phone
-        user = User.objects.filter(phone=login_id).first()
+        if not login_id:
+            if is_htmx_request(request):
+                resp = HttpResponse("", status=400)
+                resp["HX-Trigger"] = json.dumps(
+                    {
+                        "show-sweet-alert": {
+                            "icon": "error",
+                            "title": "Vui lòng nhập thông tin đăng nhập",
+                        }
+                    }
+                )
+                return resp
+            return redirect("accounts:login")
+
+        # Tìm user theo phone hoặc username hoặc email (fallback khi không có phone)
+        user = User.objects.filter(
+            Q(phone=login_id) | Q(username=login_id) | Q(email=login_id)
+        ).first()
         if not user:
             if is_htmx_request(request):
                 resp = HttpResponse("", status=400)
                 resp["HX-Trigger"] = json.dumps({
                     "show-sweet-alert": {
-                        "icon": "error", "title": "Số điện thoại không tồn tại"
+                        "icon": "error",
+                        "title": "Không tìm thấy tài khoản với thông tin này",
                     }
                 })
                 return resp
@@ -650,12 +667,20 @@ def export_import_template_view(request):
 
 
 # Quản lý nhóm người dùng
+PERMISSION_ACTIONS = [
+    ("view", "Xem"),
+    ("add", "Thêm"),
+    ("change", "Sửa"),
+    ("delete", "Xóa"),
+]
+
+
 def _group_permissions_by_functionality(permissions_qs):
     """
-    Nhóm quyền theo chức năng dựa trên model và codename.
-    Trả về dict: {'Tên Chức Năng': [(permission_id, 'Label rõ ràng'), ...]}
+    Group permissions by feature and model so the UI can render a four-action grid.
     """
-    grouped = {}
+    grouped: OrderedDict[str, list] = OrderedDict()
+    model_lookup = {}
     permissions = permissions_qs.select_related('content_type').order_by(
         'content_type__app_label', 'content_type__model', 'codename'
     )
@@ -670,8 +695,8 @@ def _group_permissions_by_functionality(permissions_qs):
         "Quản lý Điểm thưởng & Quà tặng": ['pointaccount', 'rewarditem', 'rewardtransaction'],
         "Quản lý Sản phẩm Học sinh": ['studentproduct'],
         "Quản lý Thông báo": ['notification'],
-        "Quản lý Tài chính (Billing)": [], # Thêm model khi có
-        "Quản lý Báo cáo": [], # Thêm model khi có
+        "Quản lý Tài chính (Billing)": [], 
+        "Quản lý Báo cáo": [],
         "Hệ thống & Admin": ['logentry', 'session'],
     }
 
@@ -687,17 +712,21 @@ def _group_permissions_by_functionality(permissions_qs):
         if group_name not in grouped:
             grouped[group_name] = []
 
-        action = ""
         if perm.codename.startswith('add_'):
-            action = "Tạo mới"
+            action = "Thêm"
+            action_key = "add"
         elif perm.codename.startswith('change_'):
-            action = "Chỉnh sửa"
+            action = "Sửa"
+            action_key = "change"
         elif perm.codename.startswith('delete_'):
             action = "Xóa"
+            action_key = "delete"
         elif perm.codename.startswith('view_'):
             action = "Xem"
+            action_key = "view"
         else:
-            action = perm.codename.replace('_', ' ').capitalize() # Xử lý codename tùy chỉnh
+            action = perm.codename.replace('_', ' ').capitalize() 
+            action_key = None
 
         # Lấy tên model dễ đọc
         try:
@@ -714,7 +743,19 @@ def _group_permissions_by_functionality(permissions_qs):
 
 
         clear_label = f"{action} {model_verbose_name}"
-        grouped[group_name].append((perm.id, clear_label))
+        model_key = (group_name, model_name)
+        if model_key not in model_lookup:
+            model_lookup[model_key] = {
+                "model": model_verbose_name,
+                "permissions": {key: None for key, _ in PERMISSION_ACTIONS},
+                "others": []
+            }
+            grouped[group_name].append(model_lookup[model_key])
+
+        if action_key in model_lookup[model_key]["permissions"]:
+            model_lookup[model_key]["permissions"][action_key] = {"id": perm.id, "label": clear_label}
+        else:
+            model_lookup[model_key]["others"].append((perm.id, clear_label))
 
     # Sắp xếp lại dict theo thứ tự functional_groups
     ordered_grouped = {name: grouped.get(name, []) for name in functional_groups if name in grouped}
@@ -777,13 +818,21 @@ def group_create_view(request):
         else:
             all_permissions = Permission.objects.all()
             functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
-            context = {'form': form, 'functional_grouped_permissions': functional_grouped_permissions}
+            context = {
+                'form': form,
+                'functional_grouped_permissions': functional_grouped_permissions,
+                'permission_actions': PERMISSION_ACTIONS,
+            }
             return render(request, '_group_form.html', context, status=422)
     else: # GET
         form = SimpleGroupForm()
         all_permissions = Permission.objects.all()
         functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
-        context = {'form': form, 'functional_grouped_permissions': functional_grouped_permissions}
+        context = {
+            'form': form,
+            'functional_grouped_permissions': functional_grouped_permissions,
+            'permission_actions': PERMISSION_ACTIONS,
+        }
         return render(request, '_group_form.html', context)
 
 
@@ -808,13 +857,23 @@ def group_edit_view(request, group_id):
         else:
             all_permissions = Permission.objects.all()
             functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
-            context = {'form': form, 'group': group, 'functional_grouped_permissions': functional_grouped_permissions}
+            context = {
+                'form': form,
+                'group': group,
+                'functional_grouped_permissions': functional_grouped_permissions,
+                'permission_actions': PERMISSION_ACTIONS,
+            }
             return render(request, '_group_form.html', context, status=422)
     else: # GET
         form = SimpleGroupForm(instance=group)
         all_permissions = Permission.objects.all()
         functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
-        context = {'form': form, 'group': group, 'functional_grouped_permissions': functional_grouped_permissions}
+        context = {
+            'form': form,
+            'group': group,
+            'functional_grouped_permissions': functional_grouped_permissions,
+            'permission_actions': PERMISSION_ACTIONS,
+        }
         return render(request, '_group_form.html', context)
 
 
@@ -956,6 +1015,7 @@ def group_view(request, group_id):
     context = {
         'group': group,
         'functional_grouped_permissions': functional_grouped_permissions,
+        'permission_actions': PERMISSION_ACTIONS,
     }
     return render(request, '_group_view.html', context)
 

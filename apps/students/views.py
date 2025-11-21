@@ -8,6 +8,8 @@ from django.http import HttpResponseForbidden
 from apps.classes.models import Class
 from apps.class_sessions.models import ClassSession
 from apps.enrollments.models import Enrollment
+from apps.accounts.models import ParentStudentRelation
+from .filters import StudentProductFilter
 from .models import StudentProduct, StudentExerciseSubmission
 from .forms import StudentProductForm, StudentExerciseSubmissionForm
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
@@ -15,9 +17,8 @@ import json
 from django.http import HttpResponse
 from django.urls import reverse
 
-
-
-
+def is_htmx_request(request):
+    return request.headers.get("HX-Request") == "true"
 
 def _week_range(center_date: date | None = None):
     """
@@ -204,30 +205,61 @@ def portal_course_detail(request, class_id: int):
 
 @login_required
 def product_create(request, session_id: int):
-    session = get_object_or_404(ClassSession, id=session_id)
-    if not Enrollment.objects.filter(student=request.user, klass=session.klass, active=True).exists():
-        return HttpResponseForbidden("Bạn không có quyền đăng sản phẩm cho lớp này.")
-    existing_product = StudentProduct.objects.filter(session=session, student=request.user).first()
-    if existing_product:
-        return redirect("students:product_update", pk=existing_product.pk)
+    # Danh sách buổi học của học sinh
+    today = date.today()
+    available_sessions = (
+        ClassSession.objects.filter(
+            klass__enrollments__student=request.user,
+            klass__enrollments__active=True,
+            date__lte=today,
+        )
+        .select_related("klass", "klass__subject")
+        .order_by("-date", "-start_time")
+    )
+    session = None
+    if session_id and session_id != 0:
+        session = get_object_or_404(available_sessions, id=session_id)
+
+    if not available_sessions.exists():
+        return HttpResponseForbidden("Bạn chưa có buổi học nào để đăng sản phẩm.")
+
+    if session:
+        existing_product = StudentProduct.objects.filter(session=session, student=request.user).first()
+        if existing_product:
+            return redirect("students:product_update", pk=existing_product.pk)
 
     if request.method == "POST":
         form = StudentProductForm(request.POST, request.FILES)
         if form.is_valid():
+            selected_session_id = request.POST.get("session_id") or (session.id if session else None)
+            if not selected_session_id:
+                return HttpResponseForbidden("Vui lòng chọn buổi học.")
+            try:
+                selected_session = available_sessions.get(id=selected_session_id)
+            except ClassSession.DoesNotExist:
+                return HttpResponseForbidden("Buổi học không hợp lệ.")
+
             product = form.save(commit=False)
-            product.session = session
+            product.session = selected_session
             product.student = request.user
             product.save()
+
+            if request.headers.get("HX-Request") == "true":
+                resp = HttpResponse(status=204)
+                resp["HX-Trigger"] = json.dumps({"reload-products": True, "closeProductModal": True})
+                return resp
             return redirect("students:portal_course_detail", class_id=session.klass.id)
     else:
         form = StudentProductForm()
 
+    template = "_student_product_form.html" if request.headers.get("HX-Request") == "true" else "student_product_form.html"
     return render(
         request,
-        "student_product_form.html",
+        template,
         {
             "form": form,
             "session": session,
+            "available_sessions": available_sessions,
             "is_create": True,
         },
     )
@@ -371,24 +403,50 @@ def product_update(request, pk: int):
     if product.student_id != request.user.id:
         return HttpResponseForbidden("Bạn chỉ có thể sửa sản phẩm của mình.")
 
+    today = date.today()
+    available_sessions = (
+        ClassSession.objects.filter(
+            klass__enrollments__student=request.user,
+            klass__enrollments__active=True,
+            date__lte=today,
+        )
+        .select_related("klass", "klass__subject")
+        .order_by("-date", "-start_time")
+    )
+
     if request.method == "POST":
         form = StudentProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
+            selected_session_id = request.POST.get("session_id") or product.session_id
+            try:
+                selected_session = available_sessions.get(id=selected_session_id)
+            except ClassSession.DoesNotExist:
+                return HttpResponseForbidden("Buổi học không hợp lệ.")
             new_file = form.cleaned_data.get("file")
             old_file = product.file
-            form.save()
+            prod = form.save(commit=False)
+            prod.session = selected_session
+            prod.save()
             if new_file and old_file and old_file.name != new_file.name:
                 old_file.delete(save=False)
+
+            if request.headers.get("HX-Request") == "true":
+                resp = HttpResponse(status=204)
+                resp["HX-Trigger"] = json.dumps({"reload-products": True, "closeProductModal": True})
+                return resp
+
             return redirect("students:portal_course_detail", class_id=product.session.klass.id)
     else:
         form = StudentProductForm(instance=product)
 
+    template = "_student_product_form.html" if request.headers.get("HX-Request") == "true" else "_student_product_form.html"
     return render(
         request,
-        "student_product_form.html",
+        template,
         {
             "form": form,
             "session": product.session,
+            "available_sessions": available_sessions,
             "is_create": False,
         },
     )
@@ -425,64 +483,99 @@ def product_delete(request, pk: int):
 @login_required
 def student_products_list(request):
     user = request.user
-    is_student = user.groups.filter(name="student").exists()
+    role = (getattr(user, "role", "") or "").upper()
+    is_student = role == "STUDENT" or user.groups.filter(name__iexact="student").exists()
+    is_parent = role == "PARENT" or user.groups.filter(name__iexact="parent").exists()
 
-    if not is_student and not user.has_perm("students.view_studentproduct"):
+    # Cho phép trung tâm/nhân viên có quyền xem tất cả
+    if not (is_student or is_parent) and not user.has_perm("students.view_studentproduct"):
         raise PermissionDenied("Bạn không có quyền xem danh sách sản phẩm.")
 
-    q = request.GET.get("q", "")
-    klass_id = request.GET.get("klass_id")
-    start_date = request.GET.get("start_date")
-    end_date = request.GET.get("end_date")
     order = request.GET.get("order", "desc")
-
-    products = (
-        StudentProduct.objects.select_related(
-            "student",
-            "session",
-            "session__klass",
-            "session__klass__subject",
-            "session__klass__center",
-        )
+    products = StudentProduct.objects.select_related(
+        "student",
+        "session",
+        "session__klass",
+        "session__klass__subject",
+        "session__klass__center",
     )
 
     if is_student:
         products = products.filter(student=user)
+    elif is_parent:
+        child_ids = ParentStudentRelation.objects.filter(parent=user).values_list("student_id", flat=True)
+        products = products.filter(student_id__in=child_ids)
 
-    if q:
-        products = products.filter(title__icontains=q)
-
-    if klass_id:
-        products = products.filter(session__klass_id=klass_id)
-
-    if start_date:
-        products = products.filter(session__date__gte=start_date)
-
-    if end_date:
-        products = products.filter(session__date__lte=end_date)
+    product_filter = StudentProductFilter(request.GET, queryset=products)
+    products = product_filter.qs
 
     sort_field = "created_at" if order == "asc" else "-created_at"
     products = products.order_by(sort_field)
 
-    klasses = Class.objects.order_by("name")
+    # badges
+    active_filter_badges = []
+    if product_filter.form.is_bound:
+        for name, value in product_filter.form.cleaned_data.items():
+            if value and name in product_filter.form.fields:
+                field_label = product_filter.form.fields[name].label or name
+                display_value = ""
+                field = product_filter.form.fields[name]
+                if hasattr(value, "name"):
+                    display_value = str(value)
+                elif isinstance(value, str):
+                    display_value = value
+                elif hasattr(value, "strftime"):
+                    display_value = value.strftime("%d/%m/%Y")
+                if display_value:
+                    active_filter_badges.append(
+                        {"label": field_label, "value": display_value, "key": name}
+                    )
 
-    return render(
-        request,
-        "student_products_list.html",
-        {
-            "products": products,
-            "is_student": is_student,
-            "can_view_all": not is_student,
-            "filter_params": {
-                "q": q,
-                "klass_id": klass_id,
-                "start_date": start_date,
-                "end_date": end_date,
-                "order": order,
-            },
-            "klasses": klasses,
+    try:
+        per_page = int(request.GET.get("per_page", 9))
+        if per_page <= 0:
+            per_page = 9
+    except (TypeError, ValueError):
+        per_page = 9
+
+    try:
+        page_number = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page_number = 1
+
+    from django.core.paginator import Paginator, EmptyPage
+
+    paginator = Paginator(products, per_page)
+    try:
+        page_obj = paginator.page(page_number)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
+    query_params_no_page = request.GET.copy()
+    for key in ["page"]:
+        query_params_no_page.pop(key, None)
+
+    context = {
+        "products": page_obj.object_list,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "per_page": per_page,
+        "is_student": is_student,
+        "can_view_all": not is_student and not is_parent,
+        "filter": product_filter,
+        "model_name": "StudentProduct",
+        "quick_filters": [],
+        "active_filter_name": None,
+        "active_filter_badges": active_filter_badges,
+        "current_query_params": query_params_no_page.urlencode(),
+        "filter_params": {
+            "order": order,
         },
-    )
+    }
+
+    if is_htmx_request(request):
+        return render(request, "_student_products_content.html", context)
+    return render(request, "student_products_list.html", context)
 
 
 @login_required

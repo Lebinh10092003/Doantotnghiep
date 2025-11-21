@@ -47,16 +47,60 @@
                                 onclick="document.querySelectorAll('[data-perm-group={{ group_name|slugify }}] input[type=checkbox]').forEach(cb=>cb.checked=false);">Bỏ chọn</button>
                         </div>
                     </div>
-                    <div class="mb-2 ps-2 perm-group" data-perm-group="{{ group_name|slugify }}">
-                        {% for perm_id, perm_label in perms %}
-                            <div class="form-check form-check-inline">
-                                <input type="checkbox" name="permissions" value="{{ perm_id }}" class="form-check-input" id="perm_{{ perm_id }}"
-                                    {% if perm_id in form.permissions.value %}checked{% endif %}>
-                                <label class="form-check-label" for="perm_{{ perm_id }}">{{ perm_label }}</label>
-                            </div>
-                        {% endfor %}
-                        {% if not perms %}
-                            <p class="text-muted small mb-0">Không có quyền nào trong nhóm này.</p>
+                    <div class="table-responsive mt-2 perm-group" data-perm-group="{{ group_name|slugify }}">
+                        {% if perms %}
+                            <table class="table table-sm align-middle mb-2">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="w-50">Chức năng</th>
+                                        {% for action_key, action_label in permission_actions %}
+                                            <th class="text-center" style="width: 80px;">{{ action_label }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in perms %}
+                                        <tr>
+                                            <td class="fw-semibold">{{ entry.model }}</td>
+                                            {% for action_key, action_label in permission_actions %}
+                                                {% with perm_field=entry.permissions|get_item:action_key %}
+                                                    <td class="text-center">
+                                                        {% if perm_field %}
+                                                            <div class="form-check d-flex justify-content-center mb-0">
+                                                                <input type="checkbox" name="permissions" value="{{ perm_field.id }}" class="form-check-input"
+                                                                    id="perm_{{ perm_field.id }}"
+                                                                    {% if perm_field.id in form.permissions.value %}checked{% endif %}>
+                                                                <label class="visually-hidden" for="perm_{{ perm_field.id }}">{{ action_label }} {{ entry.model }}</label>
+                                                            </div>
+                                                        {% else %}
+                                                            <span class="text-muted">&mdash;</span>
+                                                        {% endif %}
+                                                    </td>
+                                                {% endwith %}
+                                            {% endfor %}
+                                        </tr>
+                                        {% if entry.others %}
+                                            <tr class="table-borderless">
+                                                <td class="text-muted small">Khác</td>
+                                                <td colspan="{{ permission_actions|length }}" class="py-1">
+                                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                                        {% for extra_id, extra_label in entry.others %}
+                                                            <div class="form-check form-check-inline mb-0">
+                                                                <input type="checkbox" name="permissions" value="{{ extra_id }}" class="form-check-input"
+                                                                    id="perm_{{ extra_id }}"
+                                                                    {% if extra_id in form.permissions.value %}checked{% endif %}>
+                                                                <label class="form-check-label small" for="perm_{{ extra_id }}">{{ extra_label }}</label>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="text-muted small mb-2">Không có quyền nào trong nhóm này.</p>
                         {% endif %}
                     </div>
                     {% if not forloop.last %}

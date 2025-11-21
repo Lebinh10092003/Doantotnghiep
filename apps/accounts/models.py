@@ -16,7 +16,7 @@ class User(AbstractUser):
         on_delete=models.SET_NULL,
         related_name="users",
     )
-    phone = models.CharField(max_length=20, blank=False)
+    phone = models.CharField(max_length=20, blank=True)
     avatar = models.ImageField(
         upload_to="avatars/",
         storage=MediaStorage(),

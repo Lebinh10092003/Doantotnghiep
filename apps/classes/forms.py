@@ -78,19 +78,23 @@ class ClassForm(forms.ModelForm):
             raise forms.ValidationError("Giáo viên chính không được nằm trong danh sách trợ giảng.")
         return assistants
 
-
-# Formset lịch học (một bản duy nhất, không trùng)
 ClassScheduleFormSet = inlineformset_factory(
     parent_model=Class,
     model=ClassSchedule,
     fields=("day_of_week", "start_time", "end_time"),
     extra=1,
     can_delete=True,
-    min_num=0,           # đổi thành >=1 nếu muốn bắt buộc
-    validate_min=False,  # đổi thành True nếu muốn bắt buộc
+    min_num=0,           
+    validate_min=False,
     widgets={
         "day_of_week": forms.Select(attrs={"class": "form-select"}),
-        "start_time": forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
-        "end_time": forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+        "start_time": forms.TimeInput(
+            format="%H:%M",
+            attrs={"type": "time", "class": "form-control", "lang": "en-GB", "inputmode": "numeric"}
+        ),
+        "end_time": forms.TimeInput(
+            format="%H:%M",
+            attrs={"type": "time", "class": "form-control", "lang": "en-GB", "inputmode": "numeric"}
+        ),
     },
 )

@@ -17,7 +17,7 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }}</label>
+                    <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }} <span class="text-danger">*</span></label>
                     {% render_field form.first_name class+="form-control" required="required" autocomplete="given-name" %}
                     {% for error in form.first_name.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
@@ -26,7 +26,7 @@
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }}</label>
+                    <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }} <span class="text-danger">*</span></label>
                     {% render_field form.last_name class+="form-control" required="required" autocomplete="family-name" %}
                     {% for error in form.last_name.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
@@ -38,7 +38,7 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+                    <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }} <span class="text-danger">*</span></label>
                     {% render_field form.email class+="form-control" type="email" required="required" autocomplete="email" %}
                     {% for error in form.email.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
@@ -47,7 +47,7 @@
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.phone.id_for_label }}" class="form-label">{{ form.phone.label }}</label>
+                    <label for="{{ form.phone.id_for_label }}" class="form-label">{{ form.phone.label }} <span class="text-danger">*</span></label>
                     {% render_field form.phone class+="form-control" required="required" inputmode="tel" autocomplete="tel-national" %}
                     {% for error in form.phone.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
@@ -59,7 +59,7 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.password1.id_for_label }}" class="form-label">{{ form.password1.label }}</label>
+                    <label for="{{ form.password1.id_for_label }}" class="form-label">{{ form.password1.label }} <span class="text-danger">*</span></label>
                     {% render_field form.password1 class+="form-control" required="required" autocomplete="new-password" %}
                     {% for error in form.password1.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
@@ -68,7 +68,7 @@
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.password2.id_for_label }}" class="form-label">{{ form.password2.label }}</label>
+                    <label for="{{ form.password2.id_for_label }}" class="form-label">{{ form.password2.label }} <span class="text-danger">*</span></label>
                     {% render_field form.password2 class+="form-control" required="required" autocomplete="new-password" %}
                     {% for error in form.password2.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
@@ -80,7 +80,7 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.dob.id_for_label }}" class="form-label">{{ form.dob.label }}</label>
+                    <label for="{{ form.dob.id_for_label }}" class="form-label">{{ form.dob.label }} <span class="text-danger">*</span></label>
                     {% render_field form.dob class+="form-control" required="required" autocomplete="bday" %}
                     {% for error in form.dob.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
@@ -89,7 +89,7 @@
             </div>
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.gender.id_for_label }}" class="form-label">{{ form.gender.label }}</label>
+                    <label for="{{ form.gender.id_for_label }}" class="form-label">{{ form.gender.label }} <span class="text-danger">*</span></label>
                     {% render_field form.gender class+="form-select" required="required" %}
                     {% for error in form.gender.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
@@ -101,7 +101,7 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <label for="{{ form.national_id.id_for_label }}" class="form-label">{{ form.national_id.label }}</label>
+                    <label for="{{ form.national_id.id_for_label }}" class="form-label">{{ form.national_id.label }} <span class="text-danger">*</span></label>
                     {% render_field form.national_id class+="form-control" required="required" inputmode="numeric" pattern="\\d{12}" %}
                     <div class="form-text">Nhập đúng 12 chữ số CCCD.</div>
                     {% for error in form.national_id.errors %}
@@ -112,7 +112,7 @@
         </div>
 
         <div class="mb-3">
-            <label for="{{ form.address.id_for_label }}" class="form-label">{{ form.address.label }}</label>
+            <label for="{{ form.address.id_for_label }}" class="form-label">{{ form.address.label }} <span class="text-danger">*</span></label>
             {% render_field form.address class+="form-control" required="required" autocomplete="street-address" %}
             {% for error in form.address.errors %}
                 <div class="invalid-feedback d-block">{{ error }}</div>

@@ -78,14 +78,14 @@
   </table>
 </div>
 
-<div class="dataTable-bottom d-flex justify-content-between align-items-center">
-  <div class="dataTable-info">
+<div class="dataTable-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+  <div class="dataTable-info mb-0">
     Hiện {{ page_obj.start_index }} đến {{ page_obj.end_index }} trong tổng số {{ paginator.count }} mục
   </div>
 
   {% if page_obj.has_other_pages %}
   <nav class="dataTable-pagination">
-    <ul class="pagination">
+    <ul class="pagination mb-0">
       {% if page_obj.has_previous %}
       <li class="page-item">
         <a class="page-link" href="?page=1&{{ current_query_params }}" hx-get="?page=1&{{ current_query_params }}" hx-target="#{{ target_id|default:'filterable-content' }}" hx-swap="innerHTML" hx-push-url="true">Đầu</a>

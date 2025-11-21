@@ -1,129 +1,93 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Danh sach san pham hoc sinh{% endblock %}
+{% block title %}Danh sách sản phẩm học sinh{% endblock %}
+
+{% block extra_css %}
+<style>
+  .products-hero {
+    background: radial-gradient(circle at 20% 20%, #e8f3ff 0%, #f7fbff 40%, #ffffff 100%);
+    border-radius: 24px;
+  }
+  .products-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: none;
+  }
+  .products-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(19, 49, 80, 0.08);
+  }
+  .products-img {
+    height: 220px;
+    object-fit: cover;
+    border-radius: 20px 20px 0 0;
+  }
+  .products-badge {
+    background: #eef5ff;
+    color: #1b4b91;
+  }
+  .products-filter-bar {
+    border: 1px solid #e9eef5;
+    border-radius: 14px;
+    background: #fff;
+    padding: 12px 16px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  }
+  .products-action {
+    border-radius: 12px;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div id="student-portal-root" x-data>
   <div id="main">
-    <div class="py-5">
+    <div class="py-4 py-md-5">
       <div class="container-fluid px-3 px-md-5">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-          <div>
-            <p class="text-uppercase text-muted small mb-1">Du an cua toi</p>
-            <h2 class="fw-semibold mb-1">Danh sach san pham hoc sinh</h2>
-            <p class="text-muted small mb-0">Tim nhanh hoac loc theo lop, ngay va trang thai.</p>
-          </div>
-          <div class="d-flex gap-2 flex-wrap">
-            <a href="#filters" class="btn btn-light border rounded-pill btn-sm px-3 py-2">
-              <i class="bi bi-funnel me-1"></i>
-              Bo loc
-            </a>
-            <a href="{% url 'students:portal_home' %}" class="btn btn-success rounded-pill btn-sm px-3 text-white">
-              <i class="bi bi-plus-lg me-1"></i>
-              Tao du an moi
-            </a>
-          </div>
-        </div>
-
-        <div class="card border-0 shadow-sm rounded-4 mb-4" id="filters">
-          <div class="card-body">
-            <form class="row g-3 align-items-end" method="get">
-              <div class="col-sm-6 col-md-3">
-                <label class="form-label fw-semibold small mb-1">Tim kiem</label>
-                <input type="search"
-                       name="q"
-                       value="{{ filter_params.q }}"
-                       class="form-control form-control-sm rounded-3"
-                       placeholder="Tieu de hoac mo ta">
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <label class="form-label fw-semibold small mb-1">Lop</label>
-                <select name="klass_id" class="form-select form-select-sm rounded-3">
-                  <option value="">Tat ca</option>
-                  {% for klass in klasses %}
-                    <option value="{{ klass.id }}" {% if filter_params.klass_id == klass.id|stringformat:"s" %}selected{% endif %}>
-                      {{ klass.name }}
-                    </option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="col-sm-6 col-md-2">
-                <label class="form-label fw-semibold small mb-1">Tu ngay</label>
-                <input type="date" name="start_date" value="{{ filter_params.start_date }}" class="form-control form-control-sm rounded-3">
-              </div>
-              <div class="col-sm-6 col-md-2">
-                <label class="form-label fw-semibold small mb-1">Den ngay</label>
-                <input type="date" name="end_date" value="{{ filter_params.end_date }}" class="form-control form-control-sm rounded-3">
-              </div>
-              <div class="col-sm-6 col-md-2">
-                <label class="form-label fw-semibold small mb-1">Sap xep</label>
-                <select name="order" class="form-select form-select-sm rounded-3">
-                  <option value="desc" {% if filter_params.order != "asc" %}selected{% endif %}>Moi nhat</option>
-                  <option value="asc" {% if filter_params.order == "asc" %}selected{% endif %}>Cu nhat</option>
-                </select>
-              </div>
-              <div class="col-12 col-md-2 text-md-end">
-                <button type="submit" class="btn btn-sm btn-success rounded-pill px-4">
-                  Ap dung
-                </button>
-              </div>
-            </form>
+        <div class="products-hero p-4 p-md-5 mb-4 shadow-sm">
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+            <div>
+              <p class="text-uppercase text-muted small mb-2">Dự án của tôi</p>
+              <h2 class="fw-bold mb-2">Sản phẩm học sinh</h2>
+              <p class="text-muted small mb-0">Tìm nhanh hoặc lọc theo lớp, ngày và trạng thái để xem sản phẩm của bạn hoặc con bạn.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+              <a href="#filters" class="btn btn-light border products-action px-3 py-2">
+                <i class="bi bi-funnel me-1"></i>
+                Bộ lọc
+              </a>
+              <button class="btn btn-success text-white products-action px-3 py-2"
+                      hx-get="{% url 'students:product_create' 0 %}"
+                      hx-target="#student-product-modal-content"
+                      data-bs-toggle="modal"
+                      data-bs-target="#student-product-modal">
+                <i class="bi bi-plus-lg me-1"></i>
+                Tạo dự án mới
+              </button>
+            </div>
           </div>
         </div>
 
-        {% if products %}
-          <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
-            {% for product in products %}
-              <div class="col">
-                <article class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-                  {% if product.image %}
-                    <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.title }}" style="height: 220px; object-fit: cover;">
-                  {% else %}
-                    <div class="bg-light d-flex align-items-center justify-content-center" style="height: 220px;">
-                      <i class="bi bi-image fs-1 text-muted"></i>
-                    </div>
-                  {% endif %}
-                  <div class="card-body d-flex flex-column">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                      <span class="badge bg-light text-dark small rounded-pill py-1 px-2">
-                        {% with subject=product.session.klass.subject %}
-                          {{ subject.name|default:"Khong xac dinh" }}
-                        {% endwith %}
-                      </span>
-                      <span class="text-muted small">
-                        {{ product.session.date|date:"d/m/Y" }}
-                      </span>
-                    </div>
-                <h5 class="card-title fw-semibold mb-1">{{ product.title }}</h5>
-                <p class="text-muted small mb-2">
-                  {{ product.student.get_full_name|default:product.student.username }}
-                </p>
-                    <p class="text-muted small mb-3 flex-grow-1" style="min-height: 3rem;">
-                      {{ product.description|default:"Chua co mo ta."|truncatechars:90 }}
-                    </p>
-                    <div class="text-muted small mb-3">
-                      <i class="bi bi-clock me-1"></i>{{ product.created_at|date:"H:i d/m" }}
-                    </div>
-                    <div class="mt-auto d-flex gap-2 flex-wrap">
-                      <a href="{% url 'students:student_product_detail' pk=product.pk %}" class="btn btn-success btn-sm rounded-pill flex-grow-1 text-white">
-                        <i class="bi bi-eye me-1"></i>
-                        Xem chi tiet
-                      </a>
-                      {% if is_student %}
-                        <a href="{% url 'students:product_update' pk=product.pk %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-2">
-                          <i class="bi bi-pencil"></i>
-                        </a>
-                      {% endif %}
-                    </div>
-                  </div>
-                </article>
-              </div>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="text-muted text-center mb-0">Khong co san pham nao de hien thi.</p>
-        {% endif %}
+        <div id="filterable-content">
+          {% include "_student_products_content.html" %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="student-product-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Dự án học sinh</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="student-product-modal-content">
+        <div class="p-4 text-center text-muted">
+          <div class="spinner-border text-primary mb-2" role="status"></div>
+          <div class="small">Đang tải...</div>
+        </div>
       </div>
     </div>
   </div>

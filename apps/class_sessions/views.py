@@ -90,14 +90,16 @@ def manage_class_sessions(request):
 
     # Tạo query params cho phân trang, loại bỏ 'page' để tránh lặp lại
     query_params_for_pagination = request.GET.copy()
-    if 'page' in query_params_for_pagination:
-        del query_params_for_pagination['page']
+    for key in ["page", "per_page"]:
+        if key in query_params_for_pagination:
+            del query_params_for_pagination[key]
 
     # 4. Xây dựng Context
     model_name = "ClassSession"
     context = {
         "page_obj": page_obj,
         "paginator": paginator,
+        "per_page": per_page,
         "filter": session_filter, 
         "model_name": model_name,
         "current_query_params": query_params_for_pagination.urlencode(),
