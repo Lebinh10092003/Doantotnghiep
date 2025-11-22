@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Yêu cầu đổi quà{% endblock %}
+{% block content %}
+<div id="main">
+  <header class="mb-3">
+    <a href="#" class="burger-btn d-block d-xl-none">
+      <i class="bi bi-justify fs-3"></i>
+    </a>
+  </header>
+  <div class="page-heading">
+    <div class="page-title mb-3 d-flex justify-content-between align-items-center">
+      <div>
+        <h3>Hàng chờ đổi quà</h3>
+        <p class="text-subtitle text-muted">Duyệt, từ chối, hoặc hoàn tất yêu cầu đổi quà.</p>
+      </div>
+      <button
+        class="btn btn-outline-secondary btn-sm"
+        hx-get="{% url 'rewards:manage_requests' %}"
+        hx-target="#requests-table"
+        hx-swap="outerHTML"
+      >
+        <i class="bi bi-arrow-clockwise"></i> Làm mới
+      </button>
+    </div>
+    <section class="section">
+      <div class="card">
+        <div class="card-body">
+          <div
+            id="requests-table"
+            hx-get="{% url 'rewards:manage_requests' %}"
+            hx-trigger="load, reload-requests-table from:body"
+            hx-target="this"
+            hx-swap="outerHTML"
+          >
+            <div class="text-center text-muted py-4">
+              <span class="spinner-border spinner-border-sm"></span> Đang tải...
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

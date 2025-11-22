@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Đổi quà{% endblock %}
+{% block content %}
+<div id="main">
+  <header class="mb-3">
+    <a href="#" class="burger-btn d-block d-xl-none">
+      <i class="bi bi-justify fs-3"></i>
+    </a>
+  </header>
+  <div class="page-heading">
+    <div class="page-title mb-3">
+      <div class="row">
+        <div class="col-md-8">
+          <h3>Đổi quà</h3>
+          <p class="text-subtitle text-muted">Chọn quà tặng và gửi yêu cầu đổi điểm.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+          <div class="card shadow-none border">
+            <div class="card-body">
+              <div class="text-muted">Số dư hiện tại</div>
+              <div class="fs-3 fw-bold">{{ account.balance|default:0 }} điểm</div>
+              <a href="{% url 'rewards:my_requests' %}" class="btn btn-outline-primary btn-sm mt-2">
+                <i class="bi bi-list-check"></i> Yêu cầu của tôi
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <section class="section">
+      <div class="row g-3"
+           hx-get="{% url 'rewards:catalog' %}"
+           hx-trigger="reload-catalog from:body"
+           hx-target="this"
+           hx-swap="outerHTML">
+        {% for item in items %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+              <div class="ratio ratio-16x9 bg-light border-bottom">
+                {% if item.image %}
+                  <img src="{{ item.image.url }}" alt="{{ item.name }}" class="img-fluid">
+                {% else %}
+                  <img src="{% static 'compiled/png/favicon.png' %}" alt="Placeholder" class="img-fluid">
+                {% endif %}
+              </div>
+              <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                  <h5 class="card-title mb-1">{{ item.name }}</h5>
+                  <span class="badge bg-primary">{{ item.cost }} điểm</span>
+                </div>
+                <p class="text-muted small mb-2">{{ item.description|default:"Chưa có mô tả" }}</p>
+                <p class="text-muted small mb-1">Tồn kho: {{ item.stock }}</p>
+                <p class="text-muted small mb-3">Số dư của bạn: {{ account.balance|default:0 }} điểm</p>
+                <div class="mt-auto">
+                  <button
+                    type="button"
+                    class="btn btn-success btn-sm w-100"
+                    data-bs-toggle="modal"
+                    data-bs-target="#redeem-modal"
+                    data-item-id="{{ item.id }}"
+                    data-item-name="{{ item.name }}"
+                    data-item-cost="{{ item.cost }}"
+                    data-item-stock="{{ item.stock }}"
+                    data-item-disabled="{% if item.stock <= 0 or account.balance|default:0 < item.cost %}1{% else %}0{% endif %}"
+                    {% if item.stock <= 0 or account.balance|default:0 < item.cost %}disabled{% endif %}
+                  >
+                    <i class="bi bi-bag-check"></i> Đổi quà
+                  </button>
+                  {% if item.stock <= 0 %}
+                    <div class="text-danger small mt-1">Hết hàng</div>
+                  {% elif account.balance|default:0 < item.cost %}
+                    <div class="text-warning small mt-1">Bạn chưa đủ điểm</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% empty %}
+          <div class="col-12">
+            <div class="alert alert-light border d-flex align-items-center gap-2">
+              <i class="bi bi-emoji-frown text-warning"></i>
+              <span>Chưa có quà tặng nào khả dụng.</span>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal fade" id="redeem-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Xác nhận đổi quà</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'rewards:submit_request' %}" onsubmit="return confirm('Bạn chắc chắn muốn đổi quà?');">
+        {% csrf_token %}
+        <div class="modal-body">
+          <input type="hidden" name="item" id="redeem-item-id">
+          <div class="mb-2">
+            <div class="fw-bold" id="redeem-item-name">--</div>
+            <div class="text-muted small">Giá: <span id="redeem-item-cost">0</span> điểm</div>
+            <div class="text-muted small">Tồn kho: <span id="redeem-item-stock">0</span></div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Số lượng</label>
+            <input type="number" class="form-control" name="quantity" id="redeem-quantity" min="1" value="1">
+          </div>
+          <div class="alert alert-warning py-2 small mb-0">
+            Điểm sẽ trừ ngay khi gửi yêu cầu. Vui lòng xác nhận.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="submit" class="btn btn-primary">Xác nhận đổi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('img').forEach(function(img) {
+      img.addEventListener('error', function() {
+        this.onerror = null;
+        this.src = "{% static 'compiled/png/favicon.png' %}";
+      });
+    });
+
+    var redeemModal = document.getElementById('redeem-modal');
+    redeemModal.addEventListener('show.bs.modal', function (event) {
+      var button = event.relatedTarget;
+      if (!button) return;
+      var disabled = button.getAttribute('data-item-disabled') === '1';
+      if (disabled) {
+        event.preventDefault();
+        return false;
+      }
+      var itemId = button.getAttribute('data-item-id');
+      var itemName = button.getAttribute('data-item-name');
+      var itemCost = button.getAttribute('data-item-cost');
+      var itemStock = button.getAttribute('data-item-stock');
+
+      document.getElementById('redeem-item-id').value = itemId;
+      document.getElementById('redeem-item-name').textContent = itemName;
+      document.getElementById('redeem-item-cost').textContent = itemCost;
+      document.getElementById('redeem-item-stock').textContent = itemStock;
+
+      var qtyInput = document.getElementById('redeem-quantity');
+      qtyInput.value = 1;
+      qtyInput.setAttribute('max', itemStock);
+      qtyInput.setAttribute('min', 1);
+    });
+  });
+</script>
+{% endblock %}
+{% endblock %}

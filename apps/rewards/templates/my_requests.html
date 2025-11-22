@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Yêu cầu đổi quà{% endblock %}
+{% block content %}
+<div id="main">
+  <header class="mb-3">
+    <a href="#" class="burger-btn d-block d-xl-none">
+      <i class="bi bi-justify fs-3"></i>
+    </a>
+  </header>
+  <div class="page-heading">
+    <div class="page-title mb-3">
+      <h3>Yêu cầu đổi quà</h3>
+      <p class="text-subtitle text-muted">Theo dõi trạng thái các yêu cầu của bạn.</p>
+    </div>
+    <section class="section">
+      <div class="card">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Quà</th>
+                  <th>Số lượng</th>
+                  <th>Điểm</th>
+                  <th>Trạng thái</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in requests %}
+                  <tr>
+                    <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>{{ r.item.name }}</td>
+                    <td>{{ r.quantity }}</td>
+                    <td>{{ r.total_cost }}</td>
+                    <td><span class="badge bg-light text-dark">{{ r.get_status_display }}</span></td>
+                    <td>{{ r.note }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="6" class="text-center text-muted">Chưa có yêu cầu.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

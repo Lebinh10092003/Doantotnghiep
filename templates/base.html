@@ -361,39 +361,57 @@
                     </li>
                     {% endif %}
 
-                    {% if perms.rewards.view_pointaccount and perms.rewards.add_pointaccount and perms.rewards.change_pointaccount and perms.rewards.delete_pointaccount %}
+                    {% if request.user.is_authenticated %}
                     <li class="sidebar-item has-sub {% if '/rewards/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-gem"></i>
                             <span>Thưởng & Điểm</span>
                         </a>
                         <ul class="submenu">
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            {% with current_url=request.resolver_match.url_name %}
+                            <li class="submenu-item {% if current_url == 'account_summary' %}active{% endif %}">
+                                <a href="{% url 'rewards:account_summary' %}" class="submenu-link">
                                     <i class="bi bi-coin"></i>
                                     <span>Tài khoản điểm</span>
                                 </a>
                             </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if current_url == 'catalog' %}active{% endif %}">
+                                <a href="{% url 'rewards:catalog' %}" class="submenu-link">
                                     <i class="bi bi-gift"></i>
-                                    <span>Đổi thưởng</span>
+                                    <span>Đổi quà</span>
                                 </a>
                             </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if current_url == 'my_requests' %}active{% endif %}">
+                                <a href="{% url 'rewards:my_requests' %}" class="submenu-link">
                                     <i class="bi bi-receipt"></i>
-                                    <span>Lịch sử đổi thưởng</span>
+                                    <span>Yêu cầu đổi quà</span>
                                 </a>
                             </li>
-                            {% if perms.rewards.view_rewarditem and perms.rewards.add_rewarditem and perms.rewards.change_rewarditem and perms.rewards.delete_rewarditem %}
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
-                                    <i class="bi bi-receipt"></i>
-                                    <span>Danh sách phần quà</span>
+                            {% if perms.rewards.change_rewarditem %}
+                            <li class="submenu-item {% if current_url == 'manage_items' %}active{% endif %}">
+                                <a href="{% url 'rewards:manage_items' %}" class="submenu-link">
+                                    <i class="bi bi-box-seam"></i>
+                                    <span>Kho quà tặng</span>
                                 </a>
                             </li>
                             {% endif %}
+                            {% if perms.rewards.change_redemptionrequest %}
+                            <li class="submenu-item {% if current_url == 'manage_requests' %}active{% endif %}">
+                                <a href="{% url 'rewards:manage_requests' %}" class="submenu-link">
+                                    <i class="bi bi-inboxes"></i>
+                                    <span>Duyệt yêu cầu</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if request.user.is_superuser or request.user.is_staff or perms.rewards.add_rewardtransaction or request.user.role|upper == 'TEACHER' or request.user.role|upper == 'ASSISTANT' %}
+                            <li class="submenu-item {% if current_url == 'award_points' %}active{% endif %}">
+                                <a href="{% url 'rewards:award_points' %}" class="submenu-link">
+                                    <i class="bi bi-plus-circle"></i>
+                                    <span>Cộng điểm</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% endwith %}
                         </ul>
                     </li>
                     {% endif %}

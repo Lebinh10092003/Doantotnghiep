@@ -13,6 +13,7 @@ from django.core.paginator import Paginator, EmptyPage
 from django.template.loader import render_to_string
 from django.db.models import Q, Count, ProtectedError 
 from apps.centers.models import Center
+from apps.rewards.models import PointAccount, RewardTransaction
 from apps.classes.models import Class
 from .models import ParentStudentRelation
 from .forms import AdminUserCreateForm, AdminUserUpdateForm, ImportUserForm,UserProfileUpdateForm,UserPasswordChangeForm
@@ -1047,12 +1048,21 @@ def profile_view(request):
 
     # Xử lý GET request (tải trang lần đầu hoặc bấm nút "Hủy")
     # Mặc định là hiển thị thông tin "chỉ xem"
+    try:
+        reward_account = PointAccount.get_or_create_for_student(user)
+        reward_transactions = RewardTransaction.objects.filter(student=user).order_by("-created_at")[:5]
+    except Exception:
+        reward_account = None
+        reward_transactions = []
+
     if is_htmx_request(request):
-        return render(request, '_profile_detail.html', {'user': user})
+        return render(request, '_profile_detail.html', {'user': user, 'reward_account': reward_account, 'reward_transactions': reward_transactions})
 
     context = {
         'user': user,
         'password_form': UserPasswordChangeForm(user=user),
+        'reward_account': reward_account,
+        'reward_transactions': reward_transactions,
     }
     return render(request, 'profile.html', context)
 

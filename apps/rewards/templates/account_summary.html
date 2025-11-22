@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Điểm thưởng{% endblock %}
+{% block content %}
+<div id="main">
+  <header class="mb-3">
+    <a href="#" class="burger-btn d-block d-xl-none">
+      <i class="bi bi-justify fs-3"></i>
+    </a>
+  </header>
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-12 col-md-6 order-md-1 order-last">
+          <h3>Tài khoản điểm</h3>
+          <p class="text-subtitle text-muted">Xem số dư và lịch sử giao dịch điểm thưởng.</p>
+        </div>
+      </div>
+    </div>
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h6 class="text-muted">Số dư hiện tại</h6>
+              <h2 class="fw-bold">{{ account.balance|default:0 }} điểm</h2>
+              <a href="{% url 'rewards:catalog' %}" class="btn btn-primary btn-sm mt-3">
+                <i class="bi bi-gift"></i> Đổi quà ngay
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between">
+              <h6 class="mb-0">Yêu cầu đổi quà gần đây</h6>
+              <a class="small" href="{% url 'rewards:my_requests' %}">Xem tất cả</a>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>Thời gian</th>
+                      <th>Quà</th>
+                      <th>Số lượng</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for r in requests %}
+                      <tr>
+                        <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>{{ r.item.name }}</td>
+                        <td>{{ r.quantity }}</td>
+                        <td><span class="badge bg-light text-dark">{{ r.get_status_display }}</span></td>
+                      </tr>
+                    {% empty %}
+                      <tr><td colspan="4" class="text-center text-muted">Chưa có yêu cầu.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">Lịch sử điểm</h6>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Biến động</th>
+                  <th>Lý do</th>
+                  <th>Phần quà</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for t in transactions %}
+                  <tr>
+                    <td>{{ t.created_at|date:"d/m/Y H:i" }}</td>
+                    <td class="{% if t.delta > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                      {{ t.delta }} điểm
+                    </td>
+                    <td>{{ t.reason|default:"" }}</td>
+                    <td>{{ t.item.name|default:"-" }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="4" class="text-center text-muted">Chưa có giao dịch.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

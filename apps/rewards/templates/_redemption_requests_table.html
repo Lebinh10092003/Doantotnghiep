@@ -1,0 +1,50 @@
+<div id="requests-table">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Thời gian</th>
+          <th>Học viên</th>
+          <th>Quà</th>
+          <th>Số lượng</th>
+          <th>Tổng điểm</th>
+          <th>Trạng thái</th>
+          <th>Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+          <tr>
+            <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
+            <td>{{ r.student.get_full_name|default:r.student.username }}</td>
+            <td>{{ r.item.name }}</td>
+            <td>{{ r.quantity }}</td>
+            <td>{{ r.total_cost }}</td>
+            <td><span class="badge bg-light text-dark">{{ r.get_status_display }}</span></td>
+            <td class="d-flex gap-1 flex-wrap">
+              {% if r.status == status.PENDING %}
+                <form hx-post="{% url 'rewards:approve_request' r.id %}" hx-target="#requests-table" hx-swap="outerHTML">
+                  {% csrf_token %}<button class="btn btn-success btn-sm" type="submit">Duyệt</button>
+                </form>
+                <form hx-post="{% url 'rewards:reject_request' r.id %}" hx-target="#requests-table" hx-swap="outerHTML">
+                  {% csrf_token %}<button class="btn btn-outline-danger btn-sm" type="submit">Từ chối</button>
+                </form>
+              {% elif r.status == status.APPROVED %}
+                <form hx-post="{% url 'rewards:fulfill_request' r.id %}" hx-target="#requests-table" hx-swap="outerHTML">
+                  {% csrf_token %}<button class="btn btn-primary btn-sm" type="submit">Đã trao</button>
+                </form>
+                <form hx-post="{% url 'rewards:cancel_request' r.id %}" hx-target="#requests-table" hx-swap="outerHTML">
+                  {% csrf_token %}<button class="btn btn-outline-danger btn-sm" type="submit">Hủy</button>
+                </form>
+              {% else %}
+                <span class="text-muted small">-</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="text-center text-muted">Chưa có yêu cầu.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

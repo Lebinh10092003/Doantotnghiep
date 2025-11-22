@@ -1,0 +1,58 @@
+{% load static %}
+<div id="items-table">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th style="width:80px;">Ảnh</th>
+          <th>Tên</th>
+          <th>Điểm</th>
+          <th>Tồn kho</th>
+          <th>Trạng thái</th>
+          <th class="text-end"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+          <tr>
+            <td>
+              <div class="ratio ratio-1x1 rounded overflow-hidden border bg-light" style="width:64px;">
+                {% if item.image %}
+                  <img src="{{ item.image.url }}" alt="{{ item.name }}" class="img-fluid">
+                {% else %}
+                  <img src="{% static 'compiled/png/favicon.png' %}" alt="Placeholder" class="img-fluid">
+                {% endif %}
+              </div>
+            </td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.cost }}</td>
+            <td>{{ item.stock }}</td>
+            <td>
+              {% if item.is_active %}
+                <span class="badge bg-success">Đang mở</span>
+              {% else %}
+                <span class="badge bg-secondary">Đã khóa</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <button
+                class="btn btn-sm btn-outline-primary"
+                hx-get="{% url 'rewards:manage_items' %}?edit={{ item.id }}"
+                hx-target="#reward-item-modal-content"
+                hx-swap="innerHTML"
+                data-bs-toggle="modal"
+                data-bs-target="#reward-item-modal"
+              >
+                Sửa
+              </button>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5" class="text-center text-muted">Chưa có quà.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

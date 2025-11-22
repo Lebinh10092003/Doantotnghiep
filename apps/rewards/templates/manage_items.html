@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Kho quà tặng{% endblock %}
+{% block content %}
+<div id="main">
+  <header class="mb-3">
+    <a href="#" class="burger-btn d-block d-xl-none">
+      <i class="bi bi-justify fs-3"></i>
+    </a>
+  </header>
+  <div class="page-heading">
+    <div class="page-title mb-3 d-flex justify-content-between align-items-center">
+      <div>
+        <h3>Kho quà tặng</h3>
+        <p class="text-subtitle text-muted">Quản lý danh sách quà và tồn kho.</p>
+      </div>
+      <div>
+        <button
+          class="btn btn-primary btn-sm"
+          hx-get="{% url 'rewards:manage_items' %}?edit=new"
+          hx-target="#reward-item-modal-content"
+          hx-swap="innerHTML"
+          data-bs-toggle="modal"
+          data-bs-target="#reward-item-modal"
+        >
+          <i class="bi bi-plus-circle"></i> Thêm quà
+        </button>
+      </div>
+    </div>
+    <section class="section">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Danh sách quà</h6>
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            hx-get="{% url 'rewards:manage_items' %}"
+            hx-target="#items-table"
+            hx-swap="outerHTML"
+          >
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
+          </button>
+        </div>
+        <div class="card-body">
+          <div
+            id="items-table"
+            hx-get="{% url 'rewards:manage_items' %}"
+            hx-trigger="load, reload-items-table from:body, reload-catalog from:body"
+            hx-target="this"
+            hx-swap="outerHTML"
+          >
+            <div class="text-center text-muted py-4">
+              <span class="spinner-border spinner-border-sm"></span> Đang tải...
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal fade" id="reward-item-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Quà tặng</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="reward-item-modal-content">
+        <div class="text-center text-muted py-4">
+          <span class="spinner-border spinner-border-sm"></span> Đang tải...
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% block extra_js %}
+<script>
+  document.body.addEventListener("closeRewardItemModal", function () {
+    const el = document.getElementById("reward-item-modal");
+    if (el) {
+      const modal = bootstrap.Modal.getOrCreateInstance(el);
+      modal.hide();
+    }
+  });
+</script>
+{% endblock %}
+{% endblock %}

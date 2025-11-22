@@ -100,11 +100,9 @@
         {% if perms.class_sessions.change_classsession %}
         <button 
             type="button" 
-            class="btn btn-info"
-            hx-post="{% url 'classes:generate_sessions' pk=klass.pk %}"
-            hx-confirm="Thao tác này sẽ cập nhật các buổi học 'Đã lên kế hoạch' chưa diễn ra dựa trên lịch học hàng tuần. Các buổi học đã có sẽ được cập nhật, các buổi mới sẽ được thêm vào. Bạn có chắc chắn muốn tiếp tục?"
-            hx-target="body"
-            hx-swap="none"
+            class="btn btn-info generate-sessions-btn"
+            data-url="{% url 'classes:generate_sessions' pk=klass.pk %}"
+            data-csrf="{{ csrf_token }}"
         >
             <i class="fas fa-cogs me-1"></i> Tạo lại lịch học
         </button>
@@ -114,3 +112,30 @@
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
     </div>
 </div>
+
+<script>
+  (function() {
+    const btn = document.currentScript.previousElementSibling.querySelector('.generate-sessions-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function (e) {
+      const url = this.getAttribute('data-url');
+      const csrf = this.getAttribute('data-csrf');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Tạo lại lịch học?',
+        text: "Cập nhật các buổi 'Đã lên kế hoạch' chưa diễn ra theo lịch tuần. Bạn có chắc chắn muốn tiếp tục?",
+        showCancelButton: true,
+        confirmButtonText: 'Tiếp tục',
+        cancelButtonText: 'Hủy',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          htmx.ajax('POST', url, {
+            target: 'body',
+            swap: 'none',
+            headers: {'X-CSRFToken': csrf}
+          });
+        }
+      });
+    }, { once: true });
+  })();
+</script>
