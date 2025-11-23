@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Báo cáo học sinh</title>
+  <style>
+    body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 12px; color: #222; }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    h2 { font-size: 16px; margin: 0 0 8px; }
+    .meta { color: #666; font-size: 11px; margin-bottom: 10px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .row { display: flex; gap: 10px; }
+    .col { flex: 1; }
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 11px; }
+    .bg-green { background: #dff6e3; color: #0f5132; }
+    .bg-yellow { background: #fff3cd; color: #664d03; }
+    .bg-red { background: #fde2e1; color: #842029; }
+    .small { font-size: 11px; color: #666; }
+    .title { font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    th, td { border: 1px solid #ddd; padding: 6px; }
+    th { background: #f5f5f5; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Báo cáo học sinh</h1>
+  <div class="meta">
+    {% if filter_badges %}
+      Bộ lọc:
+      {% for badge in filter_badges %}
+        {{ badge.label }}: {{ badge.value }}{% if not forloop.last %}, {% endif %}
+      {% endfor %}
+    {% else %}
+      Tất cả dữ liệu.
+    {% endif %}
+  </div>
+
+  {% if rows %}
+    {% for row in rows %}
+      <div class="card">
+        <div class="row">
+          <div class="col">
+            <div class="title">{{ row.enrollment.student.get_full_name|default:row.enrollment.student.username }}</div>
+            <div class="small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.username }}</div>
+            {% if row.parent_names %}
+            <div class="small">Phụ huynh: {% for fn, ln in row.parent_names %}{{ ln }} {{ fn }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+            {% endif %}
+          </div>
+          <div class="col" style="text-align: right;">
+            <div class="title">{{ row.enrollment.klass.code }} - {{ row.enrollment.klass.name }}</div>
+            <div class="small">{{ row.enrollment.klass.center.name }} | GV: {{ row.enrollment.klass.main_teacher.get_full_name|default:"Chưa gán" }}</div>
+            <div class="small">Trạng thái: {{ row.enrollment.get_status_display }}</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Tổng buổi</th>
+              <th>Hoàn thành</th>
+              <th>Missed</th>
+              <th>Có mặt</th>
+              <th>Đi muộn</th>
+              <th>Vắng</th>
+              <th>Tiến độ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ row.total_sessions }}</td>
+              <td>{{ row.completed_sessions }}</td>
+              <td>{{ row.missed_sessions }}</td>
+              <td>{{ row.attendance.P }}</td>
+              <td>{{ row.attendance.L }}</td>
+              <td>{{ row.attendance.A }}</td>
+              <td>{{ row.progress_percent }}%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="small" style="margin-top:6px;">
+          Bắt đầu: {{ row.enrollment.start_date|date:"d/m/Y"|default:"-" }} | Dự kiến kết thúc: {{ row.enrollment.end_date|date:"d/m/Y"|default:"-" }} | Tổng buổi theo học phí: {{ row.sessions_total_from_fee }} | Còn lại: {{ row.sessions_remaining }}
+        </div>
+
+        <div class="row" style="margin-top: 8px;">
+          <div class="col">
+            <h2>Đánh giá gần nhất</h2>
+            {% if row.assessments %}
+              <ul class="small">
+                {% for a in row.assessments %}
+                  <li>Buổi {{ a.session.index }} ({{ a.session.date|date:"d/m/Y" }}): Điểm {{ a.score|default:"-" }}, Nhận xét: {{ a.remark|default:"-" }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="small">Chưa có đánh giá.</div>
+            {% endif %}
+          </div>
+          <div class="col">
+            <h2>Sản phẩm / hình ảnh</h2>
+            {% if row.products %}
+              <ul class="small">
+                {% for p in row.products %}
+                  <li>{{ p.title }} - Buổi {{ p.session.index }} ({{ p.created_at|date:"d/m/Y" }}){% if p.description %}: {{ p.description|truncatechars:80 }}{% endif %}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="small">Chưa có sản phẩm.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if row.sessions_detail %}
+        <h2 style="margin-top:8px;">Tiến trình buổi học</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Buổi</th>
+              <th>Ngày</th>
+              <th>Trạng thái</th>
+              <th>Điểm danh</th>
+              <th>Đánh giá</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in row.sessions_detail %}
+            <tr>
+              <td>{{ s.index }}</td>
+              <td>{{ s.date|date:"d/m/Y"|default:"-" }}</td>
+              <td>{{ s.status_label }}</td>
+              <td>
+                {% if s.attendance == "P" %}Có mặt{% elif s.attendance == "A" %}Vắng{% elif s.attendance == "L" %}Muộn{% else %}-{% endif %}
+              </td>
+              <td>
+                {% if s.assessment %}
+                  Điểm: {{ s.assessment.score|default:"-" }}, {{ s.assessment.remark|default:"-" }}
+                {% else %}
+                  Chưa có
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="small">Hiển thị tối đa 12 buổi theo khoảng lọc.</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>Không có dữ liệu báo cáo.</p>
+  {% endif %}
+</body>
+</html>

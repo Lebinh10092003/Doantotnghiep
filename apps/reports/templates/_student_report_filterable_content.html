@@ -1,0 +1,148 @@
+<div x-data="{showFilters:false, modalTitle:'Bộ lọc'}">
+  {% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div class="dataTable-dropdown d-flex align-items-center gap-2">
+      <select name="per_page"
+              class="dataTable-selector form-select form-select-sm w-auto"
+              hx-get="{{ request.path }}"
+              hx-target="#filterable-content"
+              hx-swap="innerHTML"
+              hx-push-url="true"
+              hx-include="#filter-form"
+              hx-trigger="change"
+              hx-vals='{"page": "1"}'>
+        <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+      </select>
+      <label class="mb-0">mục trên trang</label>
+    </div>
+  </div>
+
+  <section class="section">
+    {% if rows %}
+      <div class="card border-0 shadow-sm rounded-4 mb-3">
+        <div class="card-header bg-white border-0">
+          <h5 class="mb-0">Danh sách học viên</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="dataTable-container table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Học viên</th>
+                  <th>Lớp</th>
+                  <th>Trung tâm</th>
+                  <th>Trạng thái</th>
+                  <th>Tiến độ</th>
+                  <th class="text-end">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in rows %}
+                <tr>
+                  <td>
+                    <div class="fw-semibold">{{ row.enrollment.student.get_full_name|default:row.enrollment.student.username }}</div>
+                    <div class="text-muted small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.username }}</div>
+                  </td>
+                  <td>
+                    <div class="fw-semibold">{{ row.enrollment.klass.code }}</div>
+                    <div class="text-muted small">{{ row.enrollment.klass.name }}</div>
+                  </td>
+                  <td class="text-muted">{{ row.enrollment.klass.center.name }}</td>
+                  <td>
+                    <span class="badge bg-secondary-subtle text-secondary">{{ row.enrollment.get_status_display }}</span>
+                  </td>
+                  <td>
+                    <div class="fw-semibold">{{ row.completed_sessions }}/{{ row.total_sessions }}</div>
+                    <div class="text-muted small">{{ row.progress_percent }}%</div>
+                  </td>
+                  <td class="text-end">
+                    <a class="btn btn-sm btn-outline-primary rounded-pill"
+                       href="{% url 'reports:student_report_detail' row.enrollment.id %}{% if current_query_params %}?{{ current_query_params }}{% endif %}">
+                      <i class="bi bi-eye"></i> Xem chi tiết
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-footer bg-white border-0">
+          <div class="dataTable-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+            {% if page_obj %}
+            <div class="dataTable-info mb-0">
+              Hiển thị {{ page_obj.start_index }} đến {{ page_obj.end_index }} trong tổng số {{ paginator.count }} mục
+            </div>
+            {% endif %}
+            {% if page_obj and page_obj.has_other_pages %}
+            <nav class="dataTable-pagination">
+              <ul class="pagination mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link"
+                     hx-get="{{ request.path }}?page=1&{{ current_query_params }}"
+                     hx-target="#filterable-content"
+                     hx-swap="innerHTML"
+                     hx-push-url="true">Đầu</a>
+                </li>
+                {% endif %}
+                {% for i in paginator.page_range %}
+                  {% if i >= page_obj.number|add:'-2' and i <= page_obj.number|add:'2' %}
+                    <li class="page-item {% if page_obj.number == i %}active{% endif %}">
+                      <a class="page-link"
+                         hx-get="{{ request.path }}?page={{ i }}&{{ current_query_params }}"
+                         hx-target="#filterable-content"
+                         hx-swap="innerHTML"
+                         hx-push-url="true">{{ i }}</a>
+                    </li>
+                  {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link"
+                     hx-get="{{ request.path }}?page={{ paginator.num_pages }}&{{ current_query_params }}"
+                     hx-target="#filterable-content"
+                     hx-swap="innerHTML"
+                     hx-push-url="true">Cuối</a>
+                </li>
+                {% endif %}
+              </ul>
+            </nav>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-warning">Không có dữ liệu báo cáo theo bộ lọc hiện tại.</div>
+    {% endif %}
+
+  </section>
+
+  <div class="modal fade" id="filter-modal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterModalLabel" x-text="modalTitle">Bộ lọc</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="filter-modal-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.detail && evt.detail.target && evt.detail.target.id === 'filter-modal-content') {
+      const modalEl = document.getElementById('filter-modal');
+      if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    }
+  });
+</script>

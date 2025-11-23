@@ -349,13 +349,19 @@
 
                             {# BÁO CÁO GHI DANH: cần quyền xem báo cáo (custom permission trong app reports) #}
                             {% if perms.reports.view_enrollment_report %}
-                            <li class="submenu-item {% if request.resolver_match.app_name == 'reports' %}active{% endif %}">
+                            <li class="submenu-item {% if request.resolver_match.app_name == 'reports' and request.resolver_match.view_name == 'reports:enrollment_summary' %}active{% endif %}">
                                 <a href="{% url 'reports:enrollment_summary' %}" class="submenu-link">
                                     <i class="bi bi-graph-up"></i>
                                     <span>Báo cáo ghi danh</span>
                                 </a>
                             </li>
                             {% endif %}
+                            <li class="submenu-item {% if request.resolver_match.app_name == 'reports' and request.resolver_match.view_name == 'reports:student_report' %}active{% endif %}">
+                                <a href="{% url 'reports:student_report' %}" class="submenu-link">
+                                    <i class="bi bi-person-badge"></i>
+                                    <span>Báo cáo học sinh</span>
+                                </a>
+                            </li>
 
                         </ul>
                     </li>

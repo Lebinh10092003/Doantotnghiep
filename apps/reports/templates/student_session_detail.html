@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Chi tiết buổi học{% endblock %}
+
+{% block content %}
+<div id="main">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-12 col-md-8">
+          <h3 class="mb-1">Kết quả buổi học</h3>
+          <p class="text-muted mb-0">Thông tin điểm danh, đánh giá và sản phẩm của học viên trong buổi này.</p>
+        </div>
+        <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+          <a href="{{ back_url }}" class="btn btn-outline-secondary btn-sm rounded-pill">
+            <i class="bi bi-arrow-left"></i> Quay lại báo cáo học sinh
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+          <div>
+            <div class="fw-semibold">Học viên: {{ enrollment.student.get_full_name|default:enrollment.student.username }}</div>
+            <div class="text-muted small">Mã: {{ enrollment.student.user_code|default:enrollment.student.username }}</div>
+          </div>
+          <div class="text-end">
+            <div class="fw-semibold">{{ enrollment.klass.code }} - {{ enrollment.klass.name }}</div>
+            <div class="text-muted small">{{ enrollment.klass.center.name }} | GV: {{ enrollment.klass.main_teacher.get_full_name|default:"Chưa gán" }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-lg-4">
+            <div class="small text-muted mb-1">Buổi</div>
+            <div class="fw-semibold h5 mb-1">Buổi {{ session.index }}</div>
+            <div class="text-muted small">Ngày: {{ session.date|date:"d/m/Y"|default:"-" }}</div>
+            <div class="text-muted small">Trạng thái buổi: {{ session.get_status_display }}</div>
+          </div>
+          <div class="col-lg-4">
+            <div class="fw-semibold mb-1">Điểm danh</div>
+            {% if attendance %}
+              <span class="badge {% if attendance.status == 'P' %}bg-success-subtle text-success{% elif attendance.status == 'A' %}bg-danger-subtle text-danger{% elif attendance.status == 'L' %}bg-warning-subtle text-warning{% else %}bg-secondary-subtle text-secondary{% endif %}">
+                {% if attendance.status == "P" %}Có mặt{% elif attendance.status == "A" %}Vắng{% elif attendance.status == "L" %}Muộn{% else %}Chưa điểm danh{% endif %}
+              </span>
+              {% if attendance.note %}
+                <div class="text-muted small mt-1">Ghi chú: {{ attendance.note }}</div>
+              {% endif %}
+            {% else %}
+              <div class="text-muted small">Chưa điểm danh.</div>
+            {% endif %}
+          </div>
+          <div class="col-lg-4">
+            <div class="fw-semibold mb-1">Đánh giá</div>
+            {% if assessment %}
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary">Điểm: {{ assessment.score|default:"-" }}</span>
+              </div>
+              <div class="text-muted small">Nhận xét: {{ assessment.remark|default:"-" }}</div>
+            {% else %}
+              <div class="text-muted small">Chưa có đánh giá.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div class="fw-semibold mb-2">Sản phẩm / hình ảnh</div>
+          {% if products %}
+            <div class="row g-3">
+              {% for p in products %}
+              <div class="col-md-6">
+                <div class="border rounded-3 p-3 h-100">
+                  <div class="fw-semibold">{{ p.title }}</div>
+                  <div class="text-muted small">{{ p.created_at|date:"d/m/Y" }}</div>
+                  {% if p.image %}
+                    <div class="mt-2">
+                      <img src="{{ p.image.url }}" alt="{{ p.title }}" class="img-fluid rounded" style="max-height: 220px;">
+                    </div>
+                  {% endif %}
+                  {% if p.description %}<div class="text-muted small mt-1">{{ p.description }}</div>{% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted small">Chưa có sản phẩm.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
