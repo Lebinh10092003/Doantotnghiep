@@ -73,15 +73,19 @@
             {# --- THANH TRÊN GIỐNG STYLE FILTER Ở QUẢN LÝ LỚP --- #}
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div class="d-flex align-items-center gap-2">
-                <button type="button"
-                        class="btn btn-outline-secondary btn-sm"
-                        @click="showFilters = !showFilters">
-                  <i class="bi bi-funnel-fill"></i>
-                  <span x-text="showFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'">Bộ lọc</span>
-                </button>
-                <span class="text-muted small d-none d-md-inline">
-                  Điều chỉnh ngày làm mốc hoặc chọn giáo viên để thay đổi lịch hiển thị.
-                </span>
+                {% if filter_enabled %}
+                  <button type="button"
+                          class="btn btn-outline-secondary btn-sm"
+                          @click="showFilters = !showFilters">
+                    <i class="bi bi-funnel-fill"></i>
+                    <span x-text="showFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'">Bộ lọc</span>
+                  </button>
+                  <span class="text-muted small d-none d-md-inline">
+                    Điều chỉnh ngày làm mốc hoặc chọn giáo viên để thay đổi lịch hiển thị.
+                  </span>
+                {% else %}
+                  <span class="text-muted small">Lịch dạy theo tuần của bạn.</span>
+                {% endif %}
               </div>
 
               <div class="d-flex flex-wrap gap-2">
@@ -89,17 +93,17 @@
                 <div class="btn-group btn-group-sm" role="group" aria-label="Chuyển nhanh tuần">
                   <button type="button"
                           class="btn btn-outline-secondary"
-                          id="prev-week">
+                          data-week-nav="prev">
                     <i class="bi bi-chevron-left"></i>
                   </button>
                   <button type="button"
                           class="btn btn-outline-secondary"
-                          id="this-week">
+                          data-week-nav="today">
                     Hôm nay
                   </button>
                   <button type="button"
                           class="btn btn-outline-secondary"
-                          id="next-week">
+                          data-week-nav="next">
                     <i class="bi bi-chevron-right"></i>
                   </button>
                 </div>
@@ -108,101 +112,107 @@
 
             {# --- HÀNG BADGE "ĐANG LỌC THEO" (THAM KHẢO TỪ FILTER LỚP HỌC) --- #}
             <div class="d-flex flex-wrap align-items-center gap-2 mb-3 small">
-              <span class="text-muted">Đang xem:</span>
+              {% if filter_enabled %}
+                <span class="text-muted">Đang xem:</span>
 
-              <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
-                <span>
-                  <strong>Tuần:</strong>
-                  {{ start|date:"d/m" }} – {{ end|date:"d/m" }}
-                </span>
-              </span>
-
-              {% if teacher %}
                 <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
                   <span>
-                    <strong>Giáo viên:</strong>
-                    {{ teacher.get_full_name|default:teacher.username }}
+                    <strong>Tuần:</strong>
+                    {{ start|date:"d/m" }} – {{ end|date:"d/m" }}
                   </span>
                 </span>
-              {% endif %}
 
-              {% if date %}
-                <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
-                  <span>
-                    <strong>Mốc:</strong> {{ date|date:"d/m/Y" }}
+                {% if teacher %}
+                  <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
+                    <span>
+                      <strong>Giáo viên:</strong>
+                      {{ teacher.get_full_name|default:teacher.username }}
+                    </span>
                   </span>
-                </span>
-              {% endif %}
+                {% endif %}
 
-              <a href="{% url 'class_sessions:teaching_schedule' %}"
-                 class="btn btn-sm btn-link text-danger text-decoration-none px-1">
-                <i class="bi bi-x-lg"></i> Xóa lọc
-              </a>
+                {% if date %}
+                  <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
+                    <span>
+                      <strong>Mốc:</strong> {{ date|date:"d/m/Y" }}
+                    </span>
+                  </span>
+                {% endif %}
+
+                <a href="{% url 'class_sessions:teaching_schedule' %}"
+                   class="btn btn-sm btn-link text-danger text-decoration-none px-1">
+                  <i class="bi bi-x-lg"></i> Xóa lọc
+                </a>
+              {% else %}
+                <span class="text-muted">Lịch dạy theo tuần của bạn.</span>
+              {% endif %}
             </div>
 
             {# --- KHỐI FILTER CHI TIẾT (GIỐNG KHUNG XÁM NHẠT Ở QUẢN LÝ LỚP) --- #}
-            <div x-show="showFilters"
-                 x-transition
-                 class="card card-body bg-light border mb-3"
-                 style="display: none;">
-              <h6 class="mb-3 d-flex align-items-center gap-2">
-                <i class="bi bi-sliders"></i>
-                Tùy chọn lọc lịch dạy
-              </h6>
+            {% if filter_enabled %}
+              <div x-show="showFilters"
+                   x-transition
+                   class="card card-body bg-light border mb-3"
+                   style="display: none;">
+                <h6 class="mb-3 d-flex align-items-center gap-2">
+                  <i class="bi bi-sliders"></i>
+                  Tùy chọn lọc lịch dạy
+                </h6>
 
-              <form id="teaching-schedule-filters"
-                    method="get"
-                    class="row g-3"
-                    hx-get="{% url 'class_sessions:teaching_schedule' %}"
-                    hx-target="#teaching-schedule-table"
-                    hx-swap="innerHTML">
+                <form id="teaching-schedule-filters"
+                      method="get"
+                      class="row g-3"
+                      hx-get="{% url 'class_sessions:teaching_schedule' %}"
+                      hx-target="#teaching-schedule-table"
+                      hx-swap="innerHTML">
 
-                <div class="col-12 col-md-4">
-                  <label class="form-label small mb-1">Ngày làm mốc</label>
-                  <div class="input-group input-group-sm">
-                    <span class="input-group-text border-end-0">
-                      <i class="bi bi-calendar-event"></i>
-                    </span>
-                    <input type="date"
-                           class="form-control border-start-0"
-                           name="date"
-                           value="{{ date|date:'Y-m-d' }}">
-                  </div>
-                </div>
-
-                {% if teachers %}
                   <div class="col-12 col-md-4">
-                    <label class="form-label small mb-1">Giáo viên</label>
+                    <label class="form-label small mb-1">Ngày làm mốc</label>
                     <div class="input-group input-group-sm">
                       <span class="input-group-text border-end-0">
-                        <i class="bi bi-person-badge"></i>
+                        <i class="bi bi-calendar-event"></i>
                       </span>
-                      <select name="teacher"
-                              class="form-select border-start-0">
-                        {% for t in teachers %}
-                          <option value="{{ t.id }}"
-                                  {% if teacher and teacher.id == t.id %}selected{% endif %}>
-                            {{ t.get_full_name|default:t.username }}
-                          </option>
-                        {% endfor %}
-                      </select>
+                      <input type="date"
+                             class="form-control border-start-0"
+                             name="date"
+                             value="{{ date|date:'Y-m-d' }}">
                     </div>
                   </div>
-                {% endif %}
 
-                <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end gap-2">
-                  <a href="{% url 'class_sessions:teaching_schedule' %}"
-                     class="btn btn-sm btn-light-secondary">
-                    Xóa lọc
-                  </a>
-                  <button type="submit"
-                          class="btn btn-sm btn-primary d-flex align-items-center gap-1">
-                    <i class="bi bi-check2"></i>
-                    Áp dụng
-                  </button>
-                </div>
-              </form>
-            </div>
+                  {% if teachers %}
+                    <div class="col-12 col-md-4">
+                      <label class="form-label small mb-1">Giáo viên</label>
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text border-end-0">
+                          <i class="bi bi-person-badge"></i>
+                        </span>
+                        <select name="teacher"
+                                class="form-select border-start-0">
+                          {% for t in teachers %}
+                            <option value="{{ t.id }}"
+                                    {% if teacher and teacher.id == t.id %}selected{% endif %}>
+                              {{ t.get_full_name|default:t.username }}
+                            </option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                    </div>
+                  {% endif %}
+
+                  <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end gap-2">
+                    <a href="{% url 'class_sessions:teaching_schedule' %}"
+                       class="btn btn-sm btn-light-secondary">
+                      Xóa lọc
+                    </a>
+                    <button type="submit"
+                            class="btn btn-sm btn-primary d-flex align-items-center gap-1">
+                      <i class="bi bi-check2"></i>
+                      Áp dụng
+                    </button>
+                  </div>
+                </form>
+              </div>
+            {% endif %}
 
             {# --- BẢNG LỊCH DẠY --- #}
             <div id="teaching-schedule-table" class="table-responsive">

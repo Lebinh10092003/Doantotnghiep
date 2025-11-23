@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db.models import Count, Q
-from datetime import date, timedelta # Thêm import
+from datetime import date, timedelta 
 
 # Domain models
 try:
@@ -20,9 +20,42 @@ try:
     from apps.class_sessions.models import ClassSession
 except Exception:
     ClassSession = None
+try:
+    from apps.students.models import StudentProduct
+except Exception:
+    StudentProduct = None
    
 def home(request):
-    return render(request, "home.html")
+    home_products = []
+    home_page_obj = None
+    home_paginator = None
+    if StudentProduct:
+        products_qs = StudentProduct.objects.select_related(
+            "student",
+            "session",
+            "session__klass",
+            "session__klass__subject",
+        ).order_by("-created_at")
+        from django.core.paginator import Paginator, EmptyPage
+
+        paginator = Paginator(products_qs, 3)
+        page_number = request.GET.get("products_page", 1)
+        try:
+            home_page_obj = paginator.page(page_number)
+        except EmptyPage:
+            home_page_obj = paginator.page(1)
+        home_paginator = paginator
+        home_products = home_page_obj.object_list
+
+    return render(
+        request,
+        "home.html",
+        {
+            "home_products": home_products,
+            "home_page_obj": home_page_obj,
+            "home_paginator": home_paginator,
+        },
+    )
 
 
 
@@ -37,7 +70,6 @@ def dashboard(request):
 
     is_admin = user.is_superuser or role == "ADMIN" or in_group("Admin") or in_group("ADMIN")
     is_center_manager = role == "CENTER_MANAGER" or in_group("Center Manager") or in_group("CENTER_MANAGER")
-    # --- YÊU CẦU 2: Thêm logic phát hiện GV/TG ---
     is_teacher = role == "TEACHER" or in_group("Teacher") or in_group("TEACHER")
     is_assistant = role == "ASSISTANT" or in_group("Assistant") or in_group("ASSISTANT")
 

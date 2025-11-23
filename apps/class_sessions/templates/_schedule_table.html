@@ -60,47 +60,49 @@
               </td>
               <td class="text-end text-nowrap">
                 <div class="d-inline-flex gap-1">
-                  {% if perms.class_sessions.view_classsession %}
-                  <button type="button" class="btn btn-sm btn-outline-secondary"
-                          hx-get="{% url 'class_sessions:session_detail' s.pk %}"
-                          hx-target="#sessions-modal-content"
-                          data-bs-toggle="modal"
-                          data-bs-target="#sessions-modal"
-                          @click="modalTitle = 'Chi tiết Buổi: {{ s.klass.name|escapejs }} - Buổi {{ s.index }}'"
-                          title="Chi tiết buổi">
-                    <i class="bi bi-eye"></i>
-                  </button>
+                  {% if perms.class_sessions.view_classsession or user.id == s.klass.main_teacher_id or user.id == s.teacher_override_id or user in s.assistants.all or user in s.klass.assistants.all %}
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                            hx-get="{% url 'class_sessions:session_detail' s.pk %}"
+                            hx-target="#sessions-modal-content"
+                            data-bs-toggle="modal"
+                            data-bs-target="#sessions-modal"
+                            @click="modalTitle = 'Chi tiết Buổi: {{ s.klass.name|escapejs }} - Buổi {{ s.index }}'"
+                            title="Chi tiết buổi">
+                      <i class="bi bi-eye"></i>
+                    </button>
                   {% endif %}
 
-                  {% if perms.classes.view_class and not user|in_group:'student' %}
-                  <button type="button" class="btn btn-sm btn-outline-primary"
-                          hx-get="{% url 'classes:class_detail' s.klass.pk %}"
-                          hx-target="#sessions-modal-content"
-                          data-bs-toggle="modal"
-                          data-bs-target="#sessions-modal"
-                          @click="modalTitle = 'Chi tiết Lớp: {{ s.klass.name|escapejs }}'"
-                          title="Chi tiết lớp">
-                    <i class="bi bi-journal-bookmark"></i>
-                  </button>
-                  {% endif %}
+                  {% if not user|in_group:'student' or not user|in_group:'parent' %}
+                    {% if perms.classes.view_class or user.id == s.klass.main_teacher_id or user in s.klass.assistants.all %}
+                      <button type="button" class="btn btn-sm btn-outline-primary"
+                              hx-get="{% url 'classes:class_detail' s.klass.pk %}"
+                              hx-target="#sessions-modal-content"
+                              data-bs-toggle="modal"
+                              data-bs-target="#sessions-modal"
+                              @click="modalTitle = 'Chi tiết Lớp: {{ s.klass.name|escapejs }}'"
+                              title="Chi tiết lớp">
+                        <i class="bi bi-journal-bookmark"></i>
+                      </button>
+                    {% endif %}
 
-                  {% if perms.class_sessions.view_classsession and not user|in_group:'student' %}
-                  <a class="btn btn-sm btn-outline-dark" href="{% url 'class_sessions:session_detail' s.pk %}"
-                     title="Mở trang chi tiết">
-                    <i class="bi bi-box-arrow-up-right"></i>
-                  </a>
+                    {% if perms.class_sessions.view_classsession or user.id == s.klass.main_teacher_id or user.id == s.teacher_override_id or user in s.assistants.all or user in s.klass.assistants.all %}
+                      <a class="btn btn-sm btn-outline-dark" href="{% url 'class_sessions:session_detail' s.pk %}"
+                         title="Mở trang chi tiết">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                      </a>
+                    {% endif %}
                   {% endif %}
                   
                   {% if s.lesson and perms.curriculum.view_lesson %}
-                  <button type="button" class="btn btn-sm btn-outline-success"
-                          hx-get="{% url 'curriculum:lesson_detail' s.lesson.id %}"
-                          hx-target="#curriculum-modal-content"
-                          data-bs-toggle="modal"
-                          data-bs-target="#sessions-modal"
-                          @click="modalTitle = 'Giáo án: {{ s.lesson.title|escapejs }}'"
-                          title="Giáo án / Bài học">
-                    <i class="bi bi-journal-text"></i>
-                  </button>
+                    <button type="button" class="btn btn-sm btn-outline-success"
+                            hx-get="{% url 'curriculum:lesson_detail' s.lesson.id %}"
+                            hx-target="#curriculum-modal-content"
+                            data-bs-toggle="modal"
+                            data-bs-target="#sessions-modal"
+                            @click="modalTitle = 'Giáo án: {{ s.lesson.title|escapejs }}'"
+                            title="Giáo án / Bài học">
+                      <i class="bi bi-journal-text"></i>
+                    </button>
                   {% endif %}
                 </div>
               </td>

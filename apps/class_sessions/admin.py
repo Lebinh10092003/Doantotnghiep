@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ClassSession
+from .models import ClassSession, ClassSessionPhoto
 
 @admin.register(ClassSession)
 class ClassSessionAdmin(admin.ModelAdmin):
@@ -19,3 +19,11 @@ class ClassSessionAdmin(admin.ModelAdmin):
     autocomplete_fields = ("lesson", "teacher_override", "assistants", "room_override", "klass")
     filter_horizontal = ("assistants",)
     ordering = ("-date", "start_time") 
+
+
+@admin.register(ClassSessionPhoto)
+class ClassSessionPhotoAdmin(admin.ModelAdmin):
+    list_display = ("session", "caption", "uploaded_by", "created_at")
+    list_filter = ("session__klass__center", "session__klass", "session__date")
+    search_fields = ("caption", "session__klass__name", "session__klass__code")
+    autocomplete_fields = ("session", "uploaded_by")

@@ -123,6 +123,27 @@
               {% else %}
                 <div class="text-muted small">Chưa có đánh giá.</div>
               {% endif %}
+              <div class="fw-semibold mt-3 mb-2">Ảnh buổi học</div>
+              {% if row.session_photos %}
+                <div class="row g-2">
+                  {% for photo in row.session_photos %}
+                  <div class="col-6 col-md-4">
+                    <div class="border rounded-3 p-2 h-100">
+                      <div class="text-muted small d-flex justify-content-between">
+                        <span>Buổi {{ photo.session.index }}</span>
+                        <span>{{ photo.created_at|date:"d/m" }}</span>
+                      </div>
+                      <div class="mt-1">
+                        <img src="{{ photo.image.url }}" alt="{{ photo.caption|default:'Ảnh buổi học' }}" class="img-fluid rounded" style="max-height: 120px; width: 100%; object-fit: cover;">
+                      </div>
+                      {% if photo.caption %}<div class="text-muted small mt-1">{{ photo.caption|truncatechars:80 }}</div>{% endif %}
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="text-muted small">Chưa có ảnh buổi học.</div>
+              {% endif %}
               <div class="fw-semibold mt-3 mb-2">Sản phẩm / hình ảnh</div>
               {% if row.products %}
                 <ul class="list-unstyled mb-0 small">
@@ -204,8 +225,13 @@
                         {% endif %}
                       </td>
                       <td>
-                        {% if s.products %}
-                          <span class="badge bg-primary-subtle text-primary">{{ s.products|length }} sản phẩm</span>
+                        {% if s.photos or s.products %}
+                          {% if s.photos %}
+                            <span class="badge bg-info-subtle text-info">{{ s.photos|length }} ảnh buổi</span>
+                          {% endif %}
+                          {% if s.products %}
+                            <span class="badge bg-primary-subtle text-primary">{{ s.products|length }} sản phẩm</span>
+                          {% endif %}
                         {% else %}
                           <span class="text-muted small">Không</span>
                         {% endif %}

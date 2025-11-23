@@ -63,6 +63,206 @@
 
   <p><strong>Ghi chú:</strong> {{ session.klass.note|default:"Không có ghi chú." }}</p>
 
+  <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+    <h6 class="mb-0">Danh sách học sinh, điểm danh & đánh giá</h6>
+    {% if can_edit_session_records %}
+    <div class="d-flex gap-2">
+      <button type="button"
+              class="btn btn-sm btn-outline-primary"
+              data-bs-toggle="modal"
+              data-bs-target="#attendance-modal">
+        <i class="bi bi-clipboard-check"></i> Mở form điểm danh
+      </button>
+      <button type="button"
+              class="btn btn-sm btn-outline-secondary"
+              data-bs-toggle="modal"
+              data-bs-target="#session-photos-modal">
+        <i class="bi bi-camera"></i> Ảnh buổi học
+      </button>
+    </div>
+    {% endif %}
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Học sinh</th>
+          <th>Điểm danh</th>
+          <th>Ghi chú</th>
+          <th>Điểm</th>
+          <th>Nhận xét</th>
+          {% if can_edit_session_records %}
+          <th class="text-end">Hành động</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for data in student_data_list %}
+        <tr id="student-row-{{ data.student.id }}">
+          <td class="fw-semibold">{{ data.student.get_full_name|default:data.student.username }}</td>
+          <td>
+            {% if data.attendance %}
+              {% if data.attendance.status == "P" %}
+                <span class="badge bg-success">Có mặt</span>
+              {% elif data.attendance.status == "A" %}
+                <span class="badge bg-danger">Vắng</span>
+              {% elif data.attendance.status == "L" %}
+                <span class="badge bg-warning text-dark">Muộn</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ data.attendance.get_status_display }}</span>
+              {% endif %}
+            {% else %}
+              <span class="badge bg-secondary">Chưa điểm danh</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if data.attendance and data.attendance.note %}
+              <span class="text-body">{{ data.attendance.note }}</span>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if data.assessment and data.assessment.score is not None %}
+              {{ data.assessment.score }}
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if data.assessment and data.assessment.remark %}
+              <span class="text-body">{{ data.assessment.remark }}</span>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          {% if can_edit_session_records %}
+          <td class="text-end text-nowrap">
+            <button type="button" 
+                    class="btn btn-sm btn-primary"
+                    hx-get="{% url 'class_sessions:student_attendance_assessment_modal' session.id data.student.id %}?_={{ data.student.id }}-{% now 'U' %}"
+                    hx-target="#attendance-modal-content"
+                    hx-on::after-request="if(event.detail.successful) bootstrap.Modal.getOrCreateInstance(document.getElementById('attendance-modal')).show()"
+                    title="Điểm danh &amp; đánh giá cho học sinh này">
+              <i class="bi bi-clipboard-check"></i>
+            </button>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{% if can_edit_session_records %}6{% else %}5{% endif %}" class="text-center text-muted">Không có học sinh trong buổi này.</td>
+        </tr>
+    {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% if not as_page %}
+{# Fallback modals when render trong popup #}
+<div class="modal fade" id="attendance-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Điểm danh &amp; Đánh giá</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="attendance-modal-content">
+        <div class="modal-body text-center p-5">
+          <span class="spinner-border" role="status"></span>
+          <p class="mt-2">Đang tải...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="session-photos-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post"
+            enctype="multipart/form-data"
+            action="{% url 'class_sessions:session_photos_upload' session.pk %}"
+            hx-post="{% url 'class_sessions:session_photos_upload' session.pk %}"
+            hx-encoding="multipart/form-data"
+            hx-swap="none"
+            hx-indicator="#global-loading-overlay"
+            id="session-photos-form">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2">
+            <i class="bi bi-camera"></i> Tải ảnh buổi học
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Chọn ảnh (có thể chọn nhiều)</label>
+            <input type="file"
+                   class="form-control"
+                   name="images"
+                   id="session-photo-input"
+                   accept="image/*"
+                   multiple>
+            <div class="form-text">Hỗ trợ chọn nhiều ảnh hoặc chụp trực tiếp từ điện thoại.</div>
+          </div>
+          <div id="session-photo-preview" class="row g-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-upload"></i> Tải lên
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const input = document.getElementById('session-photo-input');
+    const preview = document.getElementById('session-photo-preview');
+    if (!input || !preview) return;
+
+    function renderPreview(files) {
+      preview.innerHTML = '';
+      Array.from(files).forEach((file, idx) => {
+        const col = document.createElement('div');
+        col.className = 'col-6 col-md-4 col-lg-3';
+        const wrap = document.createElement('div');
+        wrap.className = 'position-relative border rounded-3 p-1';
+        const img = document.createElement('img');
+        img.className = 'img-fluid rounded';
+        img.style.maxHeight = '140px';
+        img.style.objectFit = 'cover';
+        const reader = new FileReader();
+        reader.onload = e => img.src = e.target.result;
+        reader.readAsDataURL(file);
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-1 rounded-circle';
+        remove.innerHTML = '<i class="bi bi-x"></i>';
+        remove.addEventListener('click', () => {
+          const dt = new DataTransfer();
+          Array.from(input.files).forEach((f, i) => { if (i !== idx) dt.items.add(f); });
+          input.files = dt.files;
+          renderPreview(dt.files);
+        });
+
+        wrap.appendChild(remove);
+        wrap.appendChild(img);
+        col.appendChild(wrap);
+        preview.appendChild(col);
+      });
+    }
+
+    input.addEventListener('change', () => renderPreview(input.files));
+  })();
+</script>
+{% endif %}
+
 {% if as_page %}
   <div class="mt-3 d-flex justify-content-between">
     <div>

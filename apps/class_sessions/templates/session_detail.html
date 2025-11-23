@@ -183,11 +183,12 @@
       </div>
       {% endif %}
 
-      {% if perms.attendance.change_attendance or perms.assessments.change_assessment %}
       <div class="card border-primary">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
           <h5 class="card-title mb-0">Điểm danh &amp; Đánh giá</h5>
-          <span class="small">Quản lý điểm danh và đánh giá theo từng học sinh</span>
+          {% if perms.attendance.change_attendance or perms.assessments.change_assessment %}
+            <span class="small">Quản lý điểm danh và đánh giá theo từng học sinh</span>
+          {% endif %}
         </div>
         <div class="card-body">
           <div class="dataTable-container table-responsive">
@@ -215,7 +216,55 @@
           </div>
         </div>
       </div>
-      {% endif %}
+
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Ảnh buổi học</h6>
+          {% if can_edit_session_records %}
+          <button class="btn btn-sm btn-outline-secondary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#session-photos-modal">
+            <i class="bi bi-upload"></i> Tải ảnh
+          </button>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          {% if photos %}
+            <div class="row g-3">
+              {% for photo in photos %}
+              <div class="col-6 col-md-3 col-lg-2">
+                <div class="border rounded-3 p-1 h-100">
+                  <div class="text-muted small d-flex justify-content-between">
+                    <span>#{{ forloop.counter }}</span>
+                    <span>{{ photo.created_at|date:"d/m" }}</span>
+                  </div>
+                  <img src="{{ photo.image.url }}" alt="Ảnh buổi học" class="img-fluid rounded" style="max-height: 160px; width: 100%; object-fit: cover;">
+                  {% if photo.caption %}
+                  <div class="text-muted small mt-1">{{ photo.caption }}</div>
+                  {% endif %}
+                  {% if can_edit_session_records %}
+                  <div class="mt-1 d-flex justify-content-end">
+                    <form method="post"
+                          action="{% url 'class_sessions:session_photo_delete' session.pk photo.pk %}"
+                          hx-post="{% url 'class_sessions:session_photo_delete' session.pk photo.pk %}"
+                          hx-swap="none"
+                          class="photo-delete-form">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted small">Chưa có ảnh buổi học.</div>
+          {% endif %}
+        </div>
+      </div>
     </section>
   </div>
 </div>
@@ -250,4 +299,48 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" id="session-photos-modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post"
+            enctype="multipart/form-data"
+            action="{% url 'class_sessions:session_photos_upload' session.pk %}"
+            hx-post="{% url 'class_sessions:session_photos_upload' session.pk %}"
+            hx-encoding="multipart/form-data"
+            hx-swap="none"
+            hx-indicator="#global-loading-overlay"
+            id="session-photos-form">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-2">
+            <i class="bi bi-camera"></i> Tải ảnh buổi học
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Chọn ảnh (có thể chọn nhiều)</label>
+            <input type="file"
+                   class="form-control"
+                   name="images"
+                   id="session-photo-input"
+                   accept="image/*"
+                   multiple>
+            <div class="form-text">Hỗ trợ chọn nhiều ảnh hoặc chụp trực tiếp từ điện thoại.</div>
+          </div>
+          <div id="session-photo-preview" class="row g-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-upload"></i> Tải lên
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
+

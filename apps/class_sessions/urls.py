@@ -8,10 +8,14 @@ urlpatterns = [
     # Schedules
     path("calendar/my/", views.my_schedule_view, name="my_schedule"),
     path("calendar/teaching/", views.teaching_schedule_view, name="teaching_schedule"),
+    path("calendar/teaching/my/", views.teaching_schedule_my_view, name="teaching_schedule_my"),
     path("calendar/teaching/classes/", views.teaching_classes_view, name="teaching_classes"),
+    path("calendar/teaching/classes/my/", views.teaching_classes_my_view, name="teaching_classes_my"),
     path("add/", views.session_create_view, name="session_add"),
     path("<int:pk>/edit/", views.session_edit_view, name="session_edit"),
     path("<int:pk>/detail/", views.session_detail_view, name="session_detail"),
+    path("<int:pk>/photos/upload/", views.session_photos_upload, name="session_photos_upload"),
+    path("<int:session_pk>/photos/<int:photo_pk>/delete/", views.session_photo_delete, name="session_photo_delete"),
     path("<int:pk>/delete/", views.session_delete_view, name="session_delete"),
     path(
         "student-modal/<int:session_id>/<int:student_id>/",

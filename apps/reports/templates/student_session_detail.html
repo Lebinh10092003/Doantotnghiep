@@ -69,7 +69,58 @@
         </div>
 
         <div class="mt-4">
-          <div class="fw-semibold mb-2">Sản phẩm / hình ảnh</div>
+          <div class="fw-semibold mb-2">Ảnh buổi học (GV chụp)</div>
+          {% if can_upload_session_photo %}
+            <form method="post" enctype="multipart/form-data" class="border rounded-3 p-3 mb-3">
+              {% csrf_token %}
+              <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                  <label class="form-label small mb-1">Ảnh buổi học</label>
+                  {{ session_photo_form.image }}
+                  {% if session_photo_form.image.errors %}<div class="text-danger small">{{ session_photo_form.image.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label small mb-1">Chú thích (tùy chọn)</label>
+                  {{ session_photo_form.caption }}
+                  {% if session_photo_form.caption.errors %}<div class="text-danger small">{{ session_photo_form.caption.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="col-md-2 text-md-end">
+                  <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-upload"></i> Tải lên
+                  </button>
+                </div>
+              </div>
+              {% if session_photo_form.non_field_errors %}
+                <div class="text-danger small mt-2">{{ session_photo_form.non_field_errors|join:", " }}</div>
+              {% endif %}
+              <div class="text-muted small mt-2">Hỗ trợ chọn ảnh sẵn có hoặc chụp trực tiếp từ điện thoại.</div>
+            </form>
+          {% endif %}
+          {% if session_photos %}
+            <div class="row g-3">
+              {% for photo in session_photos %}
+              <div class="col-md-4 col-lg-3">
+                <div class="border rounded-3 p-2 h-100">
+                  <div class="text-muted small d-flex justify-content-between">
+                    <span>Buổi {{ session.index }}</span>
+                    <span>{{ photo.created_at|date:"d/m/Y" }}</span>
+                  </div>
+                  <div class="mt-2">
+                    <img src="{{ photo.image.url }}" alt="{{ photo.caption|default:'Ảnh buổi học' }}" class="img-fluid rounded" style="max-height: 180px;">
+                  </div>
+                  {% if photo.caption %}<div class="text-muted small mt-1">{{ photo.caption }}</div>{% endif %}
+                  {% if photo.uploaded_by %}<div class="text-muted small">Tải lên: {{ photo.uploaded_by.get_full_name|default:photo.uploaded_by.username }}</div>{% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted small">Chưa có ảnh buổi học. Ảnh lớp được GV/TG chụp và tải lên.</div>
+          {% endif %}
+        </div>
+
+        <div class="mt-4">
+          <div class="fw-semibold mb-2">Sản phẩm của học sinh</div>
           {% if products %}
             <div class="row g-3">
               {% for p in products %}

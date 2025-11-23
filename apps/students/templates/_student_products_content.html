@@ -1,70 +1,58 @@
-{% load widget_tweaks %}
+{% load static %}
+{% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
 
-<form id="filter-form"
-      class="products-filter-bar row g-3 align-items-end mb-4"
-      hx-get="{% url 'students:student_products_list' %}"
-      hx-target="#filterable-content"
-      hx-swap="innerHTML"
-      hx-push-url="true">
-  <div class="col-sm-6 col-md-3">
-    <label class="form-label fw-semibold small mb-1" for="{{ filter.form.q.id_for_label }}">Tìm kiếm</label>
-    {% render_field filter.form.q class+="form-control form-control-sm" placeholder="Tiêu đề" %}
-  </div>
-  <div class="col-sm-6 col-md-3">
-    <label class="form-label fw-semibold small mb-1" for="{{ filter.form.klass.id_for_label }}">Lớp</label>
-    {% render_field filter.form.klass class+="form-select form-select-sm tom-select" %}
-  </div>
-  <div class="col-sm-6 col-md-2">
-    <label class="form-label fw-semibold small mb-1" for="{{ filter.form.start_date.id_for_label }}">Từ ngày</label>
-    {% render_field filter.form.start_date class+="form-control form-control-sm" %}
-  </div>
-  <div class="col-sm-6 col-md-2">
-    <label class="form-label fw-semibold small mb-1" for="{{ filter.form.end_date.id_for_label }}">Đến ngày</label>
-    {% render_field filter.form.end_date class+="form-control form-control-sm" %}
-  </div>
-  <div class="col-sm-6 col-md-2 d-flex align-items-end gap-2">
-    <select name="order" class="form-select form-select-sm products-action" onchange="this.form.submit()">
+<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+  <div class="d-flex align-items-center gap-2">
+    <label class="form-label mb-0 small text-muted">Sắp xếp</label>
+    <select name="order"
+            class="form-select form-select-sm w-auto products-action"
+            hx-get="{{ list_url|default:request.path }}"
+            hx-target="#filterable-content"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-include="#filter-form"
+            hx-trigger="change"
+            hx-vals='{"page":"1"}'>
       <option value="desc" {% if filter_params.order != "asc" %}selected{% endif %}>Mới nhất</option>
       <option value="asc" {% if filter_params.order == "asc" %}selected{% endif %}>Cũ nhất</option>
     </select>
   </div>
-  <div class="col-12 d-flex flex-wrap gap-2">
-    <button type="submit" class="btn btn-success btn-sm products-action px-3" hx-vals='{"page":"1"}'>
-      <i class="bi bi-check2-circle me-1"></i> Áp dụng
-    </button>
-    <a href="{% url 'students:student_products_list' %}" class="btn btn-light btn-sm products-action">Xóa lọc</a>
-    <div class="dataTable-dropdown d-flex align-items-center gap-2 ms-auto">
-      <select name="per_page"
-              class="dataTable-selector form-select form-select-sm w-auto"
-              hx-get="{% url 'students:student_products_list' %}"
-              hx-target="#filterable-content"
-              hx-swap="innerHTML"
-              hx-push-url="true"
-              hx-include="#filter-form"
-              hx-trigger="change"
-              hx-vals='{"page":"1"}'>
-        <option value="6" {% if per_page == 6 %}selected{% endif %}>6</option>
-        <option value="9" {% if per_page == 9 %}selected{% endif %}>9</option>
-        <option value="12" {% if per_page == 12 %}selected{% endif %}>12</option>
-      </select>
-      <label class="mb-0 small text-muted">mục/trang</label>
-    </div>
+  <div class="dataTable-dropdown d-flex align-items-center gap-2 ms-auto">
+    <select name="per_page"
+            class="dataTable-selector form-select form-select-sm w-auto"
+            hx-get="{{ list_url|default:request.path }}"
+            hx-target="#filterable-content"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-include="#filter-form"
+            hx-trigger="change"
+            hx-vals='{"page":"1"}'>
+      <option value="6" {% if per_page == 6 %}selected{% endif %}>6</option>
+      <option value="9" {% if per_page == 9 %}selected{% endif %}>9</option>
+      <option value="12" {% if per_page == 12 %}selected{% endif %}>12</option>
+    </select>
+    <label class="mb-0 small text-muted">mục/trang</label>
   </div>
-</form>
+</div>
 
 {% if products %}
   <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
     {% for product in products %}
       <div class="col">
-        <article class="card products-card h-100 rounded-4 overflow-hidden">
+        <article class="card products-card h-100 rounded-4 overflow-hidden bg-white border border-light-subtle shadow-sm">
           {% if product.image %}
-            <img src="{{ product.image.url }}" class="card-img-top products-img" alt="{{ product.title }}">
+            <div class="ratio ratio-16x9">
+              <img src="{{ product.image.url }}" class="w-100 h-100" style="object-fit: cover;" alt="{{ product.title }}">
+            </div>
           {% else %}
-            <div class="bg-light d-flex align-items-center justify-content-center products-img">
-              <i class="bi bi-image fs-1 text-muted"></i>
+            <div class="ratio ratio-16x9 bg-light">
+              <img src="{% static 'assets/images/logo/logoprodcut.png' %}"
+                   class="w-100 h-100"
+                   style="object-fit: cover;"
+                   alt="Sản phẩm mặc định">
             </div>
           {% endif %}
-          <div class="card-body d-flex flex-column p-3">
+          <div class="card-body d-flex flex-column p-3 gap-1">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span class="badge products-badge small rounded-pill py-1 px-2">
                 {% with subject=product.session.klass.subject %}
@@ -74,30 +62,61 @@
               <span class="text-muted small">{{ product.session.date|date:"d/m/Y" }}</span>
             </div>
             <h5 class="card-title fw-semibold mb-1">{{ product.title }}</h5>
-            <p class="text-muted small mb-2">
-              {{ product.student.get_full_name|default:product.student.username }}
-            </p>
-            <p class="text-muted small mb-3 flex-grow-1">
+            <div class="text-muted small mb-2 d-flex gap-2">
+              <i class="bi bi-calendar-week mt-1"></i>
+              <div>
+                <div class="fw-semibold text-dark">Buổi học</div>
+                <div>Buổi {{ product.session.index }} &middot; {{ product.session.date|date:"d/m/Y" }}
+                  {% if product.session.start_time %}- {{ product.session.start_time|time:"H:i" }}{% endif %}
+                  {% if product.session.end_time %} đến {{ product.session.end_time|time:"H:i" }}{% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="text-muted small mb-2 d-flex gap-2">
+              <i class="bi bi-layers mt-1"></i>
+              <div>
+                <div class="fw-semibold text-dark">Học phần</div>
+                <div>
+                  {% if product.session.lesson and product.session.lesson.module %}
+                    Học phần {{ product.session.lesson.module.order }}: {{ product.session.lesson.module.title }}
+                  {% elif product.session.lesson %}
+                    {{ product.session.lesson.title }}
+                  {% else %}
+                    Chưa cập nhật học phần
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="text-muted small mb-2 d-flex gap-2">
+              <i class="bi bi-person-circle mt-1"></i>
+              <div>
+                <div class="fw-semibold text-dark">Học sinh</div>
+                <div>{{ product.student.get_full_name|default:product.student.username }}</div>
+              </div>
+            </div>
+            <p class="text-muted small mb-3">
               {{ product.description|default:"Chưa có mô tả."|truncatechars:90 }}
             </p>
-            <div class="text-muted small mb-3 d-flex align-items-center gap-2">
-              <i class="bi bi-clock"></i>
-              <span>{{ product.created_at|date:"H:i d/m" }}</span>
-            </div>
-            <div class="mt-auto d-flex gap-2 flex-wrap">
-              <a href="{% url 'students:student_product_detail' pk=product.pk %}" class="btn btn-success btn-sm rounded-pill flex-grow-1 text-white">
-                <i class="bi bi-eye me-1"></i>
-                Xem chi tiết
-              </a>
-              {% if is_student %}
-                <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
-                        hx-get="{% url 'students:product_update' pk=product.pk %}"
-                        hx-target="#student-product-modal-content"
-                        data-bs-toggle="modal"
-                        data-bs-target="#student-product-modal">
-                  <i class="bi bi-pencil"></i>
-                </button>
-              {% endif %}
+            <div class="mt-auto pt-3 border-top">
+              <div class="text-muted small mb-3 d-flex align-items-center gap-2">
+                <i class="bi bi-clock-history"></i>
+                <span>Cập nhật {{ product.created_at|date:"H:i d/m" }}</span>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'students:student_product_detail' pk=product.pk %}" class="btn btn-success btn-sm rounded-pill flex-grow-1 text-white">
+                  <i class="bi bi-eye me-1"></i>
+                  Xem chi tiết
+                </a>
+                {% if is_student %}
+                  <button class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                          hx-get="{% url 'students:product_update' pk=product.pk %}"
+                          hx-target="#student-product-modal-content"
+                          data-bs-toggle="modal"
+                          data-bs-target="#student-product-modal">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                {% endif %}
+              </div>
             </div>
           </div>
         </article>

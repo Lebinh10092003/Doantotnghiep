@@ -1,95 +1,112 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Danh sách sản phẩm học sinh{% endblock %}
-
-{% block extra_css %}
-<style>
-  .products-hero {
-    background: radial-gradient(circle at 20% 20%, #e8f3ff 0%, #f7fbff 40%, #ffffff 100%);
-    border-radius: 24px;
-  }
-  .products-card {
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    border: none;
-  }
-  .products-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 30px rgba(19, 49, 80, 0.08);
-  }
-  .products-img {
-    height: 220px;
-    object-fit: cover;
-    border-radius: 20px 20px 0 0;
-  }
-  .products-badge {
-    background: #eef5ff;
-    color: #1b4b91;
-  }
-  .products-filter-bar {
-    border: 1px solid #e9eef5;
-    border-radius: 14px;
-    background: #fff;
-    padding: 12px 16px;
-    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
-  }
-  .products-action {
-    border-radius: 12px;
-  }
-</style>
-{% endblock %}
+{% block title %}{{ page_title|default:"Sản phẩm học sinh" }}{% endblock %}
 
 {% block content %}
-<div id="student-portal-root" x-data>
+<div x-data="{ modalTitle: 'Tiêu đề Modal' }">
   <div id="main">
-    <div class="py-4 py-md-5">
-      <div class="container-fluid px-3 px-md-5">
-        <div class="products-hero p-4 p-md-5 mb-4 shadow-sm">
-          <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <header class="mb-3">
+      <a href="#" class="burger-btn d-block d-xl-none">
+        <i class="bi bi-justify fs-3"></i>
+      </a>
+    </header>
+
+    <div class="page-heading">
+      <div class="page-title">
+        <div class="row">
+          <div class="col-12 col-md-6 order-md-1 order-last">
+            <h3>{{ page_title|default:"Sản phẩm học sinh" }}</h3>
+            <p class="text-subtitle text-muted">{{ page_description|default:"Xem và quản lý sản phẩm theo từng buổi học, học phần." }}</p>
+          </div>
+          <div class="col-12 col-md-6 order-md-2 order-first">
+            <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'students:portal_home' %}">Học sinh</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ page_breadcrumb_label|default:"Danh sách sản phẩm" }}</li>
+              </ol>
+            </nav>
+          </div>
+        </div>
+      </div>
+
+      <section class="section">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-              <p class="text-uppercase text-muted small mb-2">Dự án của tôi</p>
-              <h2 class="fw-bold mb-2">Sản phẩm học sinh</h2>
-              <p class="text-muted small mb-0">Tìm nhanh hoặc lọc theo lớp, ngày và trạng thái để xem sản phẩm của bạn hoặc con bạn.</p>
+              <h5 class="card-title mb-1">{{ page_title|default:"Danh sách sản phẩm" }}</h5>
+              <p class="mb-0 text-muted small">{{ page_description|default:"Hiển thị dạng thẻ với đầy đủ thông tin buổi học, học phần và học sinh." }}</p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
-              <a href="#filters" class="btn btn-light border products-action px-3 py-2">
-                <i class="bi bi-funnel me-1"></i>
-                Bộ lọc
-              </a>
-              <button class="btn btn-success text-white products-action px-3 py-2"
-                      hx-get="{% url 'students:product_create' 0 %}"
+              <button type="button"
+                      class="btn btn-outline-secondary btn-sm"
+                      hx-get="{{ list_url }}?{{ request.GET.urlencode }}"
+                      hx-target="#filterable-content"
+                      hx-swap="innerHTML"
+                      hx-push-url="true">
+                <i class="bi bi-arrow-clockwise"></i> Làm mới
+              </button>
+              {% if is_student %}
+              <button type="button"
+                      class="btn btn-primary btn-sm"
+                      hx-get="{% url 'students:product_create' session_id=0 %}"
                       hx-target="#student-product-modal-content"
                       data-bs-toggle="modal"
-                      data-bs-target="#student-product-modal">
-                <i class="bi bi-plus-lg me-1"></i>
-                Tạo dự án mới
+                      data-bs-target="#student-product-modal"
+                      @click="modalTitle = 'Đăng sản phẩm mới'">
+                <i class="bi bi-plus-lg"></i> Đăng sản phẩm
               </button>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div x-data="{ showFilters: false }">
+              <div id="filterable-content"
+                   hx-get="{{ list_url }}?{{ current_query_params }}"
+                   hx-trigger="reload-products from:body"
+                   hx-swap="innerHTML"
+                   hx-include="#filter-form">
+                {% include "_student_products_content.html" %}
+              </div>
             </div>
           </div>
         </div>
+      </section>
+    </div>
 
-        <div id="filterable-content">
-          {% include "_student_products_content.html" %}
+    <div class="modal fade" id="filter-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
+      <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div id="filter-modal-content">
+            <div class="modal-body"><p>Đang tải...</p></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<div class="modal fade" id="student-product-modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Dự án học sinh</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div id="student-product-modal-content">
-        <div class="p-4 text-center text-muted">
-          <div class="spinner-border text-primary mb-2" role="status"></div>
-          <div class="small">Đang tải...</div>
+    <div class="modal fade" id="student-product-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div id="student-product-modal-content">
+            <div class="modal-body"><p>Đang tải...</p></div>
+          </div>
         </div>
       </div>
     </div>
+
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+  {% include "_student_product_modal_helpers.html" %}
 {% endblock %}

@@ -41,11 +41,15 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+      .global-loading-overlay { display: none; }
+      .global-loading-overlay.htmx-request { display: flex; }
+    </style>
 </head>
 
 <body>
     <div id="global-loading-overlay"
-         class="global-loading-overlay"
+         class="global-loading-overlay htmx-indicator"
          aria-hidden="true"
          role="status"
          aria-live="polite">
@@ -197,6 +201,10 @@
                     {% endif %}
 
                     {% if user.is_authenticated %}
+                    {% url 'class_sessions:teaching_classes' as teaching_classes_admin_url %}
+                    {% url 'class_sessions:teaching_classes_my' as teaching_classes_my_url %}
+                    {% url 'class_sessions:teaching_schedule' as teaching_schedule_admin_url %}
+                    {% url 'class_sessions:teaching_schedule_my' as teaching_schedule_my_url %}
                     <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-journal-bookmark-fill"></i>
@@ -223,8 +231,8 @@
                             {% endif %}
 
                             {% if user|in_group:'teacher' or user|in_group:'assistant' %}
-                            <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_classes' %}active{% endif %}">
-                                <a href="{% url 'class_sessions:teaching_classes' %}" class="submenu-link">
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_classes' or request.resolver_match.view_name == 'class_sessions:teaching_classes_my' %}active{% endif %}">
+                                <a href="{{ teaching_classes_my_url }}" class="submenu-link">
                                     <i class="bi bi-collection"></i>
                                     <span>Các lớp đang dạy</span>
                                 </a>
@@ -240,9 +248,9 @@
                             </li>
                             {% endif %}
 
-                            {% if user|in_group:'teacher' or user|in_group:'assistant' %}
-                            <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_schedule' %}active{% endif %}">
-                                <a href="{% url 'class_sessions:teaching_schedule' %}" class="submenu-link">
+                            {% if user|in_group:'teacher' or user|in_group:'assistant'%}
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_schedule' or request.resolver_match.view_name == 'class_sessions:teaching_schedule_my' %}active{% endif %}">
+                                <a href="{{ teaching_schedule_my_url }}" class="submenu-link">
                                     <i class="bi bi-easel2"></i>
                                     <span>Lịch dạy</span>
                                 </a>
@@ -313,7 +321,7 @@
                     </li>
                     {% endif %}
                     {% if user.is_authenticated %}
-                    <li class="sidebar-item has-sub {% if request.resolver_match.view_name == 'students:student_products_list' %}active{% endif %}">
+                    <li class="sidebar-item has-sub {% if request.resolver_match.view_name == 'students:student_products_list' or request.resolver_match.view_name == 'students:student_products_my' %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-images"></i>
                             <span>Sản phẩm học sinh</span>
@@ -323,6 +331,12 @@
                                 <a href="{% url 'students:student_products_list' %}" class="submenu-link">
                                     <i class="bi bi-card-image"></i>
                                     <span>Danh sách sản phẩm</span>
+                                </a>
+                            </li>
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'students:student_products_my' %}active{% endif %}">
+                                <a href="{% url 'students:student_products_my' %}" class="submenu-link">
+                                    <i class="bi bi-person-badge"></i>
+                                    <span>Dự án của tôi</span>
                                 </a>
                             </li>
                         </ul>

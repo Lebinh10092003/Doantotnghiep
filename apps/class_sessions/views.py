@@ -1,28 +1,31 @@
 import json
 from datetime import date, timedelta
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.http import require_POST
 from django_filters.views import FilterView
 from django.db.models import Q
 from django.http import HttpResponse, QueryDict, HttpResponseBadRequest
+from django.urls import reverse
 from django import forms 
 from django.template.loader import render_to_string
 from collections import defaultdict 
+from django.core.exceptions import PermissionDenied
 from apps.accounts.models import User, ParentStudentRelation
 from apps.enrollments.models import Enrollment
 from apps.attendance.models import Attendance
 from apps.assessments.models import Assessment
 from apps.attendance.forms import AttendanceForm
 from apps.assessments.forms import AssessmentForm
-from .models import ClassSession
+from .models import ClassSession , ClassSessionPhoto
 from .filters import ClassSessionFilter
 from .forms import ClassSessionForm 
 from apps.filters.models import SavedFilter
 from django.core.paginator import Paginator, EmptyPage
 from apps.centers.models import Center
 from apps.curriculum.models import Subject, Lesson
+
 
 
 def is_htmx_request(request):
@@ -203,7 +206,6 @@ def session_edit_view(request, pk):
 
 
 @login_required
-@permission_required("class_sessions.view_classsession", raise_exception=True)
 def session_detail_view(request, pk):
     session = get_object_or_404(
         ClassSession.objects.select_related(
@@ -211,6 +213,20 @@ def session_detail_view(request, pk):
             "teacher_override", "room_override", "klass__main_teacher"
         ).prefetch_related("assistants"),
         pk=pk
+    )
+    viewer = request.user
+    is_my_session = (
+        viewer == session.klass.main_teacher
+        or viewer == session.teacher_override
+        or session.assistants.filter(id=viewer.id).exists()
+        or session.klass.assistants.filter(id=viewer.id).exists()
+    )
+    if not (viewer.has_perm("class_sessions.view_classsession") or is_my_session):
+        raise PermissionDenied
+    can_edit_session_records = (
+        viewer.has_perm("attendance.change_attendance")
+        or viewer.has_perm("assessments.change_assessment")
+        or is_my_session
     )
     
     # 1. Lấy danh sách học sinh đã đăng ký (active)
@@ -252,6 +268,8 @@ def session_detail_view(request, pk):
     context = {
         "session": session,
         "student_data_list": student_data_list, 
+        "can_edit_session_records": can_edit_session_records,
+        "photos": ClassSessionPhoto.objects.filter(session=session).select_related("uploaded_by").order_by("-created_at"),
     }
     
     if is_htmx_request(request):
@@ -260,6 +278,83 @@ def session_detail_view(request, pk):
     
     context["as_page"] = True
     return render(request, "session_detail.html", context)
+
+
+@login_required
+def session_photos_upload(request, pk):
+    session = get_object_or_404(ClassSession, pk=pk)
+    viewer = request.user
+    is_my_session = (
+        viewer == session.klass.main_teacher
+        or viewer == session.teacher_override
+        or session.assistants.filter(id=viewer.id).exists()
+        or session.klass.assistants.filter(id=viewer.id).exists()
+    )
+    if not (viewer.has_perm("class_sessions.change_classsession") or is_my_session):
+        raise PermissionDenied
+    if request.method != "POST":
+        return HttpResponseBadRequest("Phương thức không hợp lệ")
+
+    files = request.FILES.getlist("images")
+    if not files:
+        return HttpResponseBadRequest("Vui lòng chọn ảnh.")
+
+    for f in files:
+        ClassSessionPhoto.objects.create(session=session, image=f, uploaded_by=viewer)
+
+    redirect_url = reverse("class_sessions:session_detail", args=[pk])
+    if request.GET:
+        redirect_url = f"{redirect_url}?{request.GET.urlencode()}"
+
+    if is_htmx_request(request):
+        resp = HttpResponse(status=204)
+        resp["HX-Redirect"] = redirect_url
+        resp["HX-Trigger"] = json.dumps({
+            "show-sweet-alert": {
+                "icon": "success",
+                "title": "Đã tải ảnh buổi học"
+            }
+        })
+        return resp
+    return redirect(redirect_url)
+
+
+@login_required
+@require_POST
+def session_photo_delete(request, session_pk, photo_pk):
+    session = get_object_or_404(ClassSession, pk=session_pk)
+    photo = get_object_or_404(ClassSessionPhoto, pk=photo_pk, session=session)
+    viewer = request.user
+    is_my_session = (
+        viewer == session.klass.main_teacher
+        or viewer == session.teacher_override
+        or session.assistants.filter(id=viewer.id).exists()
+        or session.klass.assistants.filter(id=viewer.id).exists()
+    )
+    if not (viewer.has_perm("class_sessions.change_classsession") or is_my_session):
+        raise PermissionDenied
+
+    try:
+        # Xóa file trên storage trước khi xóa record
+        if photo.image:
+            photo.image.delete(save=False)
+    finally:
+        photo.delete()
+    redirect_url = reverse("class_sessions:session_detail", args=[session_pk])
+    if request.GET:
+        redirect_url = f"{redirect_url}?{request.GET.urlencode()}"
+
+    if is_htmx_request(request):
+        resp = HttpResponse(status=204)
+        resp["HX-Redirect"] = redirect_url
+        resp["HX-Trigger"] = json.dumps({
+            "show-sweet-alert": {
+                "icon": "success",
+                "title": "Đã xóa ảnh"
+            }
+        })
+        return resp
+    return redirect(redirect_url)
 
 
 @login_required
@@ -308,10 +403,6 @@ def session_delete_view(request, pk):
         }
     })
     return response
-
-#
-# === VIEW MỚI ĐỂ XỬ LÝ LƯU THEO HÀNG ===
-#
 @require_POST
 @login_required
 @permission_required("attendance.change_attendance")
@@ -463,6 +554,9 @@ def teaching_schedule_view(request):
     if viewer.has_perm("class_sessions.view_classsession"):
         teachers = User.objects.filter(Q(groups__name__in=["Teacher", "TEACHER"]) | Q(role__iexact="TEACHER")).distinct()
 
+    filter_applied = bool(request.GET.get("date")) or (teacher_id and viewer.has_perm("class_sessions.view_classsession"))
+    filter_enabled = bool(teachers)
+
     context = {
         "sessions": sessions,
         "date": selected_date,
@@ -471,6 +565,49 @@ def teaching_schedule_view(request):
         "teacher": teacher,
         "teachers": teachers,
         "today": today,
+        "filter_applied": filter_applied,
+        "filter_enabled": filter_enabled,
+    }
+    if is_htmx_request(request):
+        return render(request, "_schedule_table.html", context)
+    return render(request, "teaching_schedule.html", context)
+
+
+@login_required
+def teaching_schedule_my_view(request):
+    """
+    View dành cho giáo viên/trợ giảng: chỉ xem lịch của mình, không bộ lọc giáo viên.
+    """
+    today = date.today()
+    try:
+        selected_date = date.fromisoformat(request.GET.get("date")) if request.GET.get("date") else today
+    except ValueError:
+        selected_date = today
+    start_of_week = selected_date - timedelta(days=selected_date.weekday())
+    end_of_week = start_of_week + timedelta(days=6)
+
+    viewer = request.user
+    base = ClassSession.objects.select_related(
+        "klass", "klass__subject", "klass__center", "klass__main_teacher", "lesson"
+    ).prefetch_related("assistants").filter(date__isnull=False, date__range=(start_of_week, end_of_week))
+
+    sessions = base.filter(
+        Q(teacher_override=viewer)
+        | Q(klass__main_teacher=viewer)
+        | Q(assistants=viewer)
+        | Q(klass__assistants=viewer)
+    ).order_by("date", "start_time", "klass__name").distinct()
+
+    context = {
+        "sessions": sessions,
+        "date": selected_date,
+        "start": start_of_week,
+        "end": end_of_week,
+        "teacher": viewer,
+        "teachers": None,
+        "today": today,
+        "filter_applied": False,
+        "filter_enabled": False,
     }
     if is_htmx_request(request):
         return render(request, "_schedule_table.html", context)
@@ -503,10 +640,44 @@ def teaching_classes_view(request):
     if viewer.has_perm("classes.view_class"):
         teachers = User.objects.filter(Q(groups__name__in=["Teacher", "TEACHER"]) | Q(role__iexact="TEACHER")).distinct()
 
+    filter_applied = bool(teacher_id)
+
     context = {
         "classes": qs,
         "teacher": teacher,
         "teachers": teachers,
+        "filter_applied": filter_applied,
+    }
+    if is_htmx_request(request):
+        return render(request, "_teaching_classes_table.html", context)
+    return render(request, "teaching_classes.html", context)
+
+
+@login_required
+def teaching_classes_my_view(request):
+    """
+    View dành riêng cho giáo viên/trợ giảng: chỉ thấy lớp của chính mình,
+    không cho chọn giáo viên khác.
+    """
+    from apps.classes.models import Class
+
+    viewer = request.user
+    qs = (
+        Class.objects.select_related("center", "subject", "main_teacher")
+        .prefetch_related("assistants")
+        .filter(
+            Q(main_teacher=viewer) | Q(assistants=viewer),
+            status__in=["PLANNED", "ONGOING"],
+        )
+        .order_by("center__name", "name")
+        .distinct()
+    )
+
+    context = {
+        "classes": qs,
+        "teacher": viewer,
+        "teachers": None,
+        "filter_applied": False,
     }
     if is_htmx_request(request):
         return render(request, "_teaching_classes_table.html", context)

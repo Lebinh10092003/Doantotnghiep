@@ -95,6 +95,16 @@
             {% endif %}
           </div>
           <div class="col">
+            <h2>Ảnh buổi học</h2>
+            {% if row.session_photos %}
+              <ul class="small">
+                {% for p in row.session_photos %}
+                  <li>Buổi {{ p.session.index }} ({{ p.created_at|date:"d/m/Y" }}){% if p.caption %}: {{ p.caption|truncatechars:80 }}{% endif %}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="small">Chưa có ảnh buổi học.</div>
+            {% endif %}
             <h2>Sản phẩm / hình ảnh</h2>
             {% if row.products %}
               <ul class="small">

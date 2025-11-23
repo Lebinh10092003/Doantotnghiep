@@ -3,6 +3,7 @@ from django.conf import settings
 from apps.common.models import TimeStampedModel
 from apps.centers.models import Room
 from apps.curriculum.models import Lesson
+from steam_center.storages import MediaStorage
 
 SESSION_STATUS = [
     ("PLANNED", "Planned"),
@@ -59,3 +60,29 @@ class ClassSession(TimeStampedModel):
 
     def __str__(self):
         return f"{self.klass.name} - Buổi {self.index}"
+
+
+class ClassSessionPhoto(TimeStampedModel):
+    session = models.ForeignKey(
+        "class_sessions.ClassSession",
+        on_delete=models.CASCADE,
+        related_name="photos",
+    )
+    image = models.ImageField(
+        upload_to="session_photos/",
+        storage=MediaStorage(),
+    )
+    caption = models.CharField(max_length=255, blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="uploaded_session_photos",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Ảnh buổi {self.session.index} - {self.session.klass.name}"

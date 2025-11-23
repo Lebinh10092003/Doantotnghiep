@@ -12,6 +12,7 @@ from apps.accounts.models import ParentStudentRelation
 from .filters import StudentProductFilter
 from .models import StudentProduct, StudentExerciseSubmission
 from .forms import StudentProductForm, StudentExerciseSubmissionForm
+from django.db.models import Q
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 import json
 from django.http import HttpResponse
@@ -28,6 +29,122 @@ def _week_range(center_date: date | None = None):
     start = today - timedelta(days=today.weekday())  # Monday
     end = start + timedelta(days=6)
     return start, end
+
+def _product_role_flags(user):
+    role = (getattr(user, "role", "") or "").upper()
+    in_group = user.groups.filter
+    return {
+        "role": role,
+        "is_student": role == "STUDENT" or in_group(name__iexact="student").exists(),
+        "is_parent": role == "PARENT" or in_group(name__iexact="parent").exists(),
+        "is_teacher": role == "TEACHER" or in_group(name__iexact="teacher").exists(),
+        "is_assistant": role == "ASSISTANT" or in_group(name__iexact="assistant").exists(),
+        "can_manage_all": user.has_perm("students.view_studentproduct"),
+    }
+
+def _base_product_queryset():
+    return StudentProduct.objects.select_related(
+        "student",
+        "session",
+        "session__klass",
+        "session__klass__subject",
+        "session__klass__center",
+    )
+
+def _related_products_queryset(user):
+    flags = _product_role_flags(user)
+    qs = _base_product_queryset()
+    if flags["is_student"]:
+        return qs.filter(student=user)
+    if flags["is_parent"]:
+        child_ids = ParentStudentRelation.objects.filter(parent=user).values_list("student_id", flat=True)
+        return qs.filter(student_id__in=child_ids)
+    if flags["is_teacher"] or flags["is_assistant"]:
+        return qs.filter(
+            Q(session__klass__main_teacher=user)
+            | Q(session__klass__assistants=user)
+            | Q(session__teacher_override=user)
+            | Q(session__assistants=user)
+        )
+    return qs
+
+def _render_products_page(request, products, flags, page_title, page_description):
+    order = request.GET.get("order", "desc")
+
+    product_filter = StudentProductFilter(request.GET, queryset=products)
+    products = product_filter.qs
+
+    sort_field = "created_at" if order == "asc" else "-created_at"
+    products = products.order_by(sort_field)
+
+    active_filter_badges = []
+    if product_filter.form.is_bound:
+        for name, value in product_filter.form.cleaned_data.items():
+            if value and name in product_filter.form.fields:
+                field_label = product_filter.form.fields[name].label or name
+                display_value = ""
+                field = product_filter.form.fields[name]
+                if hasattr(value, "name"):
+                    display_value = str(value)
+                elif isinstance(value, str):
+                    display_value = value
+                elif hasattr(value, "strftime"):
+                    display_value = value.strftime("%d/%m/%Y")
+                if display_value:
+                    active_filter_badges.append(
+                        {"label": field_label, "value": display_value, "key": name}
+                    )
+
+    try:
+        per_page = int(request.GET.get("per_page", 9))
+        if per_page <= 0:
+            per_page = 9
+    except (TypeError, ValueError):
+        per_page = 9
+
+    try:
+        page_number = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page_number = 1
+
+    from django.core.paginator import Paginator, EmptyPage
+
+    paginator = Paginator(products, per_page)
+    try:
+        page_obj = paginator.page(page_number)
+    except EmptyPage:
+        page_obj = paginator.page(1)
+
+    query_params_no_page = request.GET.copy()
+    for key in ["page"]:
+        query_params_no_page.pop(key, None)
+
+    context = {
+        "products": page_obj.object_list,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "per_page": per_page,
+        "is_student": flags["is_student"],
+        "can_view_all": flags["can_manage_all"] and not (flags["is_student"] or flags["is_parent"] or flags["is_teacher"] or flags["is_assistant"]),
+        "filter": product_filter,
+        "model_name": "StudentProduct",
+        "quick_filters": [],
+        "active_filter_name": None,
+        "active_filter_badges": active_filter_badges,
+        "current_query_params": query_params_no_page.urlencode(),
+        "filter_params": {
+            "order": order,
+        },
+        "page_title": page_title,
+        "page_description": page_description,
+        "list_url": request.path,
+        "page_breadcrumb_url": request.path,
+        "page_breadcrumb_label": page_title,
+    }
+
+    if is_htmx_request(request):
+        return render(request, "_student_products_content.html", context)
+    return render(request, "student_products_list.html", context)
 
 
 @login_required
@@ -483,99 +600,41 @@ def product_delete(request, pk: int):
 @login_required
 def student_products_list(request):
     user = request.user
-    role = (getattr(user, "role", "") or "").upper()
-    is_student = role == "STUDENT" or user.groups.filter(name__iexact="student").exists()
-    is_parent = role == "PARENT" or user.groups.filter(name__iexact="parent").exists()
-
-    # Cho phép trung tâm/nhân viên có quyền xem tất cả
-    if not (is_student or is_parent) and not user.has_perm("students.view_studentproduct"):
+    flags = _product_role_flags(user)
+    if not (flags["is_student"] or flags["is_parent"] or flags["is_teacher"] or flags["is_assistant"] or flags["can_manage_all"]):
         raise PermissionDenied("Bạn không có quyền xem danh sách sản phẩm.")
 
-    order = request.GET.get("order", "desc")
-    products = StudentProduct.objects.select_related(
-        "student",
-        "session",
-        "session__klass",
-        "session__klass__subject",
-        "session__klass__center",
+    products = _related_products_queryset(user)
+    if not (flags["is_student"] or flags["is_parent"] or flags["is_teacher"] or flags["is_assistant"]) and flags["can_manage_all"]:
+        products = _base_product_queryset()
+
+    return _render_products_page(
+        request,
+        products,
+        flags,
+        page_title="Sản phẩm học sinh",
+        page_description="Xem tất cả sản phẩm học sinh với bộ lọc đầy đủ.",
     )
 
-    if is_student:
-        products = products.filter(student=user)
-    elif is_parent:
-        child_ids = ParentStudentRelation.objects.filter(parent=user).values_list("student_id", flat=True)
-        products = products.filter(student_id__in=child_ids)
 
-    product_filter = StudentProductFilter(request.GET, queryset=products)
-    products = product_filter.qs
+@login_required
+def student_products_my(request):
+    user = request.user
+    flags = _product_role_flags(user)
+    if not (flags["is_student"] or flags["is_parent"] or flags["is_teacher"] or flags["is_assistant"] or flags["can_manage_all"]):
+        raise PermissionDenied("Bạn không có quyền xem danh sách sản phẩm.")
 
-    sort_field = "created_at" if order == "asc" else "-created_at"
-    products = products.order_by(sort_field)
+    products = _related_products_queryset(user)
+    if not (flags["is_student"] or flags["is_parent"] or flags["is_teacher"] or flags["is_assistant"]) and flags["can_manage_all"]:
+        products = _base_product_queryset()
 
-    # badges
-    active_filter_badges = []
-    if product_filter.form.is_bound:
-        for name, value in product_filter.form.cleaned_data.items():
-            if value and name in product_filter.form.fields:
-                field_label = product_filter.form.fields[name].label or name
-                display_value = ""
-                field = product_filter.form.fields[name]
-                if hasattr(value, "name"):
-                    display_value = str(value)
-                elif isinstance(value, str):
-                    display_value = value
-                elif hasattr(value, "strftime"):
-                    display_value = value.strftime("%d/%m/%Y")
-                if display_value:
-                    active_filter_badges.append(
-                        {"label": field_label, "value": display_value, "key": name}
-                    )
-
-    try:
-        per_page = int(request.GET.get("per_page", 9))
-        if per_page <= 0:
-            per_page = 9
-    except (TypeError, ValueError):
-        per_page = 9
-
-    try:
-        page_number = int(request.GET.get("page", 1))
-    except (TypeError, ValueError):
-        page_number = 1
-
-    from django.core.paginator import Paginator, EmptyPage
-
-    paginator = Paginator(products, per_page)
-    try:
-        page_obj = paginator.page(page_number)
-    except EmptyPage:
-        page_obj = paginator.page(1)
-
-    query_params_no_page = request.GET.copy()
-    for key in ["page"]:
-        query_params_no_page.pop(key, None)
-
-    context = {
-        "products": page_obj.object_list,
-        "page_obj": page_obj,
-        "paginator": paginator,
-        "per_page": per_page,
-        "is_student": is_student,
-        "can_view_all": not is_student and not is_parent,
-        "filter": product_filter,
-        "model_name": "StudentProduct",
-        "quick_filters": [],
-        "active_filter_name": None,
-        "active_filter_badges": active_filter_badges,
-        "current_query_params": query_params_no_page.urlencode(),
-        "filter_params": {
-            "order": order,
-        },
-    }
-
-    if is_htmx_request(request):
-        return render(request, "_student_products_content.html", context)
-    return render(request, "student_products_list.html", context)
+    return _render_products_page(
+        request,
+        products,
+        flags,
+        page_title="Dự án của tôi",
+        page_description="Các sản phẩm liên quan tới bạn, học sinh của bạn hoặc con của bạn.",
+    )
 
 
 @login_required
@@ -591,13 +650,28 @@ def student_product_detail(request, pk: int):
         pk=pk,
     )
     user = request.user
-    is_student = user.groups.filter(name="student").exists()
-    if is_student:
-        if product.student_id != user.id:
-            raise PermissionDenied("Bạn không có quyền xem sản phẩm này.")
-    else:
-        if not user.has_perm("students.view_studentproduct"):
-            raise PermissionDenied("Bạn không có quyền xem sản phẩm này.")
+    flags = _product_role_flags(user)
+    allowed = False
+
+    if flags["is_student"] and product.student_id == user.id:
+        allowed = True
+    if flags["is_parent"]:
+        child_ids = ParentStudentRelation.objects.filter(parent=user).values_list("student_id", flat=True)
+        if product.student_id in child_ids:
+            allowed = True
+    if flags["is_teacher"] or flags["is_assistant"]:
+        if (
+            product.session.klass.main_teacher_id == user.id
+            or product.session.klass.assistants.filter(id=user.id).exists()
+            or product.session.teacher_override_id == user.id
+            or product.session.assistants.filter(id=user.id).exists()
+        ):
+            allowed = True
+    if flags["can_manage_all"]:
+        allowed = True
+
+    if not allowed:
+        raise PermissionDenied("Bạn không có quyền xem sản phẩm này.")
 
     return render(
         request,
@@ -605,5 +679,38 @@ def student_product_detail(request, pk: int):
         {
             "product": product,
             "can_edit": product.student_id == user.id,
+        },
+    )
+
+
+def student_product_detail_public(request, pk: int):
+    product = get_object_or_404(
+        StudentProduct.objects.select_related(
+            "student",
+            "session",
+            "session__klass",
+            "session__klass__subject",
+            "session__klass__center",
+        ),
+        pk=pk,
+    )
+    related_products = (
+        StudentProduct.objects.select_related(
+            "student",
+            "session",
+            "session__klass",
+            "session__klass__subject",
+        )
+        .filter(session__klass__subject=product.session.klass.subject)
+        .exclude(pk=product.pk)
+        .order_by("-created_at")[:5]
+    )
+    return render(
+        request,
+        "student_product_detail_public.html",
+        {
+            "product": product,
+            "can_edit": False,
+            "related_products": related_products,
         },
     )

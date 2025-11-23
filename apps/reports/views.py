@@ -5,7 +5,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Count, Q
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.dateparse import parse_date
@@ -13,7 +13,8 @@ from django.utils.dateparse import parse_date
 from apps.accounts.models import ParentStudentRelation
 from apps.assessments.models import Assessment
 from apps.attendance.models import Attendance
-from apps.class_sessions.models import ClassSession
+from apps.class_sessions.models import ClassSession, ClassSessionPhoto
+from apps.class_sessions.forms import ClassSessionPhotoForm
 from apps.classes.models import Class
 from apps.centers.models import Center
 from apps.enrollments.models import Enrollment, EnrollmentStatus
@@ -186,6 +187,11 @@ def _student_report_rows(enrollments, start_date=None, end_date=None):
         products_by_session = {}
         for product in products_qs:
             products_by_session.setdefault(product.session_id, []).append(product)
+        photos_qs = ClassSessionPhoto.objects.filter(session_id__in=session_ids).select_related("session")
+        session_photos = photos_qs.order_by("-created_at")
+        photos_by_session = {}
+        for photo in photos_qs:
+            photos_by_session.setdefault(photo.session_id, []).append(photo)
         attendance_by_session = {
             item["session_id"]: item["status"]
             for item in Attendance.objects.filter(student=enrollment.student, session_id__in=session_ids).values(
@@ -204,6 +210,7 @@ def _student_report_rows(enrollments, start_date=None, end_date=None):
                     "attendance": attendance_by_session.get(s.id, "-"),
                     "assessment": assessments_by_session.get(s.id),
                     "products": products_by_session.get(s.id, []),
+                    "photos": photos_by_session.get(s.id, []),
                     "module_number": ceil(s.index / module_size) if module_size else 1,
                 }
             )
@@ -250,6 +257,7 @@ def _student_report_rows(enrollments, start_date=None, end_date=None):
                 "progress_percent": progress_percent,
                 "assessments": assessments,
                 "products": products,
+                "session_photos": session_photos,
                 "parent_names": parent_names,
                 "sessions_detail": sessions_detail,
                 "modules": modules_meta,
@@ -424,6 +432,27 @@ def student_session_detail(request, enrollment_id, session_id):
     assessment = Assessment.objects.filter(student=enrollment.student, session=session).first()
     products = StudentProduct.objects.filter(student=enrollment.student, session=session).order_by("-created_at")
 
+    flags = _role_flags(request.user)
+    can_upload_session_photo = flags["is_admin"] or flags["is_center_manager"] or flags["is_teacher"]
+    if request.method == "POST":
+        if not can_upload_session_photo:
+            raise PermissionDenied
+        form = ClassSessionPhotoForm(request.POST, request.FILES)
+        if form.is_valid():
+            photo = form.save(commit=False)
+            photo.session = session
+            photo.uploaded_by = request.user
+            photo.save()
+            redirect_url = request.path
+            if request.GET:
+                redirect_url = f"{redirect_url}?{request.GET.urlencode()}"
+            return redirect(redirect_url)
+        session_photo_form = form
+    else:
+        session_photo_form = ClassSessionPhotoForm()
+
+    session_photos = ClassSessionPhoto.objects.filter(session=session).select_related("uploaded_by").order_by("-created_at")
+
     back_params = request.GET.urlencode()
     back_url = reverse("reports:student_report_detail", args=[enrollment_id])
     if back_params:
@@ -438,6 +467,9 @@ def student_session_detail(request, enrollment_id, session_id):
             "attendance": attendance,
             "assessment": assessment,
             "products": products,
+            "session_photos": session_photos,
+            "session_photo_form": session_photo_form,
+            "can_upload_session_photo": can_upload_session_photo,
             "back_url": back_url,
         },
     )

@@ -1,5 +1,5 @@
 from django import forms
-from .models import ClassSession
+from .models import ClassSession, ClassSessionPhoto
 from apps.accounts.models import User
 
 class UserChoiceField(forms.ModelChoiceField):
@@ -56,3 +56,13 @@ class ClassSessionForm(forms.ModelForm):
         # Tự động chọn lớp học nếu được truyền vào
         if 'initial' in kwargs and 'klass' in kwargs['initial']:
             self.fields['klass'].queryset = self.fields['klass'].queryset.filter(pk=kwargs['initial']['klass'])
+
+
+class ClassSessionPhotoForm(forms.ModelForm):
+    class Meta:
+        model = ClassSessionPhoto
+        fields = ["image", "caption"]
+        widgets = {
+            "image": forms.ClearableFileInput(attrs={"class": "form-control", "accept": "image/*", "capture": "environment"}),
+            "caption": forms.TextInput(attrs={"class": "form-control", "placeholder": "Chú thích (tùy chọn)"}),
+        }

@@ -13,59 +13,160 @@
     </header>
     <div class="page-heading">
       <section class="section">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-white border-0">
-            <h5 class="mb-0">Chi tiết sản phẩm</h5>
-          </div>
-          <div class="card-body">
-            <div class="row g-4">
-              {% if product.image %}
-                <div class="col-12 col-lg-5">
-                  <img src="{{ product.image.url }}" alt="{{ product.title }}" class="w-100 rounded shadow-sm" style="height: 320px; object-fit: cover;">
+        <div class="card border-0 shadow-sm rounded-4">
+          <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+              <div>
+                <p class="text-muted small mb-1">Cập nhật {{ product.updated_at|date:"H:i d/m/Y" }}</p>
+                <h3 class="mb-2">{{ product.title }}</h3>
+                <div class="d-flex flex-wrap gap-2">
+                  <span class="badge bg-primary-subtle text-primary">
+                    {{ product.session.klass.subject.name|default:"Không xác định" }}
+                  </span>
+                  <span class="badge bg-info-subtle text-info">
+                    {{ product.session.klass.center.name|default:"Trung tâm" }}
+                  </span>
+                  <span class="badge bg-light text-dark border">
+                    Buổi {{ product.session.index }} &middot; {{ product.session.date|date:"d/m/Y" }}
+                  </span>
                 </div>
-              {% endif %}
-              <div class="col">
-                <p class="text-muted small mb-1">{{ product.created_at|date:"H:i d/m/Y" }}</p>
-                <h4 class="mb-3">{{ product.title }}</h4>
-                <p class="text-muted mb-3">{{ product.description|linebreaksbr|default:"Không có mô tả" }}</p>
-                <dl class="row small text-muted mb-3">
-                  <dt class="col-4 fw-semibold">Học sinh</dt>
-                  <dd class="col-8">{{ product.student.get_full_name|default:product.student.username }}</dd>
-                  <dt class="col-4 fw-semibold">Lớp</dt>
-                  <dd class="col-8">{{ product.session.klass.name }} - {{ product.session.klass.subject.name }}</dd>
-                  <dt class="col-4 fw-semibold">Buổi học</dt>
-                  <dd class="col-8">
-                    {{ product.session.date|date:"d/m/Y" }},
-                    {{ product.session.start_time|time:"H:i"|default:"--" }} -
-                    {{ product.session.end_time|time:"H:i"|default:"--" }}
-                  </dd>
-                </dl>
-                {% if product.video %}
-                  <p class="mb-2">
-                    <span class="fw-semibold">Video liên kết:</span>
-                    <a href="{{ product.video.url }}" target="_blank" class="link-primary">Xem video</a>
-                  </p>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'students:student_products_list' %}" class="btn btn-outline-secondary btn-sm">
+                  <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+                {% if can_edit %}
+                  <a href="{% url 'students:product_update' pk=product.pk %}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil-square"></i> Chỉnh sửa
+                  </a>
                 {% endif %}
-                {% if product.embed_code %}
-                  <div class="mb-3">
-                    <h6 class="mb-2">Embed</h6>
-                    <div class="ratio ratio-16x9">
-                      {{ product.embed_code|safe }}
+                <a href="{% url 'students:portal_course_detail' class_id=product.session.klass.id %}" class="btn btn-outline-info btn-sm">
+                  <i class="bi bi-journal-richtext"></i> Xem lớp
+                </a>
+              </div>
+            </div>
+
+            <div class="row g-4">
+              <div class="col-12 col-lg-6">
+                <div class="card border-0 shadow-sm h-100">
+                  <div class="card-header bg-white border-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-camera-video text-primary"></i>
+                    <h6 class="mb-0">Media</h6>
+                  </div>
+                  <div class="card-body d-flex flex-column gap-3">
+                    <div>
+                      <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-light text-dark border">Ảnh</span>
+                        <span class="text-muted small">{% if product.image %}Đã đính kèm{% else %}Chưa có ảnh, dùng mặc định{% endif %}</span>
+                      </div>
+                      <div class="ratio ratio-16x9 rounded-4 overflow-hidden shadow-sm border">
+                        {% if product.image %}
+                          <img src="{{ product.image.url }}" alt="{{ product.title }}" class="w-100 h-100" style="object-fit:cover;">
+                        {% else %}
+                          <img src="{% static 'assets/images/logo/logoprodcut.png' %}" alt="Sản phẩm" class="w-100 h-100" style="object-fit:cover;">
+                        {% endif %}
+                      </div>
+                    </div>
+
+                    {% if product.video or product.embed_code %}
+                      {% if product.video %}
+                      <div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                          <span class="badge bg-light text-dark border">Video</span>
+                          <span class="text-success small">Đã đính kèm</span>
+                        </div>
+                        <div class="ratio ratio-16x9 rounded-4 overflow-hidden border bg-light-subtle">
+                          <video controls class="w-100 h-100" poster="{{ product.image.url|default:'' }}">
+                            <source src="{{ product.video.url }}">
+                            Trình duyệt không hỗ trợ phát video.
+                          </video>
+                        </div>
+                        <div class="mt-2 small">
+                          <i class="bi bi-link-45deg"></i>
+                          <a href="{{ product.video.url }}" target="_blank">Mở video trong tab mới</a>
+                        </div>
+                      </div>
+                      {% endif %}
+
+                      {% if product.embed_code %}
+                      <div>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                          <span class="badge bg-light text-dark border">Mã nhúng</span>
+                          <span class="text-success small">Đã đính kèm</span>
+                        </div>
+                        <div class="ratio ratio-16x9 rounded-3 border bg-light d-flex align-items-center justify-content-center overflow-hidden">
+                          {{ product.embed_code|safe }}
+                        </div>
+                      </div>
+                      {% endif %}
+                    {% else %}
+                      <div class="d-flex align-items-center gap-2 text-muted small">
+                        <i class="bi bi-camera-video-off"></i>
+                        <span>Chưa có video hoặc mã nhúng</span>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-lg-6">
+                <div class="card border-0 shadow-sm mb-3">
+                  <div class="card-header bg-white border-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-info-circle text-primary"></i>
+                    <h6 class="mb-0">Thông tin sản phẩm</h6>
+                  </div>
+                  <div class="card-body">
+                    <p class="text-muted mb-3">{{ product.description|linebreaksbr|default:"Không có mô tả" }}</p>
+                    <dl class="row small mb-0">
+                      <dt class="col-4 text-muted">Học sinh</dt>
+                      <dd class="col-8 fw-semibold">{{ product.student.get_full_name|default:product.student.username }}</dd>
+
+                      <dt class="col-4 text-muted">Lớp</dt>
+                      <dd class="col-8 fw-semibold">{{ product.session.klass.name }}</dd>
+
+                      <dt class="col-4 text-muted">Môn học</dt>
+                      <dd class="col-8">{{ product.session.klass.subject.name|default:"--" }}</dd>
+
+                      <dt class="col-4 text-muted">Học phần</dt>
+                      <dd class="col-8">
+                        {% if product.session.lesson and product.session.lesson.module %}
+                          Học phần {{ product.session.lesson.module.order }}: {{ product.session.lesson.module.title }}
+                        {% elif product.session.lesson %}
+                          {{ product.session.lesson.title }}
+                        {% else %}
+                          Chưa cập nhật
+                        {% endif %}
+                      </dd>
+
+                      <dt class="col-4 text-muted">Buổi học</dt>
+                      <dd class="col-8">
+                        Buổi {{ product.session.index }} &middot; {{ product.session.date|date:"d/m/Y" }}
+                        {% if product.session.start_time %} ({{ product.session.start_time|time:"H:i" }}{% if product.session.end_time %} - {{ product.session.end_time|time:"H:i" }}{% endif %}){% endif %}
+                      </dd>
+
+                      <dt class="col-4 text-muted">Trung tâm</dt>
+                      <dd class="col-8">{{ product.session.klass.center.name|default:"--" }}</dd>
+                    </dl>
+                  </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                  <div class="card-header bg-white border-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-clock-history text-primary"></i>
+                    <h6 class="mb-0">Mốc thời gian</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="d-flex flex-column gap-2 small">
+                      <div class="d-flex gap-2">
+                        <span class="badge bg-light text-dark border">Tạo</span>
+                        <span class="text-muted">{{ product.created_at|date:"H:i d/m/Y" }}</span>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <span class="badge bg-light text-dark border">Cập nhật</span>
+                        <span class="text-muted">{{ product.updated_at|date:"H:i d/m/Y" }}</span>
+                      </div>
                     </div>
                   </div>
-                {% endif %}
-                <div class="d-flex flex-wrap gap-2">
-                  <a href="{% url 'students:student_products_list' %}" class="btn btn-outline-secondary btn-sm">
-                    Quay lại
-                  </a>
-                  {% if can_edit %}
-                    <a href="{% url 'students:product_update' pk=product.pk %}" class="btn btn-primary btn-sm">
-                      Chỉnh sửa
-                    </a>
-                  {% endif %}
-                  <a href="{% url 'students:portal_course_detail' class_id=product.session.klass.id %}" class="btn btn-outline-info btn-sm">
-                    Xem lớp
-                  </a>
                 </div>
               </div>
             </div>

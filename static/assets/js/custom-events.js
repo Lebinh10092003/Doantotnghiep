@@ -479,12 +479,22 @@ function bindMySchedule() {
         form.requestSubmit();
     }
 
-    const prevBtn = document.getElementById('prev-week');
-    const nextBtn = document.getElementById('next-week');
-    const thisBtn = document.getElementById('this-week');
-    prevBtn?.addEventListener('click', () => adjustWeek(-1));
-    nextBtn?.addEventListener('click', () => adjustWeek(1));
-    thisBtn?.addEventListener('click', () => {
+    const prevBtns = [
+        ...document.querySelectorAll('[data-week-nav="prev"]'),
+        document.getElementById('prev-week'),
+    ].filter(Boolean);
+    const nextBtns = [
+        ...document.querySelectorAll('[data-week-nav="next"]'),
+        document.getElementById('next-week'),
+    ].filter(Boolean);
+    const thisBtns = [
+        ...document.querySelectorAll('[data-week-nav="today"]'),
+        document.getElementById('this-week'),
+    ].filter(Boolean);
+
+    prevBtns.forEach(btn => btn.addEventListener('click', () => adjustWeek(-1)));
+    nextBtns.forEach(btn => btn.addEventListener('click', () => adjustWeek(1)));
+    thisBtns.forEach(btn => btn.addEventListener('click', () => {
         const now = new Date();
         const mon = _mondayOf(now);
         const sun = new Date(mon);
@@ -492,7 +502,7 @@ function bindMySchedule() {
         startInput().value = _toISO(mon);
         endInput().value = _toISO(sun);
         form.requestSubmit();
-    });
+    }));
 }
 
 function bindTeachingSchedule() {
@@ -509,12 +519,22 @@ function bindTeachingSchedule() {
         form.requestSubmit();
     }
 
-    const prevBtn = document.getElementById('prev-week');
-    const nextBtn = document.getElementById('next-week');
-    const thisBtn = document.getElementById('this-week');
-    prevBtn?.addEventListener('click', () => adjustWeek(-1));
-    nextBtn?.addEventListener('click', () => adjustWeek(1));
-    thisBtn?.addEventListener('click', () => { dateInput().value = _toISO(new Date()); form.requestSubmit(); });
+    const prevBtns = [
+        ...document.querySelectorAll('[data-week-nav="prev"]'),
+        document.getElementById('prev-week'),
+    ].filter(Boolean);
+    const nextBtns = [
+        ...document.querySelectorAll('[data-week-nav="next"]'),
+        document.getElementById('next-week'),
+    ].filter(Boolean);
+    const thisBtns = [
+        ...document.querySelectorAll('[data-week-nav="today"]'),
+        document.getElementById('this-week'),
+    ].filter(Boolean);
+
+    prevBtns.forEach(btn => btn.addEventListener('click', () => adjustWeek(-1)));
+    nextBtns.forEach(btn => btn.addEventListener('click', () => adjustWeek(1)));
+    thisBtns.forEach(btn => btn.addEventListener('click', () => { dateInput().value = _toISO(new Date()); form.requestSubmit(); }));
 }
 
 document.addEventListener('DOMContentLoaded', () => {

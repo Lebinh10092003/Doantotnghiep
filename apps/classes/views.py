@@ -8,6 +8,7 @@ from django_filters.views import FilterView
 from django.db.models import Q
 from django.http import HttpResponse
 from django.http import QueryDict
+from django.core.exceptions import PermissionDenied
 from django import forms
 from apps.centers.models import Center
 from django.utils import timezone
@@ -227,7 +228,6 @@ def class_edit_view(request, pk):
 
 
 @login_required
-@permission_required("classes.view_class", raise_exception=True)
 def class_detail_view(request, pk):
     klass = get_object_or_404(
         Class.objects
@@ -241,6 +241,11 @@ def class_detail_view(request, pk):
             ),
         pk=pk,
     )
+    viewer = request.user
+    is_my_class = viewer == klass.main_teacher or klass.assistants.filter(id=viewer.id).exists()
+    if not (viewer.has_perm("classes.view_class") or is_my_class):
+        raise PermissionDenied
+
     # Lấy danh sách học sinh của lớp (Cả đang học và đã nghỉ)
     try:
         active_enrollments = [e for e in klass.enrollments.all()]
