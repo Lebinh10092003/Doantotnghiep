@@ -93,7 +93,7 @@ class Enrollment(models.Model):
         try:
             from apps.enrollments import services
 
-            return services.project_end_date(self.start_date, self.sessions_total, self.klass)
+            return services.calculate_end_date(self.start_date, self.sessions_total, self.klass)
         except Exception:
             return None
 

@@ -14,4 +14,7 @@ urlpatterns = [
         views.student_session_detail,
         name="student_session_detail",
     ),
+    path("revenue/", views.revenue_report, name="revenue_report"),
+    path("teaching-hours/", views.teaching_hours_report, name="teaching_hours_report"),
+    path("class-activity/", views.class_activity_report, name="class_activity_report"),
 ]

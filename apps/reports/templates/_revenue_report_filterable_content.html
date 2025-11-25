@@ -1,0 +1,122 @@
+<div x-data="{showFilters:false, modalTitle:'Bộ lọc'}">
+  {% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
+
+  <section class="section mb-4">
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-body">
+            <p class="text-muted small mb-1">Tổng thu</p>
+            <div class="fs-3 fw-semibold text-success">{{ totals.total_amount|floatformat:0|default_if_none:"0" }} VND</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+          <div class="card-body">
+            <p class="text-muted small mb-1">Tổng số buổi bán</p>
+            <div class="fs-3 fw-semibold text-primary">{{ totals.total_sessions|default_if_none:"0" }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section mb-4">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0">
+        <h5 class="mb-0">Theo trung tâm</h5>
+      </div>
+      <div class="card-body p-0">
+        {% if by_center %}
+        <div class="table-responsive">
+          <table class="table table-striped mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Trung tâm</th>
+                <th>Phiếu</th>
+                <th>Buổi</th>
+                <th class="text-end">Doanh thu</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in by_center %}
+              <tr>
+                <td>{{ row.enrollment__klass__center__name|default:"-" }}</td>
+                <td>{{ row.entries }}</td>
+                <td>{{ row.total_sessions|default:0 }}</td>
+                <td class="text-end">{{ row.total_amount|floatformat:0|default_if_none:"0" }} VND</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="p-3 text-muted small">Chưa có dữ liệu.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-header bg-white border-0">
+        <h5 class="mb-0">Phiếu thu gần nhất</h5>
+      </div>
+      <div class="card-body p-0">
+        {% if recent %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Ngày</th>
+                <th>Học viên</th>
+                <th>Lớp</th>
+                <th>Buổi</th>
+                <th class="text-end">Số tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in recent %}
+              <tr>
+                <td class="text-muted">{{ e.created_at|date:"d/m/Y" }}</td>
+                <td>{{ e.enrollment.student.get_full_name|default:e.enrollment.student.username }}</td>
+                <td>{{ e.enrollment.klass.code }}</td>
+                <td>{{ e.sessions }}</td>
+                <td class="text-end">{{ e.amount|floatformat:0 }} VND</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="p-3 text-muted small">Không có phiếu thu nào.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <div class="modal fade" id="filter-modal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterModalLabel" x-text="modalTitle">Bộ lọc</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="filter-modal-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.detail && evt.detail.target && evt.detail.target.id === 'filter-modal-content') {
+      const modalEl = document.getElementById('filter-modal');
+      if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    }
+  });
+</script>

@@ -31,6 +31,30 @@ wheels/
 .idea/
 .vscode/
 
-#History files
+# History files
 .history/
+
+# Virtual environments
+.venv/
+
+# Secrets / env
+.env
+*.env
+!.env.example
+
+# Static & media generated
+staticfiles/
+media/
+
+# Logs and coverage
+*.log
+.coverage
+htmlcov/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+
+# Firebase credentials (local only)
+doantotnghiep-478705-73a86589b37e.json
 

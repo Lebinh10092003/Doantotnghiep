@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Báo cáo hoạt động lớp{% endblock %}
+
+{% block content %}
+  <section class="section">
+    <div id="filterable-content">
+      {% include "_class_activity_report_filterable_content.html" %}
+    </div>
+  </section>
+                <td>{{ row.products }}</td>
+                <td>{{ row.products_per_session|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="p-3 text-muted small">Không có dữ liệu.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

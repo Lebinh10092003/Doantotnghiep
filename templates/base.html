@@ -142,16 +142,17 @@
                         </a>
                         <ul class="submenu">
                             {% url 'centers:centers_manage' as centers_manage_url %}
+                            {% url 'reports:class_activity_report' as class_activity_report_url %}
                             <li class="submenu-item {% if request.path == centers_manage_url %}active{% endif %}">
                                 <a href="{{ centers_manage_url }}" class="submenu-link">
                                     <i class="bi bi-house"></i>
                                     <span>Quản lý trung tâm</span>
                                 </a>
                             </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'reports:class_activity_report' %}active{% endif %}">
+                                <a href="{{ class_activity_report_url }}" class="submenu-link">
                                     <i class="bi bi-graph-up"></i>
-                                    <span>Báo cáo</span>
+                                    <span>Báo cáo hoạt động</span>
                                 </a>
                             </li>
                         </ul>
@@ -292,6 +293,39 @@
                     </li>
                     {% endif %}
 
+                    {% if user.is_authenticated %}
+                    {% with current_view=request.resolver_match.view_name|default:'' current_app=request.resolver_match.app_name|default:'' %}
+                    {% with user|in_group:'admin' as is_admin_group %}
+                    {% with user|in_group:'center_manager' as is_center_manager_group %}
+                    {% if is_admin_group or is_center_manager_group %}
+                    {% url 'enrollments:list' as enrollments_list_url %}
+                    {% url 'reports:enrollment_summary' as reports_enrollment_summary_url %}
+                    <li class="sidebar-item has-sub {% if current_app == 'enrollments' or current_view == 'reports:enrollment_summary' %}active{% endif %}">
+                        <a href="#" class="sidebar-link">
+                            <i class="bi bi-clipboard-data"></i>
+                            <span>Ghi danh</span>
+                        </a>
+                        <ul class="submenu">
+                            <li class="submenu-item {% if current_app == 'enrollments' %}active{% endif %}">
+                                <a href="{{ enrollments_list_url }}" class="submenu-link">
+                                    <i class="bi bi-journal-plus"></i>
+                                    <span>Quản lý ghi danh</span>
+                                </a>
+                            </li>
+                            <li class="submenu-item {% if current_view == 'reports:enrollment_summary' %}active{% endif %}">
+                                <a href="{{ reports_enrollment_summary_url }}" class="submenu-link">
+                                    <i class="bi bi-graph-up-arrow"></i>
+                                    <span>Báo cáo ghi danh</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endif %}
+
                     {% if perms.assessments.view_assessment and perms.assessments.add_assessment and perms.assessments.change_assessment and perms.assessments.delete_assessment %}
                     <li class="sidebar-item has-sub {% if '/assessments/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">
@@ -343,129 +377,131 @@
                     </li>
                     {% endif %}
 
-                    {% if request.user.is_authenticated %}
-                    <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'enrollments' or request.resolver_match.app_name == 'reports' %}active{% endif %}">
+                    {% if user.is_authenticated %}
+                    {% with request.resolver_match.app_name|default:'' as current_app %}
+                    {% with request.resolver_match.view_name|default:'' as current_view %}
+                    {% with is_admin_group=user|in_group:'admin' %}
+                    {% with is_center_manager_group=user|in_group:'center_manager' %}
+                    {% url 'rewards:catalog' as rewards_catalog_url %}
+                    {% url 'rewards:account_summary' as rewards_account_url %}
+                    {% url 'rewards:my_requests' as rewards_my_requests_url %}
+                    {% url 'rewards:award_points' as rewards_award_url %}
+                    {% url 'rewards:manage_items' as rewards_manage_items_url %}
+                    {% url 'rewards:manage_requests' as rewards_manage_requests_url %}
+                    <li class="sidebar-item has-sub {% if current_app == 'rewards' %}active{% endif %}">
                         <a href="#" class="sidebar-link">
-                            <i class="bi bi-clipboard-check"></i>
-                            <span>Ghi danh &amp; Báo cáo</span>
-                        </a>
-                        <ul class="submenu {% if request.resolver_match.app_name == 'enrollments' or request.resolver_match.app_name == 'reports' %}active{% endif %}">
-
-                            {# QUẢN LÝ GHI DANH: cần quyền xem Enrollment #}
-                            {% if perms.enrollments.view_enrollment %}
-                            <li class="submenu-item {% if request.resolver_match.app_name == 'enrollments' %}active{% endif %}">
-                                <a href="{% url 'enrollments:list' %}" class="submenu-link">
-                                    <i class="bi bi-clipboard-data"></i>
-                                    <span>Quản lý ghi danh</span>
-                                </a>
-                            </li>
-                            {% endif %}
-
-                            {# BÁO CÁO GHI DANH: cần quyền xem báo cáo (custom permission trong app reports) #}
-                            {% if perms.reports.view_enrollment_report %}
-                            <li class="submenu-item {% if request.resolver_match.app_name == 'reports' and request.resolver_match.view_name == 'reports:enrollment_summary' %}active{% endif %}">
-                                <a href="{% url 'reports:enrollment_summary' %}" class="submenu-link">
-                                    <i class="bi bi-graph-up"></i>
-                                    <span>Báo cáo ghi danh</span>
-                                </a>
-                            </li>
-                            {% endif %}
-                            <li class="submenu-item {% if request.resolver_match.app_name == 'reports' and request.resolver_match.view_name == 'reports:student_report' %}active{% endif %}">
-                                <a href="{% url 'reports:student_report' %}" class="submenu-link">
-                                    <i class="bi bi-person-badge"></i>
-                                    <span>Báo cáo học sinh</span>
-                                </a>
-                            </li>
-
-                        </ul>
-                    </li>
-                    {% endif %}
-
-                    {% if request.user.is_authenticated %}
-                    <li class="sidebar-item has-sub {% if '/rewards/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link">
-                            <i class="bi bi-gem"></i>
-                            <span>Thưởng & Điểm</span>
+                            <i class="bi bi-gift"></i>
+                            <span>Đổi quà &amp; Điểm thưởng</span>
                         </a>
                         <ul class="submenu">
-                            {% with current_url=request.resolver_match.url_name %}
-                            <li class="submenu-item {% if current_url == 'account_summary' %}active{% endif %}">
-                                <a href="{% url 'rewards:account_summary' %}" class="submenu-link">
-                                    <i class="bi bi-coin"></i>
+                            <li class="submenu-item {% if current_view == 'rewards:account_summary' %}active{% endif %}">
+                                <a href="{{ rewards_account_url }}" class="submenu-link">
+                                    <i class="bi bi-person-badge"></i>
                                     <span>Tài khoản điểm</span>
                                 </a>
                             </li>
-                            <li class="submenu-item {% if current_url == 'catalog' %}active{% endif %}">
-                                <a href="{% url 'rewards:catalog' %}" class="submenu-link">
-                                    <i class="bi bi-gift"></i>
-                                    <span>Đổi quà</span>
+                            <li class="submenu-item {% if current_view == 'rewards:catalog' %}active{% endif %}">
+                                <a href="{{ rewards_catalog_url }}" class="submenu-link">
+                                    <i class="bi bi-bag-heart"></i>
+                                    <span>Danh mục quà</span>
                                 </a>
                             </li>
-                            <li class="submenu-item {% if current_url == 'my_requests' %}active{% endif %}">
-                                <a href="{% url 'rewards:my_requests' %}" class="submenu-link">
-                                    <i class="bi bi-receipt"></i>
-                                    <span>Yêu cầu đổi quà</span>
+                            <li class="submenu-item {% if current_view == 'rewards:my_requests' %}active{% endif %}">
+                                <a href="{{ rewards_my_requests_url }}" class="submenu-link">
+                                    <i class="bi bi-list-check"></i>
+                                    <span>Yêu cầu của tôi</span>
                                 </a>
                             </li>
-                            {% if perms.rewards.change_rewarditem %}
-                            <li class="submenu-item {% if current_url == 'manage_items' %}active{% endif %}">
-                                <a href="{% url 'rewards:manage_items' %}" class="submenu-link">
-                                    <i class="bi bi-box-seam"></i>
-                                    <span>Kho quà tặng</span>
+                            {% if is_admin_group or is_center_manager_group or perms.rewards.add_rewardtransaction or user|in_group:'teacher' or user|in_group:'assistant' %}
+                            <li class="submenu-item {% if current_view == 'rewards:award_points' %}active{% endif %}">
+                                <a href="{{ rewards_award_url }}" class="submenu-link">
+                                    <i class="bi bi-star"></i>
+                                    <span>Cộng điểm thưởng</span>
                                 </a>
                             </li>
                             {% endif %}
-                            {% if perms.rewards.change_redemptionrequest %}
-                            <li class="submenu-item {% if current_url == 'manage_requests' %}active{% endif %}">
-                                <a href="{% url 'rewards:manage_requests' %}" class="submenu-link">
+                            {% if is_admin_group or is_center_manager_group or perms.rewards.change_rewarditem %}
+                            <li class="submenu-item {% if current_view == 'rewards:manage_items' %}active{% endif %}">
+                                <a href="{{ rewards_manage_items_url }}" class="submenu-link">
+                                    <i class="bi bi-boxes"></i>
+                                    <span>Quản lý quà tặng</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if is_admin_group or is_center_manager_group or perms.rewards.change_redemptionrequest %}
+                            <li class="submenu-item {% if current_view == 'rewards:manage_requests' %}active{% endif %}">
+                                <a href="{{ rewards_manage_requests_url }}" class="submenu-link">
                                     <i class="bi bi-inboxes"></i>
-                                    <span>Duyệt yêu cầu</span>
+                                    <span>Quản lý đổi quà</span>
                                 </a>
                             </li>
                             {% endif %}
-                            {% if request.user.is_superuser or request.user.is_staff or perms.rewards.add_rewardtransaction or request.user.role|upper == 'TEACHER' or request.user.role|upper == 'ASSISTANT' %}
-                            <li class="submenu-item {% if current_url == 'award_points' %}active{% endif %}">
-                                <a href="{% url 'rewards:award_points' %}" class="submenu-link">
-                                    <i class="bi bi-plus-circle"></i>
-                                    <span>Cộng điểm</span>
+                        </ul>
+                    </li>
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endif %}
+
+
+                    {% if user.is_authenticated %}
+                    {% with user.role|upper as user_role %}
+                    {% if user.is_superuser or user.is_staff or user_role == 'ADMIN' or user_role == 'CENTER_MANAGER' or user|in_group:'admin' or user|in_group:'center_manager' or perms.reports.view_revenue_report or perms.reports.view_teaching_hours_report or perms.reports.view_class_activity_report %}
+                    {% url 'reports:enrollment_summary' as reports_enrollment_summary_url %}
+                    {% url 'reports:student_report' as reports_student_report_url %}
+                    {% url 'reports:revenue_report' as reports_revenue_report_url %}
+                    {% url 'reports:teaching_hours_report' as reports_teaching_hours_report_url %}
+                    {% url 'reports:class_activity_report' as reports_class_activity_report_url %}
+                    {% with request.resolver_match.app_name|default:'' as current_app %}
+                    {% with request.resolver_match.view_name|default:'' as current_view %}
+                    <li class="sidebar-item has-sub {% if current_app == 'reports' %}active{% endif %}">
+                        <a href="#" class="sidebar-link">
+                            <i class="bi bi-graph-up"></i>
+                            <span>Báo cáo</span>
+                        </a>
+                        <ul class="submenu {% if current_app == 'reports' %}active{% endif %}">
+                            <li class="submenu-item {% if current_view == 'reports:enrollment_summary' %}active{% endif %}">
+                                <a href="{{ reports_enrollment_summary_url }}" class="submenu-link">
+                                    <i class="bi bi-diagram-3"></i>
+                                    <span>Tổng quan ghi danh</span>
                                 </a>
                             </li>
-                            {% endif %}
+                            {% with 'reports:student_report reports:student_report_detail reports:student_session_detail' as student_report_views %}
+                            <li class="submenu-item {% if current_view in student_report_views %}active{% endif %}">
+                                <a href="{{ reports_student_report_url }}" class="submenu-link">
+                                    <i class="bi bi-people"></i>
+                                    <span>Báo cáo học sinh</span>
+                                </a>
+                            </li>
                             {% endwith %}
-                        </ul>
-                    </li>
-                    {% endif %}
-
-                    <li class="sidebar-item {% if '/notifications/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link">
-                            <i class="bi bi-bell"></i>
-                            <span>Thông báo</span>
-                        </a>
-                    </li>
-
-                    {% if perms.reports %} 
-                    <li class="sidebar-item has-sub {% if '/reports/' in request.path %}active{% endif %}">
-                        <a href="#" class="sidebar-link">
-                            <i class="bi bi-bar-chart-line"></i>
-                            <span>Báo cáo & Thống kê</span>
-                        </a>
-                        <ul class="submenu">
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
-                                    <i class="bi bi-graph-up"></i>
-                                    <span>Báo cáo học tập</span>
+                            <li class="submenu-item {% if current_view == 'reports:revenue_report' %}active{% endif %}">
+                                <a href="{{ reports_revenue_report_url }}" class="submenu-link">
+                                    <i class="bi bi-cash-coin"></i>
+                                    <span>Báo cáo doanh thu</span>
                                 </a>
                             </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
-                                    <i class="bi bi-building"></i>
-                                    <span>Báo cáo trung tâm</span>
+                            <li class="submenu-item {% if current_view == 'reports:teaching_hours_report' %}active{% endif %}">
+                                <a href="{{ reports_teaching_hours_report_url }}" class="submenu-link">
+                                    <i class="bi bi-clock-history"></i>
+                                    <span>Báo cáo giờ dạy</span>
+                                </a>
+                            </li>
+                            <li class="submenu-item {% if current_view == 'reports:class_activity_report' %}active{% endif %}">
+                                <a href="{{ reports_class_activity_report_url }}" class="submenu-link">
+                                    <i class="bi bi-bar-chart-line"></i>
+                                    <span>Báo cáo hoạt động lớp</span>
                                 </a>
                             </li>
                         </ul>
                     </li>
+                    {% endwith %}
+                    {% endwith %}
+                    {% endif %}
+                    {% endwith %}
                     {% endif %}
 
+                    
                     {% if perms.billing %} 
                     <li class="sidebar-item has-sub {% if '/billing/' in request.path %}active{% endif %}">
                         <a href="{% url 'billing:home' %}" class="sidebar-link">
@@ -488,6 +524,7 @@
                         </ul>
                     </li>
                     {% endif %}
+                    {# #}
 
                     <li class="sidebar-item has-sub {% if '/support/' in request.path %}active{% endif %}">
                         <a href="#" class="sidebar-link">

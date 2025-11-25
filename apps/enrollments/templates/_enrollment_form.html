@@ -219,7 +219,10 @@
     const sessionsInput = document.getElementById("sessions-purchased");
     const amountInput = document.getElementById("amount-paid");
     const amountBefore = document.getElementById("amount-before");
-    if (!feeInput || !amountInput || !sessionsInput || !amountBefore) return;
+    const klassSelect = document.getElementById("id_klass");
+    const startDateInput = document.getElementById("id_start_date");
+    const endDateInput = document.getElementById("id_end_date");
+    const endDateUrl = "{% url 'enrollments:calculate_end_date' %}";
 
     const fmt = (val) => {
       const n = parseInt(val || "0", 10);
@@ -227,13 +230,21 @@
       return n.toLocaleString("vi-VN") + " ₫";
     };
 
+    const debounce = (fn, delay = 300) => {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    };
+
     const autoCalc = () => {
+      if (!feeInput || !amountInput || !sessionsInput || !amountBefore) return;
       const fee = parseInt(feeInput.value || "0", 10);
       const sessions = parseInt(sessionsInput.value || "0", 10);
       if (fee > 0 && sessions > 0) {
         const before = fee * sessions;
         amountBefore.value = fmt(before);
-        // discount_amount is not known client-side; assume 0 for now
         amountInput.value = fmt(before);
       } else {
         amountBefore.value = "";
@@ -241,7 +252,47 @@
       }
     };
 
-    sessionsInput.addEventListener("input", autoCalc);
+    const updateEndDate = debounce(async () => {
+      if (!klassSelect || !startDateInput || !endDateInput || !sessionsInput) return;
+      const klass = klassSelect.value;
+      const startDate = startDateInput.value;
+      const sessions = sessionsInput.value;
+      if (!klass || !startDate || !sessions || Number(sessions) <= 0) {
+        endDateInput.value = "";
+        return;
+      }
+
+      const params = new URLSearchParams({
+        klass,
+        start_date: startDate,
+        sessions,
+      });
+
+      try {
+        const res = await fetch(`${endDateUrl}?${params.toString()}`, {
+          headers: {"X-Requested-With": "XMLHttpRequest"},
+        });
+        if (!res.ok) {
+          endDateInput.value = "";
+          return;
+        }
+        const data = await res.json();
+        endDateInput.value = data.end_date || "";
+      } catch (err) {
+        endDateInput.value = "";
+      }
+    });
+
+    const handleSessionChange = () => {
+      autoCalc();
+      updateEndDate();
+    };
+
+    if (sessionsInput) sessionsInput.addEventListener("input", handleSessionChange);
+    if (klassSelect) klassSelect.addEventListener("change", updateEndDate);
+    if (startDateInput) startDateInput.addEventListener("change", updateEndDate);
+
     autoCalc();
+    updateEndDate();
   })();
 </script>

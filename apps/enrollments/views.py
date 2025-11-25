@@ -12,11 +12,17 @@ from apps.classes.models import Class
 from apps.centers.models import Center
 from apps.enrollments.forms import EnrollmentForm
 from apps.enrollments.models import Enrollment, EnrollmentStatus
-from apps.enrollments.services import auto_update_status, create_purchase_entry, record_status_change
+from apps.enrollments.services import (
+    auto_update_status,
+    create_purchase_entry,
+    calculate_end_date,
+    record_status_change,
+)
 from apps.enrollments.filters import EnrollmentFilter
-from django.http import QueryDict, HttpResponse
+from django.http import QueryDict, HttpResponse, JsonResponse
 from apps.filters.models import SavedFilter
 from django import forms
+from django.utils.dateparse import parse_date
 
 
 def is_htmx_request(request):
@@ -75,6 +81,13 @@ def enrollment_list(request):
     ):
         raise PermissionDenied
 
+    center_id = request.GET.get("center")
+    klass_id = request.GET.get("klass")
+    status = request.GET.get("status")
+    student_query = request.GET.get("student", "").strip()
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
     enrollments = Enrollment.objects.select_related(
         "student", "klass", "klass__center", "klass__subject"
     )
@@ -100,15 +113,35 @@ def enrollment_list(request):
     elif flags["is_student"]:
         enrollments = enrollments.filter(student=user)
 
-    enrollment_filter = EnrollmentFilter(request.GET, queryset=enrollments)
-    enrollments = enrollment_filter.qs
+    base_enrollments = enrollments
 
-    center_id = request.GET.get("center")
-    klass_id = request.GET.get("klass")
-    status = request.GET.get("status")
-    student_query = request.GET.get("student", "").strip()
-    start_date = request.GET.get("start_date")
-    end_date = request.GET.get("end_date")
+    if flags["is_admin"]:
+        centers = Center.objects.order_by("name")
+    elif flags["is_center_manager"] and user.center_id:
+        centers = Center.objects.filter(id=user.center_id)
+    else:
+        center_ids = base_enrollments.values_list("klass__center_id", flat=True).distinct()
+        centers = Center.objects.filter(id__in=center_ids).order_by("name")
+
+    klass_choices = _get_managed_classes(user, flags)
+    if not klass_choices.exists():
+        class_ids = base_enrollments.values_list("klass_id", flat=True).distinct()
+        klass_choices = (
+            Class.objects.filter(id__in=class_ids)
+            .select_related("center", "subject")
+            .order_by("code")
+        )
+
+    enrollment_filter = EnrollmentFilter(request.GET or None, queryset=base_enrollments)
+
+    center_field = enrollment_filter.form.fields.get("center")
+    if center_field is not None:
+        center_field.queryset = centers
+    klass_field = enrollment_filter.form.fields.get("klass")
+    if klass_field is not None:
+        klass_field.queryset = klass_choices
+
+    enrollments = enrollment_filter.qs
 
     allowed_orders = {"joined_at", "-joined_at", "start_date", "-start_date"}
     order = request.GET.get("order", "-joined_at")
@@ -134,23 +167,6 @@ def enrollment_list(request):
     except EmptyPage:
         page_obj = paginator.page(1)
     paginated_enrollments = page_obj.object_list
-
-    if flags["is_admin"]:
-        centers = Center.objects.order_by("name")
-    elif flags["is_center_manager"] and user.center:
-        centers = Center.objects.filter(id=user.center_id)
-    else:
-        centers = Center.objects.filter(
-            classes__enrollments__in=enrollments
-        ).distinct()
-
-    klass_choices = _get_managed_classes(user, flags)
-    if not flags["can_manage"]:
-        klass_choices = (
-            Class.objects.filter(id__in=enrollments.values_list("klass_id", flat=True))
-            .select_related("center", "subject")
-            .distinct()
-        )
 
     active_filter_badges = []
     if enrollment_filter.form.is_bound:
@@ -213,8 +229,7 @@ def enrollment_list(request):
 
     query_params_no_page = request.GET.copy()
     query_params_no_page._mutable = True
-    for key in ["page", "per_page"]:
-        query_params_no_page.pop(key, None)
+    query_params_no_page.pop("page", None)
     current_query_params = query_params_no_page.urlencode()
 
     context = {
@@ -260,6 +275,31 @@ def _ensure_scope(enrollment, user, flags):
             raise PermissionDenied
     else:
         raise PermissionDenied
+
+
+@login_required
+def enrollment_calculate_end_date(request):
+    user = request.user
+    flags = _role_flags(user)
+    _require_manage_permission(user, flags)
+    klass_queryset = _get_managed_classes(user, flags)
+
+    klass_id = request.GET.get("klass")
+    start_date_str = request.GET.get("start_date")
+    sessions_raw = request.GET.get("sessions")
+
+    try:
+        sessions = int(sessions_raw) if sessions_raw is not None else None
+    except (TypeError, ValueError):
+        sessions = None
+    start_date = parse_date(start_date_str) if start_date_str else None
+
+    if not klass_id or not start_date or not sessions or sessions <= 0:
+        return JsonResponse({"end_date": None})
+
+    klass = get_object_or_404(klass_queryset, pk=klass_id)
+    projected = calculate_end_date(start_date, sessions, klass)
+    return JsonResponse({"end_date": projected.isoformat() if projected else None})
 
 
 @login_required

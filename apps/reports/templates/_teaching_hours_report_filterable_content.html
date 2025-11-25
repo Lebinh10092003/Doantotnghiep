@@ -1,0 +1,68 @@
+<div x-data="{showFilters:false, modalTitle:'Bộ lọc'}">
+  {% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
+
+  <section class="section">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-body p-0">
+        {% if rows %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Nhân sự</th>
+                <th>Vai trò</th>
+                <th>Buổi</th>
+                <th>Done</th>
+                <th>Cancel</th>
+                <th>Missed</th>
+                <th>Giờ dạy</th>
+                <th>Giờ đã dạy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+              <tr>
+                <td>{{ row.user.get_full_name|default:row.user.username }}</td>
+                <td>{{ row.role_label }}</td>
+                <td>{{ row.sessions_total }}</td>
+                <td>{{ row.sessions_done }}</td>
+                <td>{{ row.sessions_cancelled }}</td>
+                <td>{{ row.sessions_missed }}</td>
+                <td>{{ row.hours_total|floatformat:2 }}</td>
+                <td>{{ row.hours_done|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="p-3 text-muted small">Không có dữ liệu.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <div class="modal fade" id="filter-modal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterModalLabel" x-text="modalTitle">Bộ lọc</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="filter-modal-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.detail && evt.detail.target && evt.detail.target.id === 'filter-modal-content') {
+      const modalEl = document.getElementById('filter-modal');
+      if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    }
+  });
+</script>

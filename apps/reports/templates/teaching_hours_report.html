@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Báo cáo giờ dạy{% endblock %}
+
+{% block content %}
+<div id="main">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-12 col-md-8">
+          <h3 class="mb-1">Báo cáo giờ dạy GV/Trợ giảng</h3>
+          <p class="text-muted mb-0">Thống kê số buổi và giờ giảng theo trạng thái.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <section class="section">
+    <div id="filterable-content">
+      {% include "_teaching_hours_report_filterable_content.html" %}
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -75,8 +75,10 @@ class Command(BaseCommand):
         rooms = []
         for center in centers:
             for i in range(options["rooms_per_center"]):
-                rooms.append(Room.objects.create(center=center, name=f"Phòng {i+1} ({center.code})"))
-        self.stdout.write(self.style.SUCCESS(f"Created {len(centers)} Centers and {len(rooms)} Rooms."))
+                room_name = f"Phòng {i+1} ({center.code})"
+                room, _ = Room.objects.get_or_create(center=center, name=room_name)
+                rooms.append(room)
+        self.stdout.write(self.style.SUCCESS(f"Created {len(centers)} Centers and {len(rooms)} Rooms (idempotent)."))
 
         # === 3. TẠO CHƯƠNG TRÌNH HỌC (Cần cho Class, ClassSession) ===
         subjects = [SubjectFactory() for _ in range(options["subjects"])]
@@ -91,29 +93,50 @@ class Command(BaseCommand):
 
         for subject in subjects:
             for i in range(options["modules_per_subject"]): # 12 modules
-                module = Module.objects.create(
+                module, _ = Module.objects.get_or_create(
                     subject=subject,
                     order=i + 1,
-                    title=f"{subject.name} - Module {i+1}",
-                    description=fake.sentence(nb_words=15)
+                    defaults={
+                        "title": f"{subject.name} - Module {i+1}",
+                        "description": fake.sentence(nb_words=15),
+                    },
                 )
                 all_modules.append(module)
                 for j in range(lessons_per_module_count): # 12 lessons
-                    lesson = Lesson.objects.create(
+                    lesson, _ = Lesson.objects.get_or_create(
                         module=module,
                         order=j + 1,
-                        title=f"Bài {j+1}: {fake.sentence(nb_words=6)}",
-                        objectives=fake.text(max_nb_chars=200)
+                        defaults={
+                            "title": f"Bài {j+1}: {fake.sentence(nb_words=6)}",
+                            "objectives": fake.text(max_nb_chars=200),
+                        },
                     )
                     all_lessons.append(lesson)
-                    lessons_by_subject[subject.id].append(lesson) # Thêm vào bản đồ
                     
                     if random.random() < 0.7:
-                        all_lectures.append(Lecture.objects.create(lesson=lesson, content=fake.text(max_nb_chars=400)))
+                        lecture, _ = Lecture.objects.get_or_create(
+                            lesson=lesson,
+                            defaults={"content": fake.text(max_nb_chars=400)},
+                        )
+                        all_lectures.append(lecture)
                     if random.random() < 0.5:
-                        all_exercises.append(Exercise.objects.create(lesson=lesson, description=fake.text(max_nb_chars=200)))
+                        exercise, _ = Exercise.objects.get_or_create(
+                            lesson=lesson,
+                            defaults={"description": fake.text(max_nb_chars=200)},
+                        )
+                        all_exercises.append(exercise)
+            
+            lessons_by_subject[subject.id] = list(
+                Lesson.objects.filter(module__subject=subject).order_by("module__order", "order")
+            )
         
-        self.stdout.write(self.style.SUCCESS(f"Created {len(subjects)} Subjects, {len(all_modules)} Modules, {len(all_lessons)} Lessons (Structure: {options['modules_per_subject']}x{lessons_per_module_count})."))
+        # Khử trùng lặp (trường hợp seed lại nhiều lần)
+        all_modules = list({m.id: m for m in all_modules}.values())
+        all_lessons = list({l.id: l for l in all_lessons}.values())
+        all_lectures = list({lec.id: lec for lec in all_lectures}.values())
+        all_exercises = list({ex.id: ex for ex in all_exercises}.values())
+
+        self.stdout.write(self.style.SUCCESS(f"Ensured {len(subjects)} Subjects, {len(all_modules)} Modules, {len(all_lessons)} Lessons (Structure: {options['modules_per_subject']}x{lessons_per_module_count})."))
 
         # === 4. TẠO NGƯỜI DÙNG (Cần cho mọi thứ khác) ===
         total_users = options["users"]
@@ -128,22 +151,51 @@ class Command(BaseCommand):
         created_users = []
         users_by_role = defaultdict(list)
 
-        # Hàm helper để tạo user, gán role, group VÀ center
+        def _ensure_group(user, role_code):
+            g = groups_by_name[role_code]
+            if not user.groups.filter(pk=g.pk).exists():
+                user.groups.add(g)
+
+        def _unique_username(prefix: str) -> str:
+            idx = 1
+            while True:
+                candidate = f"{prefix}{idx:04d}"
+                if not User.objects.filter(username=candidate).exists():
+                    return candidate
+                idx += 1
+
+        def _unique_national_id() -> str:
+            while True:
+                candidate = f"NID{random.randint(0, 999999999):09d}"
+                if not User.objects.filter(national_id=candidate).exists():
+                    return candidate
+
+        # Nạp sẵn user đang có theo role để tránh trùng lặp khi seed lại
+        for role_code in ROLE_GROUPS.keys():
+            existing = list(User.objects.filter(role=role_code))
+            for user in existing:
+                _ensure_group(user, role_code)
+            users_by_role[role_code].extend(existing)
+
+        # Hàm helper để tạo user, gán role, group VÀ center (chỉ tạo thêm nếu thiếu)
         def _create_and_assign(role_code, count, center_pool):
             g = groups_by_name[role_code]
-            for i in range(count):
-                user = UserFactory(role=role_code)
+            existing_count = len(users_by_role[role_code])
+            missing = max(0, count - existing_count)
+            for i in range(missing):
+                base_prefix = role_code.lower()
+                username = _unique_username(base_prefix)
+                national_id = _unique_national_id()
+                user = UserFactory(role=role_code, username=username, national_id=national_id)
                 
                 if role_code == "ADMIN":
                     user.is_superuser = True
                     user.is_staff = True
                 else:
-                    # Gán center cụ thể (nếu là manager) hoặc ngẫu nhiên (nếu là role khác)
                     if center_pool:
-                         # Gán xoay vòng cho Center Manager, ngẫu nhiên cho role khác
-                        user.center = center_pool[i % len(center_pool)]
+                        user.center = center_pool[(existing_count + i) % len(center_pool)]
                     else:
-                        user.center = None # Admin không có center
+                        user.center = None
                 
                 user.save()
                 user.groups.add(g)
@@ -151,7 +203,6 @@ class Command(BaseCommand):
                 users_by_role[role_code].append(user)
 
         _create_and_assign("ADMIN", admins_count, center_pool=None)
-        # Đảm bảo mỗi center có 1 manager
         _create_and_assign("CENTER_MANAGER", center_managers_count, center_pool=centers) 
         _create_and_assign("TEACHER", teachers_count, center_pool=centers)
         _create_and_assign("ASSISTANT", assistants_count, center_pool=centers)
@@ -164,7 +215,8 @@ class Command(BaseCommand):
         parents = users_by_role["PARENT"]
         students = users_by_role["STUDENT"]
         
-        self.stdout.write(self.style.SUCCESS(f"Created {len(created_users)} Users with roles and centers assigned."))
+        total_user_count = sum(len(v) for v in users_by_role.values())
+        self.stdout.write(self.style.SUCCESS(f"Prepared {total_user_count} Users (created {len(created_users)}) with roles and centers assigned."))
 
         # === 5. TẠO QUAN HỆ PHỤ HUYNH - HỌC SINH (Depends on User) ===
         parent_student_relations = []
@@ -180,6 +232,12 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Created {len(parent_student_relations)} Parent-Student Relations."))
 
         # === 6. TẠO LỚP HỌC & LỊCH HỌC (Depends on C-R-S-U) ===
+        def _unique_class_code():
+            while True:
+                candidate = f"CLS{random.randint(0, 999999):06d}"
+                if not Klass.objects.filter(code=candidate).exists():
+                    return candidate
+
         classes = []
         schedules = []
         if not teachers:
@@ -199,6 +257,7 @@ class Command(BaseCommand):
             end_date = start_date + timedelta(days=random.randint(90, 120)) 
 
             klass = KlassFactory(
+                code=_unique_class_code(),
                 main_teacher=main_teacher,
                 subject=subject,
                 center=center, # Gán center đã chọn
@@ -353,23 +412,27 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Created {student_product_count} Student Products."))
         
         # === 11. ĐIỂM THƯỞNG (Depends on User) ===
-        reward_items = [
-            RewardItem.objects.create(name="Bút chì 2B", cost=10),
-            RewardItem.objects.create(name="Vở ô ly", cost=20),
-        ]
+        reward_items = []
+        for name, cost in [("Bút chì 2B", 10), ("Vở ô ly", 20)]:
+            item, _ = RewardItem.objects.get_or_create(name=name, defaults={"cost": cost})
+            reward_items.append(item)
+
         point_accounts = []
         reward_transactions = []
+        new_accounts = 0
         for student in students:
-            account = PointAccount.objects.create(student=student, balance=0)
+            account, created = PointAccount.objects.get_or_create(student=student, defaults={"balance": 0})
             point_accounts.append(account)
+            if created:
+                new_accounts += 1
+
             if random.random() < 0.5:
                 delta = random.choice([10, 20, 30])
                 reward_transactions.append(RewardTransaction.objects.create(
                     student=student, delta=delta, reason="Thưởng thành tích học tập"
                 ))
-                account.balance += delta
-                account.save()
-        self.stdout.write(self.style.SUCCESS(f"Created {len(reward_items)} Reward Items, {len(point_accounts)} Point Accounts, {len(reward_transactions)} Reward Transactions."))
+                account.adjust_balance(delta)
+        self.stdout.write(self.style.SUCCESS(f"Ensured {len(reward_items)} Reward Items, {len(point_accounts)} Point Accounts (new: {new_accounts}), {len(reward_transactions)} Reward Transactions."))
 
         # === 12. THÔNG BÁO (Depends on User) ===
         notifications = []
@@ -391,8 +454,8 @@ class Command(BaseCommand):
 - Môn học: {len(subjects)}
 - Học phần (Module): {len(all_modules)}
 - Bài học (Lesson): {len(all_lessons)} (Lectures: {len(all_lectures)}, Exercises: {len(all_exercises)})
-- Người dùng: {len(created_users)}
-  (Admin: {admins_count}, QLTT: {center_managers_count}, GV: {teachers_count}, TG: {assistants_count}, PH: {parents_count}, HS: {students_count})
+- Người dùng: {total_user_count} (mới tạo: {len(created_users)})
+  (Admin: {len(users_by_role["ADMIN"])}, QLTT: {len(users_by_role["CENTER_MANAGER"])}, GV: {len(users_by_role["TEACHER"])}, TG: {len(users_by_role["ASSISTANT"])}, PH: {len(users_by_role["PARENT"])}, HS: {len(users_by_role["STUDENT"])})
 - Quan hệ PH-HS: {len(parent_student_relations)}
 - Lớp học: {len(classes)} (Yêu cầu: {options['classes']})
 - Lịch học (Schedule): {len(schedules)}

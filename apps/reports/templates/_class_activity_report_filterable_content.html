@@ -1,0 +1,79 @@
+<div x-data="{showFilters:false, modalTitle:'Bộ lọc'}">
+  {% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
+
+  <section class="section">
+    <div class="card border-0 shadow-sm rounded-4">
+      <div class="card-body p-0">
+        {% if rows %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Lớp</th>
+                <th>Trung tâm</th>
+                <th>Giáo viên</th>
+                <th>Học viên</th>
+                <th>Tổng buổi</th>
+                <th>Done</th>
+                <th>Cancel</th>
+                <th>Missed</th>
+                <th>Điểm danh (P/A/L)</th>
+                <th>Bài nộp</th>
+                <th>Sản phẩm</th>
+                <th>SP/Buổi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ row.klass.code }}</div>
+                  <div class="text-muted small">{{ row.klass.name }}</div>
+                </td>
+                <td>{{ row.klass.center.name }}</td>
+                <td>{{ row.klass.main_teacher.get_full_name|default:row.klass.main_teacher.username }}</td>
+                <td>{{ row.students_count }}</td>
+                <td>{{ row.total_sessions }}</td>
+                <td>{{ row.done_sessions }}</td>
+                <td>{{ row.cancelled_sessions }}</td>
+                <td>{{ row.missed_sessions }}</td>
+                <td>{{ row.attendance.P|default:0 }}/{{ row.attendance.A|default:0 }}/{{ row.attendance.L|default:0 }}</td>
+                <td>{{ row.submissions }}</td>
+                <td>{{ row.products }}</td>
+                <td>{{ row.products_per_session }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <div class="p-3 text-muted small">Chưa có dữ liệu theo bộ lọc.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <div class="modal fade" id="filter-modal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterModalLabel" x-text="modalTitle">Bộ lọc</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="filter-modal-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.detail && evt.detail.target && evt.detail.target.id === 'filter-modal-content') {
+      const modalEl = document.getElementById('filter-modal');
+      if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    }
+  });
+</script>

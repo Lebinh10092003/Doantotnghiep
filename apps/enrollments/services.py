@@ -53,7 +53,7 @@ def sessions_remaining(enrollment: Enrollment) -> int:
     return remaining if remaining > 0 else 0
 
 
-def project_end_date(start_date: date | None, sessions_total: int, klass: Class | None) -> date | None:
+def calculate_end_date(start_date: date | None, sessions_total: int, klass: Class | None) -> date | None:
     """
     Estimate end date based on class weekly schedule.
     If no schedule, assume daily sessions.
@@ -129,7 +129,7 @@ def auto_update_status(enrollment: Enrollment, today: date | None = None) -> boo
         updated = True
 
     if not enrollment.end_date:
-        projected = project_end_date(enrollment.start_date, total, enrollment.klass)
+        projected = calculate_end_date(enrollment.start_date, total, enrollment.klass)
         if projected and projected != enrollment.end_date:
             enrollment.end_date = projected
             enrollment.save(update_fields=["end_date"])

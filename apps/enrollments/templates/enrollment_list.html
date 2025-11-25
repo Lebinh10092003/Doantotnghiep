@@ -4,7 +4,7 @@
 {% block title %}Quản lý ghi danh{% endblock %}
 
 {% block content %}
-<div x-data="{ modalTitle: 'Tiêu đề Modal' }">
+<div x-data="{ pageModalTitle: 'Tiêu đề Modal' }" @set-page-modal-title.window="pageModalTitle = $event.detail">
   <div id="main">
     <header class="mb-3">
       <a href="#" class="burger-btn d-block d-xl-none">
@@ -41,46 +41,30 @@
                     hx-target="#enrollment-modal-content"
                     data-bs-toggle="modal"
                     data-bs-target="#enrollment-modal"
-                    @click="modalTitle = 'Thêm ghi danh mới'">
+                    @click="$dispatch('set-page-modal-title', 'Thêm ghi danh mới')">
               <i class="bi bi-plus-lg"></i> Thêm mới
             </button>
             {% endif %}
           </div>
 
           <div class="card-body">
-            <div x-data="{ showFilters: false }">
-              <div id="filterable-content"
-                   hx-get="{% url 'enrollments:list' %}?{{ current_query_params }}"
-                   hx-trigger="load, reload-enrollments-table from:body"
-                   hx-swap="innerHTML">
-                <div class="text-center p-5">
-                  <span class="spinner-border" role="status"></span> Đang tải dữ liệu...
-                </div>
-              </div>
+            <div id="filterable-content"
+                 hx-get="{% url 'enrollments:list' %}{% if current_query_params %}?{{ current_query_params }}{% endif %}"
+                 hx-trigger="reload-enrollments-table from:body"
+                 hx-target="#filterable-content"
+                 hx-swap="innerHTML">
+              {% include "_enrollment_filterable_content.html" %}
             </div>
           </div>
         </div>
       </section>
     </div>
 
-    <div class="modal fade" id="filter-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
-      <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
-          </div>
-          <div id="filter-modal-content">
-            <div class="modal-body"><p>Đang tải...</p></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="modal fade" id="enrollment-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
       <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+            <h5 class="modal-title" x-text="pageModalTitle">Đang tải...</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div id="enrollment-modal-content">
