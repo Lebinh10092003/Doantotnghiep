@@ -35,7 +35,7 @@
                 </span>
                 <div class="d-flex flex-wrap align-items-center gap-2">
                   <span class="fw-semibold">
-                    {{ teacher.get_full_name|default:teacher.username }}
+                    {{ teacher.display_name_with_email }}
                   </span>
                   <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">
                     Đang phụ trách lớp
@@ -62,7 +62,7 @@
                 <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
                   <span>
                     <strong>Giáo viên:</strong>
-                    {{ teacher.get_full_name|default:teacher.username }}
+                    {{ teacher.display_name_with_email }}
                   </span>
                 </span>
                 <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
@@ -108,7 +108,7 @@
                         {% for t in teachers %}
                           <option value="{{ t.id }}"
                                   {% if teacher and teacher.id == t.id %}selected{% endif %}>
-                            {{ t.get_full_name|default:t.username }}
+                            {{ t.display_name_with_email }}
                           </option>
                         {% endfor %}
                       </select>

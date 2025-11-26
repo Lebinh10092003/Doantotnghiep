@@ -16,7 +16,7 @@
         {% for r in requests %}
           <tr>
             <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
-            <td>{{ r.student.get_full_name|default:r.student.username }}</td>
+            <td>{{ r.student.display_name_with_email }}</td>
             <td>{{ r.item.name }}</td>
             <td>{{ r.quantity }}</td>
             <td>{{ r.total_cost }}</td>

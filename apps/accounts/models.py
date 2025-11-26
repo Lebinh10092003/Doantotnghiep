@@ -40,6 +40,35 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.username} ({self.role})"
 
+    def preferred_full_name(self) -> str:
+        """Return the best available human friendly name for the user."""
+        full_name = super().get_full_name()
+        if full_name:
+            full_name = full_name.strip()
+        if full_name:
+            return full_name
+        if self.first_name or self.last_name:
+            return f"{self.first_name} {self.last_name}".strip()
+        if self.username:
+            return self.username
+        return "Chưa cập nhật"
+
+    def preferred_email(self) -> str:
+        """Return the user's email or an empty string when missing."""
+        return (self.email or "").strip()
+
+    def display_name_with_email(self) -> str:
+        """Display helper that combines full name with email when possible."""
+        name = self.preferred_full_name()
+        email = self.preferred_email()
+        if email and email.lower() not in name.lower():
+            return f"{name} ({email})"
+        if email and not name:
+            return email
+        if not name and not email:
+            return "Chưa cập nhật"
+        return name
+
 
 class UserCodeCounter(models.Model):
     prefix = models.CharField(max_length=5, unique=True)

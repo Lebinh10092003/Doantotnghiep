@@ -19,7 +19,7 @@
             <option value="{{ s.id }}"
                     {% if session and s.id == session.id %}selected{% endif %}
                     {% if form.instance.session_id and s.id == form.instance.session_id %}selected{% endif %}>
-              Buổi {{ s.index|default:"?" }} - {{ s.klass.name }} ({{ s.date|date:"d/m/Y" }}{% if s.klass.main_teacher %} • GV: {{ s.klass.main_teacher.get_full_name|default:s.klass.main_teacher.username }}{% endif %})
+              Buổi {{ s.index|default:"?" }} - {{ s.klass.name }} ({{ s.date|date:"d/m/Y" }}{% if s.klass.main_teacher %} • GV: {{ s.klass.main_teacher.display_name_with_email }}{% endif %})
             </option>
           {% endfor %}
         </select>

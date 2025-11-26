@@ -40,7 +40,7 @@
       <div class="card">
         <div class="row">
           <div class="col">
-            <div class="title">{{ row.enrollment.student.get_full_name|default:row.enrollment.student.username }}</div>
+            <div class="title">{{ row.enrollment.student.display_name_with_email }}</div>
             <div class="small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.username }}</div>
             {% if row.parent_names %}
             <div class="small">Phụ huynh: {% for fn, ln in row.parent_names %}{{ ln }} {{ fn }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
@@ -48,7 +48,7 @@
           </div>
           <div class="col" style="text-align: right;">
             <div class="title">{{ row.enrollment.klass.code }} - {{ row.enrollment.klass.name }}</div>
-            <div class="small">{{ row.enrollment.klass.center.name }} | GV: {{ row.enrollment.klass.main_teacher.get_full_name|default:"Chưa gán" }}</div>
+            <div class="small">{{ row.enrollment.klass.center.name }} | GV: {{ row.enrollment.klass.main_teacher.display_name_with_email|default:"Chưa gán" }}</div>
             <div class="small">Trạng thái: {{ row.enrollment.get_status_display }}</div>
           </div>
         </div>

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -89,7 +91,6 @@ class EnrollmentForm(forms.ModelForm):
             "klass",
             "status",
             "start_date",
-            "end_date",
             "fee_per_session",
             "sessions_purchased",
             "amount_paid",
@@ -99,7 +100,6 @@ class EnrollmentForm(forms.ModelForm):
         widgets = {
             "note": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
             "start_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "end_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "fee_per_session": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": 1000}),
             "sessions_purchased": forms.NumberInput(attrs={"class": "form-control", "min": 0}),
             "amount_paid": forms.NumberInput(
@@ -150,6 +150,11 @@ class EnrollmentForm(forms.ModelForm):
             self.fields["klass"].queryset = klass_queryset
 
         self.fields["discount"].queryset = Discount.objects.filter(active=True).order_by("code")
+
+        if self.instance and self.instance.pk and not self.is_bound:
+            self.initial["sessions_purchased"] = None
+            self.initial["amount_paid"] = None
+            self.initial["discount"] = None
     def clean(self):
         cleaned = super().clean()
         student = cleaned.get("student")
@@ -350,3 +355,80 @@ class EnrollmentForm(forms.ModelForm):
             instance.save()
 
         return instance
+
+
+class EnrollmentTransferForm(forms.Form):
+    target_enrollment = forms.ModelChoiceField(
+        queryset=Enrollment.objects.none(),
+        label="Ghi danh nhận",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
+    )
+    amount = forms.DecimalField(
+        label="Số tiền chuyển (VND)",
+        min_value=1000,
+        decimal_places=0,
+        max_digits=12,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": 1000}),
+    )
+    note = forms.CharField(
+        label="Ghi chú",
+        required=False,
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+    )
+
+    def __init__(self, *args, source_enrollment: Enrollment, user=None, flags=None, **kwargs):
+        self.source_enrollment = source_enrollment
+        self.user = user
+        self.flags = flags or {}
+        super().__init__(*args, **kwargs)
+
+        qs = (
+            Enrollment.objects.exclude(pk=source_enrollment.pk)
+            .select_related("student", "klass", "klass__center")
+            .order_by("student__last_name", "student__first_name", "klass__code")
+        )
+        if self.flags.get("is_center_manager") and getattr(user, "center_id", None):
+            qs = qs.filter(klass__center_id=user.center_id)
+        self.fields["target_enrollment"].queryset = qs
+        self.fields["target_enrollment"].label_from_instance = (
+            lambda obj: f"{obj.student.display_name_with_email()} – {obj.klass.code} ({obj.klass.name})"
+        )
+
+        remaining = max(Decimal(source_enrollment.remaining_amount or 0), Decimal(0))
+        self.fields["amount"].widget.attrs["max"] = str(int(remaining))
+
+    def clean_amount(self):
+        amount = self.cleaned_data.get("amount") or Decimal(0)
+        remaining = Decimal(self.source_enrollment.remaining_amount or 0)
+        if amount > remaining:
+            raise ValidationError("Số tiền chuyển vượt quá số dư hiện có.")
+        return amount
+
+    def clean_target_enrollment(self):
+        target = self.cleaned_data.get("target_enrollment")
+        if not target:
+            return target
+        if target.pk == self.source_enrollment.pk:
+            raise ValidationError("Chọn ghi danh khác để nhận phí.")
+        if target.status == EnrollmentStatus.CANCELLED:
+            raise ValidationError("Không thể chuyển phí sang ghi danh đã nghỉ học.")
+        return target
+
+    def clean(self):
+        cleaned = super().clean()
+        source = self.source_enrollment
+        if source.remaining_amount <= 0:
+            raise ValidationError("Ghi danh không còn số dư để chuyển.")
+        if not source.fee_per_session:
+            raise ValidationError("Ghi danh này chưa thiết lập đơn giá, không thể chuyển phí.")
+        amount = cleaned.get("amount")
+        fee = Decimal(source.fee_per_session or 0)
+        target = cleaned.get("target_enrollment")
+        if amount and fee > 0:
+            if (amount % fee) != 0:
+                raise ValidationError("Số tiền phải chia hết cho đơn giá đang áp dụng.")
+        if target and fee > 0:
+            target_fee = Decimal(target.fee_per_session or 0)
+            if target_fee != fee:
+                raise ValidationError("Chỉ chuyển được giữa các ghi danh có cùng đơn giá.")
+        return cleaned

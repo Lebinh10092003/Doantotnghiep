@@ -29,7 +29,7 @@
               <i class="bi bi-person-badge"></i>
             </span>
             <div>
-              <div class="fw-semibold">{{ row.enrollment.student.get_full_name|default:row.enrollment.student.username }}</div>
+              <div class="fw-semibold">{{ row.enrollment.student.display_name_with_email }}</div>
               <div class="text-muted small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.username }}</div>
               {% if row.parent_names %}
               <div class="text-muted small">
@@ -41,7 +41,7 @@
         </div>
         <div class="text-end">
           <div class="fw-semibold">{{ row.enrollment.klass.code }} - {{ row.enrollment.klass.name }}</div>
-          <div class="text-muted small">{{ row.enrollment.klass.center.name }} | Giáo viên: {{ row.enrollment.klass.main_teacher.get_full_name|default:"Chưa gán" }}</div>
+          <div class="text-muted small">{{ row.enrollment.klass.center.name }} | Giáo viên: {{ row.enrollment.klass.main_teacher.display_name_with_email|default:"Chưa gán" }}</div>
           <div class="text-muted small">Trạng thái: {{ row.enrollment.get_status_display }}</div>
         </div>
       </div>

@@ -19,7 +19,7 @@
         <div class="col-md-6">
             <p><strong>Ngày bắt đầu:</strong> {{ klass.start_date|date:"d/m/Y"|default:"Chưa có" }}</p>
             <p><strong>Ngày kết thúc:</strong> {{ klass.end_date|date:"d/m/Y"|default:"Chưa có" }}</p>
-            <p><strong>Giáo viên chính:</strong> {{ klass.main_teacher.get_full_name|default:"Chưa có" }}</p>
+            <p><strong>Giáo viên chính:</strong> {{ klass.main_teacher.display_name_with_email|default:"Chưa có" }}</p>
             <p><strong>Phòng học mặc định:</strong> {{ klass.room.name|default:"Chưa có" }}</p>
         </div>
     </div>
@@ -59,7 +59,7 @@
               {% for e in active_enrollments %}
                 {% if e.student %}
                 <tr>
-                  <td>{{ e.student.get_full_name|default:e.student.username }}</td>
+                  <td>{{ e.student.display_name_with_email }}</td>
                   <td class="text-muted">{{ e.student.username }}</td>
                   <td>{{ e.joined_at|date:"d/m/Y" }}</td>
                   <td><span class="badge bg-success">Đang học</span></td>

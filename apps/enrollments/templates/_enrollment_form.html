@@ -1,4 +1,4 @@
-{% load widget_tweaks %}
+{% load widget_tweaks humanize %}
 
 <form
   hx-post="{% if is_create %}{% url 'enrollments:create' %}{% else %}{% url 'enrollments:update' enrollment.pk %}{% endif %}"
@@ -30,6 +30,13 @@
       </div>
     </div>
 
+    {% if enrollment %}
+    <div class="alert alert-info" role="alert">
+      <div class="mb-1"><strong>Số buổi còn:</strong> {{ enrollment.sessions_remaining }}</div>
+      <div class="mb-0"><strong>Số tiền còn:</strong> {{ enrollment.remaining_amount|intcomma }} ₫</div>
+    </div>
+    {% endif %}
+
     <div class="row">
       <div class="col-md-4">
         <div class="mb-3">
@@ -47,43 +54,48 @@
       </div>
       <div class="col-md-4">
         <div class="mb-3">
-          <label for="{{ form.end_date.id_for_label }}" class="form-label">Ngày kết thúc</label>
-          {% render_field form.end_date class+="form-control" %}
-          {% if form.end_date.errors %}<div class="invalid-feedback d-block">{{ form.end_date.errors|first }}</div>{% endif %}
+          <label class="form-label">Ngày kết thúc dự kiến</label>
+          <input type="text"
+                 id="end-date-preview"
+                 class="form-control"
+                 value="{% if form.instance and form.instance.end_date %}{{ form.instance.end_date|date:'d/m/Y' }}{% endif %}"
+                 readonly>
+          <div class="form-text">Tự tính theo lịch lớp và số buổi đã mua.</div>
         </div>
       </div>
     </div>
-            <div class="row">
-              <input type="hidden" id="fee-per-session" name="{{ form.fee_per_session.html_name }}" value="{{ form.fee_per_session.value|default_if_none:300000 }}">
-              <div class="col-md-3">
-                <div class="mb-3">
-                  <label for="{{ form.sessions_purchased.id_for_label }}" class="form-label">Số buổi mua</label>
-                  <input type="number" min="0" step="1" class="form-control" id="sessions-purchased" name="{{ form.sessions_purchased.html_name }}" value="{{ form.sessions_purchased.value|default_if_none:'' }}">
-                  {% if form.sessions_purchased.errors %}<div class="invalid-feedback d-block">{{ form.sessions_purchased.errors|first }}</div>{% endif %}
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="mb-3">
-                  <label class="form-label">Mã giảm giá</label>
-                  {% render_field form.discount class+="form-select" id="discount-select" %}
-                  {% if form.discount.errors %}<div class="invalid-feedback d-block">{{ form.discount.errors|first }}</div>{% endif %}
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="mb-3">
-                  <label class="form-label">Tiền trước giảm</label>
-                  <input type="text" class="form-control" id="amount-before" readonly>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="mb-3">
-                  <label for="{{ form.amount_paid.id_for_label }}" class="form-label">Tiền sau giảm (đóng)</label>
-                  <input type="text" class="form-control" id="amount-paid" name="{{ form.amount_paid.html_name }}" value="{{ form.amount_paid.value|default_if_none:'' }}" readonly>
-                  {% if form.amount_paid.errors %}<div class="invalid-feedback d-block">{{ form.amount_paid.errors|first }}</div>{% endif %}
-                  <div class="form-text">Tự tính: (buổi * đơn giá) - giảm giá.</div>
-                </div>
-              </div>
-            </div>
+    <div class="row">
+      <input type="hidden" id="fee-per-session" name="{{ form.fee_per_session.html_name }}" value="{{ form.fee_per_session.value|default_if_none:300000 }}">
+      <div class="col-md-3">
+        <div class="mb-3">
+          <label for="{{ form.sessions_purchased.id_for_label }}" class="form-label">Số buổi mua</label>
+          <input type="number" min="0" step="1" class="form-control" id="sessions-purchased" name="{{ form.sessions_purchased.html_name }}" value="{{ form.sessions_purchased.value|default_if_none:'' }}">
+          {% if form.sessions_purchased.errors %}<div class="invalid-feedback d-block">{{ form.sessions_purchased.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="mb-3">
+          <label class="form-label">Mã giảm giá</label>
+          {% render_field form.discount class+="form-select" id="discount-select" %}
+          {% if form.discount.errors %}<div class="invalid-feedback d-block">{{ form.discount.errors|first }}</div>{% endif %}
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="mb-3">
+          <label class="form-label">Tiền trước giảm</label>
+          <input type="text" class="form-control" id="amount-before-display" readonly>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="mb-3">
+          <label class="form-label">Tiền sau giảm (đóng)</label>
+          {% render_field form.amount_paid class+="d-none" id="amount-paid-raw" %}
+          <input type="text" class="form-control" id="amount-paid-display" readonly>
+          {% if form.amount_paid.errors %}<div class="invalid-feedback d-block">{{ form.amount_paid.errors|first }}</div>{% endif %}
+          <div class="form-text">Tự tính: (buổi * đơn giá) - giảm giá.</div>
+        </div>
+      </div>
+    </div>
 
     <div class="mb-3">
       <label for="{{ form.note.id_for_label }}" class="form-label">Ghi chú</label>
@@ -217,17 +229,25 @@
   (() => {
     const feeInput = document.getElementById("fee-per-session");
     const sessionsInput = document.getElementById("sessions-purchased");
-    const amountInput = document.getElementById("amount-paid");
-    const amountBefore = document.getElementById("amount-before");
+    const amountInput = document.getElementById("amount-paid-raw");
+    const amountDisplay = document.getElementById("amount-paid-display");
+    const amountBefore = document.getElementById("amount-before-display");
     const klassSelect = document.getElementById("id_klass");
     const startDateInput = document.getElementById("id_start_date");
-    const endDateInput = document.getElementById("id_end_date");
+    const endDatePreview = document.getElementById("end-date-preview");
     const endDateUrl = "{% url 'enrollments:calculate_end_date' %}";
 
     const fmt = (val) => {
       const n = parseInt(val || "0", 10);
       if (!n) return "";
       return n.toLocaleString("vi-VN") + " ₫";
+    };
+
+    const formatDateDisplay = (isoString) => {
+      if (!isoString) return "";
+      const dateObj = new Date(isoString);
+      if (Number.isNaN(dateObj.getTime())) return isoString;
+      return dateObj.toLocaleDateString("vi-VN");
     };
 
     const debounce = (fn, delay = 300) => {
@@ -245,20 +265,33 @@
       if (fee > 0 && sessions > 0) {
         const before = fee * sessions;
         amountBefore.value = fmt(before);
-        amountInput.value = fmt(before);
+        amountInput.value = before;
+        if (amountDisplay) amountDisplay.value = fmt(before);
       } else {
         amountBefore.value = "";
-        amountInput.value = "";
+        const current = parseInt(amountInput.value || "", 10);
+        if (Number.isFinite(current) && current > 0) {
+          if (amountDisplay) amountDisplay.value = fmt(current);
+        } else if (amountDisplay) {
+          amountDisplay.value = "";
+        }
       }
     };
 
+    if (amountInput && amountDisplay) {
+      const current = parseInt(amountInput.value || "", 10);
+      if (Number.isFinite(current) && current > 0) {
+        amountDisplay.value = fmt(current);
+      }
+    }
+
     const updateEndDate = debounce(async () => {
-      if (!klassSelect || !startDateInput || !endDateInput || !sessionsInput) return;
+      if (!klassSelect || !startDateInput || !sessionsInput || !endDatePreview) return;
       const klass = klassSelect.value;
       const startDate = startDateInput.value;
       const sessions = sessionsInput.value;
       if (!klass || !startDate || !sessions || Number(sessions) <= 0) {
-        endDateInput.value = "";
+        endDatePreview.value = "";
         return;
       }
 
@@ -273,13 +306,13 @@
           headers: {"X-Requested-With": "XMLHttpRequest"},
         });
         if (!res.ok) {
-          endDateInput.value = "";
+          endDatePreview.value = "";
           return;
         }
         const data = await res.json();
-        endDateInput.value = data.end_date || "";
+        endDatePreview.value = data.end_date ? formatDateDisplay(data.end_date) : "";
       } catch (err) {
-        endDateInput.value = "";
+        endDatePreview.value = "";
       }
     });
 

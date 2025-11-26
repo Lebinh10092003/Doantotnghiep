@@ -1,3 +1,4 @@
+{% load humanize %}
 <div x-data="{showFilters:false, modalTitle:'Bộ lọc'}">
   {% include "_filter_ui_controls.html" with filter=filter quick_filters=quick_filters active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
 
@@ -30,6 +31,8 @@
               hx-include="#filter-form"
               hx-trigger="change"
               hx-vals='{"page": "1"}'>
+        <option value="student_asc" {% if filter_params.order == "student_asc" or not filter_params.order %}selected{% endif %}>Tên học viên (A-Z)</option>
+        <option value="student_desc" {% if filter_params.order == "student_desc" %}selected{% endif %}>Tên học viên (Z-A)</option>
         <option value="-joined_at" {% if filter_params.order == "-joined_at" %}selected{% endif %}>Ghi danh mới nhất</option>
         <option value="joined_at" {% if filter_params.order == "joined_at" %}selected{% endif %}>Ghi danh cũ nhất</option>
         <option value="-start_date" {% if filter_params.order == "-start_date" %}selected{% endif %}>Bắt đầu mới nhất</option>
@@ -49,6 +52,7 @@
             <th>Trạng thái</th>
             <th>Ngày ghi danh</th>
             <th>Thời gian học</th>
+            <th>Số tiền còn lại</th>
             <th>Ghi chú</th>
             <th>Hành động</th>
           </tr>
@@ -57,7 +61,7 @@
           {% for enrollment in page_obj.object_list %}
           <tr>
             <td>
-              <div class="fw-semibold">{{ enrollment.student.get_full_name|default:enrollment.student.username }}</div>
+              <div class="fw-semibold">{{ enrollment.student.display_name_with_email }}</div>
               <div class="text-muted small">{{ enrollment.student.user_code }}</div>
               <div class="text-muted small">{{ enrollment.student.phone|default:"-" }}</div>
             </td>
@@ -86,10 +90,29 @@
               <div><span class="text-muted small">Bắt đầu:</span> {{ enrollment.start_date|date:"d/m/Y"|default:"-" }}</div>
               <div><span class="text-muted small">Kết thúc:</span> {{ enrollment.end_date|date:"d/m/Y"|default:"-" }}</div>
             </td>
+            <td class="text-nowrap">
+              <div class="fw-semibold">{{ enrollment.sessions_remaining }} buổi</div>
+              <div class="text-muted small">{{ enrollment.remaining_amount|default_if_none:0|intcomma }} ₫</div>
+            </td>
             <td>{{ enrollment.note|default:"-" }}</td>
             <td class="text-nowrap">
               {% if flags.can_manage %}
                 <div class="d-flex gap-1">
+                  <a class="btn btn-sm btn-outline-secondary"
+                     href="{% url 'billing:entries' enrollment.pk %}"
+                     title="Chi tiết học phí">
+                    <i class="bi bi-receipt"></i>
+                  </a>
+                  <button type="button"
+                          class="btn btn-sm btn-outline-primary"
+                          title="Chuyển phí"
+                          hx-get="{% url 'enrollments:transfer' enrollment.pk %}"
+                          hx-target="#enrollment-modal-content"
+                          data-bs-toggle="modal"
+                          data-bs-target="#enrollment-modal"
+                          @click="$dispatch('set-page-modal-title', 'Chuyển phí ghi danh')">
+                    <i class="bi bi-arrow-left-right"></i>
+                  </button>
                     <button type="button"
                       class="btn btn-sm btn-warning"
                       title="Chỉnh sửa"
@@ -117,7 +140,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="8" class="text-center">Không tìm thấy ghi danh phù hợp.</td>
+            <td colspan="9" class="text-center">Không tìm thấy ghi danh phù hợp.</td>
           </tr>
           {% endfor %}
         </tbody>

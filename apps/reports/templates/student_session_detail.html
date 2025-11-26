@@ -25,12 +25,12 @@
       <div class="card-header bg-white border-0">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
           <div>
-            <div class="fw-semibold">Học viên: {{ enrollment.student.get_full_name|default:enrollment.student.username }}</div>
+            <div class="fw-semibold">Học viên: {{ enrollment.student.display_name_with_email }}</div>
             <div class="text-muted small">Mã: {{ enrollment.student.user_code|default:enrollment.student.username }}</div>
           </div>
           <div class="text-end">
             <div class="fw-semibold">{{ enrollment.klass.code }} - {{ enrollment.klass.name }}</div>
-            <div class="text-muted small">{{ enrollment.klass.center.name }} | GV: {{ enrollment.klass.main_teacher.get_full_name|default:"Chưa gán" }}</div>
+            <div class="text-muted small">{{ enrollment.klass.center.name }} | GV: {{ enrollment.klass.main_teacher.display_name_with_email|default:"Chưa gán" }}</div>
           </div>
         </div>
       </div>
@@ -109,7 +109,7 @@
                     <img src="{{ photo.image.url }}" alt="{{ photo.caption|default:'Ảnh buổi học' }}" class="img-fluid rounded" style="max-height: 180px;">
                   </div>
                   {% if photo.caption %}<div class="text-muted small mt-1">{{ photo.caption }}</div>{% endif %}
-                  {% if photo.uploaded_by %}<div class="text-muted small">Tải lên: {{ photo.uploaded_by.get_full_name|default:photo.uploaded_by.username }}</div>{% endif %}
+                  {% if photo.uploaded_by %}<div class="text-muted small">Tải lên: {{ photo.uploaded_by.display_name_with_email }}</div>{% endif %}
                 </div>
               </div>
               {% endfor %}

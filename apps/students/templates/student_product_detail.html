@@ -119,7 +119,7 @@
                     <p class="text-muted mb-3">{{ product.description|linebreaksbr|default:"Không có mô tả" }}</p>
                     <dl class="row small mb-0">
                       <dt class="col-4 text-muted">Học sinh</dt>
-                      <dd class="col-8 fw-semibold">{{ product.student.get_full_name|default:product.student.username }}</dd>
+                      <dd class="col-8 fw-semibold">{{ product.student.display_name_with_email }}</dd>
 
                       <dt class="col-4 text-muted">Lớp</dt>
                       <dd class="col-8 fw-semibold">{{ product.session.klass.name }}</dd>

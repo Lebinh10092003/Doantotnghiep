@@ -31,7 +31,7 @@
                   <div class="text-muted small">{{ row.klass.name }}</div>
                 </td>
                 <td>{{ row.klass.center.name }}</td>
-                <td>{{ row.klass.main_teacher.get_full_name|default:row.klass.main_teacher.username }}</td>
+                <td>{{ row.klass.main_teacher.display_name_with_email }}</td>
                 <td>{{ row.students_count }}</td>
                 <td>{{ row.total_sessions }}</td>
                 <td>{{ row.done_sessions }}</td>

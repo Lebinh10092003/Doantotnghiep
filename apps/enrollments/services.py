@@ -1,5 +1,7 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Sum
 
 from apps.attendance.models import Attendance
@@ -101,12 +103,18 @@ def record_status_change(enrollment: Enrollment, new_status: str, *, reason: str
     enrollment.status = new_status
 
 
-def auto_update_status(enrollment: Enrollment, today: date | None = None) -> bool:
+def auto_update_status(
+    enrollment: Enrollment,
+    today: date | None = None,
+    *,
+    force_recalculate_end_date: bool = False,
+) -> bool:
     """
     Auto update enrollment:
     - If remaining sessions <= 0 -> CANCELLED.
     - If end_date is past -> CANCELLED.
     - If end_date missing but can be projected -> set it.
+    - If force_recalculate_end_date=True, always refresh projected end date.
     Returns True if updated.
     """
     updated = False
@@ -128,12 +136,15 @@ def auto_update_status(enrollment: Enrollment, today: date | None = None) -> boo
         enrollment.save(update_fields=["status", "active"])
         updated = True
 
-    if not enrollment.end_date:
-        projected = calculate_end_date(enrollment.start_date, total, enrollment.klass)
-        if projected and projected != enrollment.end_date:
-            enrollment.end_date = projected
-            enrollment.save(update_fields=["end_date"])
-            updated = True
+    projected = calculate_end_date(enrollment.start_date, total, enrollment.klass)
+    if projected and (force_recalculate_end_date or projected != enrollment.end_date):
+        enrollment.end_date = projected
+        enrollment.save(update_fields=["end_date"])
+        updated = True
+    elif force_recalculate_end_date and not projected and enrollment.end_date:
+        enrollment.end_date = None
+        enrollment.save(update_fields=["end_date"])
+        updated = True
 
     return updated
 
@@ -195,3 +206,60 @@ def create_purchase_entry(
         amount=amount,
         note=note,
     )
+
+
+def transfer_enrollment_funds(
+    source: Enrollment,
+    target: Enrollment,
+    amount: Decimal,
+    *,
+    actor=None,
+    note: str = "",
+):
+    if source.pk == target.pk:
+        raise ValueError("Nguồn và đích phải khác nhau.")
+    amount = Decimal(amount or 0)
+    if amount <= 0:
+        raise ValueError("Số tiền chuyển phải lớn hơn 0.")
+    remaining = Decimal(source.remaining_amount or 0)
+    if amount > remaining:
+        raise ValueError("Số tiền chuyển vượt quá số dư hiện có.")
+
+    fee_source = Decimal(source.fee_per_session or 0)
+    if fee_source <= 0:
+        raise ValueError("Ghi danh nguồn chưa thiết lập đơn giá.")
+
+    sessions_decimal = amount / fee_source
+    if sessions_decimal != sessions_decimal.to_integral_value():
+        raise ValueError("Số tiền phải chia hết cho đơn giá nguồn.")
+    sessions = int(sessions_decimal)
+    if sessions <= 0:
+        raise ValueError("Số buổi chuyển phải lớn hơn 0.")
+
+    auto_note = f"Chuyển phí sang {target.student} - {target.klass.code}"
+    if note:
+        auto_note = f"{auto_note}. Ghi chú: {note}"
+    actor_label = f" bởi {actor}" if actor else ""
+
+    with transaction.atomic():
+        BillingEntry.objects.create(
+            enrollment=source,
+            entry_type=BillingEntry.EntryType.ADJUST,
+            sessions=-sessions,
+            unit_price=fee_source,
+            amount=-amount,
+            note=f"{auto_note}{actor_label}",
+        )
+        BillingEntry.objects.create(
+            enrollment=target,
+            entry_type=BillingEntry.EntryType.ADJUST,
+            sessions=sessions,
+            unit_price=fee_source,
+            amount=amount,
+            note=f"Nhận chuyển phí từ {source.student} - {source.klass.code}{actor_label}. {note}".strip(),
+        )
+
+        auto_update_status(source, force_recalculate_end_date=True)
+        auto_update_status(target, force_recalculate_end_date=True)
+
+    return sessions

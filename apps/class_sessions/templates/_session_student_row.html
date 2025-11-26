@@ -5,7 +5,7 @@
   class="student-row {% if success %}flash-success{% endif %}"
 >
   <td class="fw-bold">
-    {{ data.student.get_full_name|default:data.student.username }}
+    {{ data.student.display_name_with_email }}
   </td>
   
   {# Cột trạng thái điểm danh #}
@@ -75,7 +75,7 @@
               hx-target="#sessions-modal-content"
               data-bs-toggle="modal" 
               data-bs-target="#sessions-modal"
-              @click="modalTitle = 'Chi tiết Học sinh: {{ data.student.get_full_name|default:data.student.username|escapejs }}'"
+              @click="modalTitle = 'Chi tiết Học sinh: {{ data.student.display_name_with_email|escapejs }}'"
               title="Xem chi tiết học sinh">
         <i class="bi bi-person"></i>
       </button>
@@ -90,8 +90,8 @@
                 hx-target="#sessions-modal-content"
                 data-bs-toggle="modal" 
                 data-bs-target="#sessions-modal"
-                @click="modalTitle = 'Chi tiết Phụ huynh: {{ parent.get_full_name|default:parent.username|escapejs }}'"
-                title="Xem chi tiết phụ huynh ({{ parent.get_full_name|default:parent.username }})">
+                @click="modalTitle = 'Chi tiết Phụ huynh: {{ parent.display_name_with_email|escapejs }}'"
+                title="Xem chi tiết phụ huynh ({{ parent.display_name_with_email }})">
           <i class="bi bi-person-check"></i>
         </button>
         {% endwith %}

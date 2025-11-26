@@ -80,12 +80,15 @@ class Enrollment(models.Model):
 
     @property
     def sessions_remaining(self) -> int:
+        if hasattr(self, "_sessions_remaining_cache"):
+            return self._sessions_remaining_cache
         try:
             from apps.enrollments import services
 
-            return services.sessions_remaining(self)
+            remaining = services.sessions_remaining(self)
         except Exception:
             remaining = max(self.sessions_total - self.sessions_consumed, 0)
+        self._sessions_remaining_cache = remaining
         return remaining
 
     @property
@@ -96,6 +99,14 @@ class Enrollment(models.Model):
             return services.calculate_end_date(self.start_date, self.sessions_total, self.klass)
         except Exception:
             return None
+
+    @property
+    def remaining_amount(self) -> int:
+        fee = int(self.fee_per_session or 0)
+        remaining_sessions = self.sessions_remaining
+        if fee <= 0 or remaining_sessions <= 0:
+            return 0
+        return remaining_sessions * fee
 
 
 class EnrollmentStatusLog(models.Model):

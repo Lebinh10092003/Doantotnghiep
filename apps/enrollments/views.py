@@ -10,13 +10,14 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import ParentStudentRelation, User
 from apps.classes.models import Class
 from apps.centers.models import Center
-from apps.enrollments.forms import EnrollmentForm
+from apps.enrollments.forms import EnrollmentForm, EnrollmentTransferForm
 from apps.enrollments.models import Enrollment, EnrollmentStatus
 from apps.enrollments.services import (
     auto_update_status,
     create_purchase_entry,
     calculate_end_date,
     record_status_change,
+    transfer_enrollment_funds,
 )
 from apps.enrollments.filters import EnrollmentFilter
 from django.http import QueryDict, HttpResponse, JsonResponse
@@ -143,11 +144,18 @@ def enrollment_list(request):
 
     enrollments = enrollment_filter.qs
 
-    allowed_orders = {"joined_at", "-joined_at", "start_date", "-start_date"}
-    order = request.GET.get("order", "-joined_at")
-    if order not in allowed_orders:
-        order = "-joined_at"
-    enrollments = enrollments.order_by(order)
+    order_mappings = {
+        "student_asc": ["student__last_name", "student__first_name", "student__username"],
+        "student_desc": ["-student__last_name", "-student__first_name", "-student__username"],
+        "-joined_at": ["-joined_at"],
+        "joined_at": ["joined_at"],
+        "-start_date": ["-start_date"],
+        "start_date": ["start_date"],
+    }
+    order = request.GET.get("order", "student_asc")
+    if order not in order_mappings:
+        order = "student_asc"
+    enrollments = enrollments.order_by(*order_mappings[order])
 
     try:
         per_page = int(request.GET.get("per_page", 10))
@@ -317,7 +325,7 @@ def enrollment_create(request):
             enrollment = form.save()
             discount = form.cleaned_data.get("discount")
             create_purchase_entry(enrollment, discount=discount, note="Auto từ ghi danh")
-            auto_update_status(enrollment)
+            auto_update_status(enrollment, force_recalculate_end_date=True)
             if is_htmx_request(request):
                 response = HttpResponse(status=204)
                 response["HX-Trigger"] = json.dumps(
@@ -339,6 +347,7 @@ def enrollment_create(request):
     context = {
         "form": form,
         "is_create": True,
+        "enrollment": form.instance if getattr(form, "instance", None) and form.instance.pk else None,
     }
     return render(request, "_enrollment_form.html", context)
 
@@ -350,6 +359,7 @@ def enrollment_update(request, pk):
     _require_manage_permission(user, flags)
     enrollment = get_object_or_404(Enrollment, pk=pk)
     _ensure_scope(enrollment, user, flags)
+    original_status = enrollment.status
     klass_queryset = _get_managed_classes(user, flags)
 
     if request.method == "POST":
@@ -360,7 +370,13 @@ def enrollment_update(request, pk):
             enrollment = form.save()
             discount = form.cleaned_data.get("discount")
             create_purchase_entry(enrollment, discount=discount, note="Auto từ cập nhật ghi danh")
-            auto_update_status(enrollment)
+            if enrollment.status != original_status:
+                projected = enrollment.projected_end_date
+                if projected != enrollment.end_date:
+                    enrollment.end_date = projected
+                    enrollment.save(update_fields=["end_date"])
+            else:
+                auto_update_status(enrollment, force_recalculate_end_date=True)
             if is_htmx_request(request):
                 response = HttpResponse(status=204)
                 response["HX-Trigger"] = json.dumps(
@@ -385,6 +401,66 @@ def enrollment_update(request, pk):
         "enrollment": enrollment,
     }
     return render(request, "_enrollment_form.html", context)
+
+
+@login_required
+def enrollment_transfer(request, pk):
+    user = request.user
+    flags = _role_flags(user)
+    _require_manage_permission(user, flags)
+    source = get_object_or_404(Enrollment.objects.select_related("student", "klass"), pk=pk)
+    _ensure_scope(source, user, flags)
+
+    if request.method == "POST":
+        form = EnrollmentTransferForm(
+            request.POST,
+            source_enrollment=source,
+            user=user,
+            flags=flags,
+        )
+        if form.is_valid():
+            target = form.cleaned_data["target_enrollment"]
+            amount = form.cleaned_data["amount"]
+            note = form.cleaned_data.get("note") or ""
+            try:
+                sessions = transfer_enrollment_funds(
+                    source,
+                    target,
+                    amount,
+                    actor=user,
+                    note=note,
+                )
+            except ValueError as exc:
+                form.add_error(None, str(exc))
+            else:
+                if is_htmx_request(request):
+                    response = HttpResponse(status=204)
+                    response["HX-Trigger"] = json.dumps(
+                        {
+                            "reload-enrollments-table": True,
+                            "closeEnrollmentModal": True,
+                            "show-sweet-alert": {
+                                "icon": "success",
+                                "title": "Đã chuyển phí",
+                                "text": f"Đã chuyển {int(amount):,} VND (~{sessions} buổi) sang {target.student.display_name_with_email()}.",
+                            },
+                        }
+                    )
+                    return response
+                messages.success(request, "Đã chuyển phí giữa hai ghi danh.")
+                return redirect("enrollments:list")
+    else:
+        form = EnrollmentTransferForm(
+            source_enrollment=source,
+            user=user,
+            flags=flags,
+        )
+
+    context = {
+        "form": form,
+        "source_enrollment": source,
+    }
+    return render(request, "_enrollment_transfer_form.html", context)
 
 
 @login_required

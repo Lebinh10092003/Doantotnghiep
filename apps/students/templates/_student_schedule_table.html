@@ -82,7 +82,7 @@
               </div>
               <div class="small text-muted mb-2">
                 <i class="bi bi-person-badge me-1"></i>
-                {{ s.klass.main_teacher.get_full_name|default:"Chưa phân công" }}
+                {{ s.klass.main_teacher.display_name_with_email|default:"Chưa phân công" }}
               </div>
               <button type="button"
                       class="btn btn-sm btn-outline-success"

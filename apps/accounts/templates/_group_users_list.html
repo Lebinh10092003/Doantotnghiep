@@ -37,7 +37,7 @@
                 <img src="{% static 'assets/images/faces/1.jpg' %}" class="rounded-circle me-2" style="width:32px; height:32px;" alt="Avatar">
               {% endif %}
               <div>
-                <div class="fw-semibold">{{ u.get_full_name|default:u.username }}</div>
+                <div class="fw-semibold">{{ u.display_name_with_email }}</div>
                 <div class="text-muted small">@{{ u.username }}</div>
               </div>
             </div>

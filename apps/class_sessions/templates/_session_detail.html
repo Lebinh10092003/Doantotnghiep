@@ -38,9 +38,9 @@
       </p>
       <p><strong>Giáo viên:</strong>
         {% if session.teacher_override %}
-          {{ session.teacher_override.get_full_name|default:"-" }} (Thay thế)
+          {{ session.teacher_override.display_name_with_email|default:"-" }} (Thay thế)
         {% else %}
-          {{ session.klass.main_teacher.get_full_name|default:"-" }} (Chính)
+          {{ session.klass.main_teacher.display_name_with_email|default:"-" }} (Chính)
         {% endif %}
       </p>
     </div>
@@ -99,7 +99,7 @@
       <tbody>
         {% for data in student_data_list %}
         <tr id="student-row-{{ data.student.id }}">
-          <td class="fw-semibold">{{ data.student.get_full_name|default:data.student.username }}</td>
+          <td class="fw-semibold">{{ data.student.display_name_with_email }}</td>
           <td>
             {% if data.attendance %}
               {% if data.attendance.status == "P" %}

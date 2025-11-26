@@ -1,0 +1,53 @@
+{% load humanize %}
+<form
+  hx-post="{% url 'enrollments:transfer' source_enrollment.pk %}"
+  hx-target="this"
+  hx-swap="outerHTML">
+  {% csrf_token %}
+  <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+    <div class="mb-3">
+      <h6 class="mb-0">Ghi danh nguồn</h6>
+      <p class="mb-1 fw-semibold">{{ source_enrollment.student.display_name_with_email }}</p>
+      <p class="mb-1 text-muted">Lớp: {{ source_enrollment.klass.code }} - {{ source_enrollment.klass.name }}</p>
+      <p class="mb-0 text-muted">Số dư còn lại: <strong>{{ source_enrollment.remaining_amount|intcomma }} ₫</strong> ({{ source_enrollment.sessions_remaining }} buổi)</p>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}
+          <p class="mb-0">{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.target_enrollment.id_for_label }}">{{ form.target_enrollment.label }}</label>
+      {{ form.target_enrollment }}
+      {% if form.target_enrollment.errors %}
+        <div class="invalid-feedback d-block">{{ form.target_enrollment.errors|first }}</div>
+      {% endif %}
+      <div class="form-text">Chọn ghi danh (có thể là học viên khác) để nhận phí.</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>
+      {{ form.amount }}
+      {% if form.amount.errors %}
+        <div class="invalid-feedback d-block">{{ form.amount.errors|first }}</div>
+      {% endif %}
+      <div class="form-text">Tối đa {{ source_enrollment.remaining_amount|intcomma }} ₫. Số tiền phải chia hết cho đơn giá {{ source_enrollment.fee_per_session|intcomma }} ₫.</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+      {{ form.note }}
+      {% if form.note.errors %}
+        <div class="invalid-feedback d-block">{{ form.note.errors|first }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Hủy</button>
+    <button type="submit" class="btn btn-primary">Chuyển phí</button>
+  </div>
+</form>

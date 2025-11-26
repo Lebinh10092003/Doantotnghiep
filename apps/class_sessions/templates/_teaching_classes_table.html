@@ -37,11 +37,11 @@
         </td>
         <td>{{ c.subject.name }}</td>
         <td>{{ c.center.name }}</td>
-        <td>{{ c.main_teacher.get_full_name|default:c.main_teacher.username }}</td>
+        <td>{{ c.main_teacher.display_name_with_email }}</td>
         <td>
           {% for a in c.assistants.all %}
             <span class="badge bg-light text-dark border me-1">
-              {{ a.get_full_name|default:a.username }}
+              {{ a.display_name_with_email }}
             </span>
           {% empty %}
             <span class="text-muted">-</span>

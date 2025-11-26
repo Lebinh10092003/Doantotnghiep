@@ -39,10 +39,10 @@
               <td>{% if s.room_override %}{{ s.room_override.name }}{% elif s.klass.room %}{{ s.klass.room.name }}{% else %}-{% endif %}</td>
               <td>
                 {% if s.teacher_override %}
-                  {{ s.teacher_override.get_full_name|default:s.teacher_override.username }}
+                  {{ s.teacher_override.display_name_with_email }}
                   <span class="badge bg-light text-dark border ms-1">thay</span>
                 {% else %}
-                  {{ s.klass.main_teacher.get_full_name|default:"-" }}
+                  {{ s.klass.main_teacher.display_name_with_email|default:"-" }}
                 {% endif %}
               </td>
               <td>

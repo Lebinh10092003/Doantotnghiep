@@ -47,7 +47,7 @@
                 {% for row in rows %}
                 <tr>
                   <td>
-                    <div class="fw-semibold">{{ row.enrollment.student.get_full_name|default:row.enrollment.student.username }}</div>
+                    <div class="fw-semibold">{{ row.enrollment.student.display_name_with_email }}</div>
                     <div class="text-muted small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.username }}</div>
                   </td>
                   <td>

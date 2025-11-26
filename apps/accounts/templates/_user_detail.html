@@ -7,7 +7,7 @@
             {% else %}
             <img src="{% static 'assets/images/faces/1.jpg' %}" class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px;" alt="Default Avatar">
             {% endif %}
-            <h5 class="mb-1">{{ user.get_full_name|default:user.username }}</h5>
+            <h5 class="mb-1">{{ user.display_name_with_email }}</h5>
             <p class="text-muted mb-0">@{{ user.username }}</p>
             <span class="badge bg-info mt-2">{{ user.groups.first.name|default:"Chưa có vai trò" }}</span>
         </div>
@@ -76,7 +76,7 @@
                 <tbody>
                     {% for relation in children %}
                     <tr>
-                        <td>{{ relation.student.get_full_name|default:relation.student.username }}</td>
+                        <td>{{ relation.student.display_name_with_email }}</td>
                         <td>{{ relation.student.username }}</td>
                         <td>{{ relation.student.center.name|default:"N/A" }}</td>
                         <td>{{ relation.note|default:"" }}</td>
@@ -97,7 +97,7 @@
         <ul class="list-group list-group-flush">
             {% for relation in parents %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-person"></i> {{ relation.parent.get_full_name|default:relation.parent.username }} ({{ relation.parent.phone }})</span>
+                <span><i class="bi bi-person"></i> {{ relation.parent.display_name_with_email }} ({{ relation.parent.phone }})</span>
                 {% if relation.note %}<small class="text-muted">Ghi chú: {{ relation.note }}</small>{% endif %}
             </li>
             {% empty %}

@@ -60,9 +60,9 @@
               <span class="text-nowrap">
                 <i class="bi bi-person me-1"></i>
                 {% if session.teacher_override %}
-                  {{ session.teacher_override.get_full_name|default:session.teacher_override.username }} (Thay)
+                  {{ session.teacher_override.display_name_with_email }} (Thay)
                 {% else %}
-                  {{ session.klass.main_teacher.get_full_name|default:"-" }}
+                  {{ session.klass.main_teacher.display_name_with_email|default:"-" }}
                 {% endif %}
               </span>
             </div>
@@ -108,7 +108,7 @@
           <div class="mb-2">
             <strong><i class="bi bi-people me-1"></i> Trợ giảng:</strong>
             {% for a in session.assistants.all %}
-              <span class="badge bg-light text-dark border me-1">{{ a.get_full_name|default:a.username }}</span>
+              <span class="badge bg-light text-dark border me-1">{{ a.display_name_with_email }}</span>
             {% empty %}
               <span class="text-muted">Không có</span>
             {% endfor %}

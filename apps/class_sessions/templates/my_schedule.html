@@ -34,7 +34,7 @@
               <select name="student" class="form-select form-select-sm w-auto">
                 <option value="">Tất cả con</option>
                 {% for c in children %}
-                <option value="{{ c.id }}" {% if selected_student|default:''|stringformat:'s' == c.id|stringformat:'s' %}selected{% endif %}>{{ c.get_full_name|default:c.username }}</option>
+                <option value="{{ c.id }}" {% if selected_student|default:''|stringformat:'s' == c.id|stringformat:'s' %}selected{% endif %}>{{ c.display_name_with_email }}</option>
                 {% endfor %}
               </select>
               {% endif %}

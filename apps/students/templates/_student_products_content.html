@@ -91,7 +91,7 @@
               <i class="bi bi-person-circle mt-1"></i>
               <div>
                 <div class="fw-semibold text-dark">Học sinh</div>
-                <div>{{ product.student.get_full_name|default:product.student.username }}</div>
+                <div>{{ product.student.display_name_with_email }}</div>
               </div>
             </div>
             <p class="text-muted small mb-3">

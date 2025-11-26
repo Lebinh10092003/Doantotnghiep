@@ -63,7 +63,7 @@
                   <tr>
                     <td>{{ enrollment.id }}</td>
                     <td>
-                      <div class="fw-semibold">{{ enrollment.student.get_full_name|default:enrollment.student.username }}</div>
+                      <div class="fw-semibold">{{ enrollment.student.display_name_with_email }}</div>
                       <div class="text-muted small">{{ enrollment.student.user_code }}</div>
                     </td>
                     <td>

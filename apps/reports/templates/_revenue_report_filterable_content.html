@@ -80,7 +80,7 @@
               {% for e in recent %}
               <tr>
                 <td class="text-muted">{{ e.created_at|date:"d/m/Y" }}</td>
-                <td>{{ e.enrollment.student.get_full_name|default:e.enrollment.student.username }}</td>
+                <td>{{ e.enrollment.student.display_name_with_email }}</td>
                 <td>{{ e.enrollment.klass.code }}</td>
                 <td>{{ e.sessions }}</td>
                 <td class="text-end">{{ e.amount|floatformat:0 }} VND</td>

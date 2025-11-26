@@ -20,7 +20,7 @@
         <td>{{ session.date|date:"d/m/Y"|default:"-" }}</td>
         <td class="text-nowrap">{{ session.start_time|time:"H:i"|default:"-" }} - {{ session.end_time|time:"H:i"|default:"-" }}</td>
         <td>{% if session.lesson %}{{ session.lesson.title }}{% else %}-{% endif %}</td>
-        <td>{% if session.teacher_override %}{{ session.teacher_override.get_full_name|default:session.teacher_override.username }}{% elif session.klass.main_teacher %}{{ session.klass.main_teacher.get_full_name|default:session.klass.main_teacher.username }}{% else %}-{% endif %}</td>
+        <td>{% if session.teacher_override %}{{ session.teacher_override.display_name_with_email }}{% elif session.klass.main_teacher %}{{ session.klass.main_teacher.display_name_with_email }}{% else %}-{% endif %}</td>
         <td>
           {% if session.status == 'PLANNED' %}
             <span class="badge bg-info">{{ session.get_status_display }}</span>

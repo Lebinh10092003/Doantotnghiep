@@ -22,7 +22,7 @@
             <tbody>
               {% for row in rows %}
               <tr>
-                <td>{{ row.user.get_full_name|default:row.user.username }}</td>
+                <td>{{ row.user.display_name_with_email }}</td>
                 <td>{{ row.role_label }}</td>
                 <td>{{ row.sessions_total }}</td>
                 <td>{{ row.sessions_done }}</td>

@@ -5,7 +5,7 @@
     <h5 class="mb-1">Điểm danh &amp; Đánh giá</h5>
     <div class="small text-muted">
       Buổi {{ session.index }} · Lớp {{ session.klass.name }} · Học sinh:
-      <strong>{{ student.get_full_name|default:student.username }}</strong>
+      <strong>{{ student.display_name_with_email }}</strong>
     </div>
   </div>
 

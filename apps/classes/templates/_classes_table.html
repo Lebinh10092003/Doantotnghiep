@@ -17,7 +17,7 @@
         <td>{{ klass.name }}</td>
         <td>{% if klass.center %}{{ klass.center.name }}{% else %}-{% endif %}</td>
         <td>{% if klass.subject %}{{ klass.subject.name }}{% else %}-{% endif %}</td>
-        <td>{% if klass.main_teacher %}{{ klass.main_teacher.get_full_name|default:klass.main_teacher.username }}{% else %}-{% endif %}</td>
+        <td>{% if klass.main_teacher %}{{ klass.main_teacher.display_name_with_email }}{% else %}-{% endif %}</td>
         <td>{{ klass.start_date|date:"d/m/Y"|default:"-" }}</td>
         <td>
           {% if klass.status == 'PLANNED' %}
