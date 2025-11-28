@@ -17,7 +17,7 @@ class BillingPurchaseForm(forms.ModelForm):
         widgets = {
             "sessions": forms.NumberInput(attrs={"class": "form-control", "min": 1}),
             "unit_price": forms.NumberInput(attrs={"class": "form-control", "min": 0, "step": 1000}),
-            "discount": forms.Select(attrs={"class": "form-select"}),
+            "discount": forms.Select(attrs={"class": "form-select tom-select"}),
             "note": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
         }
 

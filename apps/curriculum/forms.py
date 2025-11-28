@@ -36,7 +36,7 @@ class ModuleForm(forms.ModelForm):
         model = Module
         fields = ["subject", "order", "title", "description", "image"]
         widgets = {
-            'subject': forms.Select(attrs={'class': 'form-select'}),
+            'subject': forms.Select(attrs={'class': 'form-select tom-select'}),
             'order': forms.NumberInput(attrs={'class': 'form-control'}),
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
@@ -56,7 +56,7 @@ class LessonForm(forms.ModelForm):
         model = Lesson
         fields = ["module", "order", "title", "objectives"]
         widgets = {
-            'module': forms.Select(attrs={'class': 'form-select'}),
+            'module': forms.Select(attrs={'class': 'form-select tom-select'}),
             'order': forms.NumberInput(attrs={'class': 'form-control'}),
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'objectives': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),

@@ -8,9 +8,8 @@ from .forms import SavedFilterForm
 from django.utils.http import urlencode
 from django.db.models import Q
 from .utils import resolve_dynamic_params, serialize_query_params
-
-def is_htmx_request(request):
-    return request.headers.get("HX-Request") == "true"
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 
 @login_required
 def save_filter_view(request):
@@ -38,12 +37,20 @@ def save_filter_view(request):
             return response
         
         # Form không hợp lệ, trả lại form với lỗi
-        return render(
+        response = render(
             request, 
             "_save_filter_form.html", 
             {"form": form}, 
             status=422
         )
+        response["HX-Trigger"] = json.dumps({
+            "show-sweet-alert": {
+                "icon": "error",
+                "title": "Không thể lưu bộ lọc",
+                "text": form_errors_as_text(form),
+            }
+        })
+        return response
 
     # GET request: Hiển thị form
     model_name = request.GET.get("model_name", "")

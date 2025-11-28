@@ -14,14 +14,9 @@ from apps.filters.utils import (
 from .models import Center, Room
 from .forms import CenterForm, RoomForm
 from .filters import CenterFilter
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 
-# Create your views here.
-def is_htmx_request(request):
-    return (
-        request.headers.get("HX-Request") == "true"
-        or request.META.get("HTTP_HX_REQUEST") == "true"
-        or bool(getattr(request, "htmx", False))
-    )
 def _filter_rooms_queryset(request):
     qs = Room.objects.select_related("center").all()
     q = request.GET.get("q", "").strip()
@@ -34,14 +29,11 @@ def _filter_rooms_queryset(request):
             | Q(center__name__icontains=q)
             | Q(center__code__icontains=q)
         )
-
     if center_id:
         try:
             qs = qs.filter(center_id=int(center_id))
         except (TypeError, ValueError):
             pass
-
-    return qs
 # Quanr lý trung tâm 
 @login_required
 @permission_required("centers.view_center", raise_exception=True)
@@ -235,12 +227,21 @@ def room_create_view(request):
                 }
             )
             return response
-        return render(
+        response = render(
             request,
             "_room_form.html",
             {"form": form, "is_create": True},
             status=422,
         )
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể tạo Phòng học",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
     else:
         initial = {}
         center_id = request.GET.get("center")
@@ -275,9 +276,18 @@ def room_edit_view(request, room_id: int):
                 }
             )
             return response
-        return render(
+        response = render(
             request, "_room_form.html", {"form": form, "room": room}, status=422
         )
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể cập nhật Phòng học",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
     else:
         form = RoomForm(instance=room)
 
@@ -347,8 +357,16 @@ def center_create_view(request):
             })
             return response
         else:
-            # Nếu form không hợp lệ, render lại form với lỗi và status 422
-            return render(request, '_center_form.html', {'form': form, 'is_create': True}, status=422)
+            response = render(request, '_center_form.html', {'form': form, 'is_create': True}, status=422)
+            if is_htmx_request(request):
+                response['HX-Trigger'] = json.dumps({
+                    "show-sweet-alert": {
+                        "icon": "error",
+                        "title": "Không thể tạo Trung tâm",
+                        "text": form_errors_as_text(form),
+                    }
+                })
+            return response
     else:
         form = CenterForm()
 
@@ -378,8 +396,16 @@ def center_edit_view(request, center_id):
             })
             return response
         else:
-            # Nếu form không hợp lệ, render lại form với lỗi và status 422
-            return render(request, '_center_form.html', {'form': form, 'center': center, 'is_create': False}, status=422)
+            response = render(request, '_center_form.html', {'form': form, 'center': center, 'is_create': False}, status=422)
+            if is_htmx_request(request):
+                response['HX-Trigger'] = json.dumps({
+                    "show-sweet-alert": {
+                        "icon": "error",
+                        "title": "Không thể cập nhật Trung tâm",
+                        "text": form_errors_as_text(form),
+                    }
+                })
+            return response
     else:
         form = CenterForm(instance=center)
 

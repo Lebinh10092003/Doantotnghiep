@@ -18,10 +18,8 @@ from apps.filters.models import SavedFilter
 from apps.filters.utils import (
     determine_active_filter_name,
 )
-
-
-def is_htmx_request(request):
-    return request.headers.get("HX-Request") == "true"
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 
 
 @login_required
@@ -170,7 +168,17 @@ def discount_create(request):
         "form": form,
         "action_url": reverse("billing:discount_create"),
     }
-    return render(request, "_discount_form.html", context)
+    status_code = 422 if request.method == "POST" and is_htmx_request(request) else 200
+    response = render(request, "_discount_form.html", context, status=status_code)
+    if request.method == "POST" and is_htmx_request(request) and not form.is_valid():
+        response["HX-Trigger"] = json.dumps({
+            "show-sweet-alert": {
+                "icon": "error",
+                "title": "Không thể tạo mã giảm giá",
+                "text": form_errors_as_text(form),
+            }
+        })
+    return response
 
 
 @login_required
@@ -197,7 +205,17 @@ def discount_update(request, pk):
         "form": form,
         "action_url": reverse("billing:discount_update", args=[discount.pk]),
     }
-    return render(request, "_discount_form.html", context)
+    status_code = 422 if request.method == "POST" and is_htmx_request(request) else 200
+    response = render(request, "_discount_form.html", context, status=status_code)
+    if request.method == "POST" and is_htmx_request(request) and not form.is_valid():
+        response["HX-Trigger"] = json.dumps({
+            "show-sweet-alert": {
+                "icon": "error",
+                "title": "Không thể cập nhật mã giảm giá",
+                "text": form_errors_as_text(form),
+            }
+        })
+    return response
 
 
 @login_required

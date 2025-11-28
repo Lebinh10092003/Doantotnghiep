@@ -17,9 +17,7 @@ from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
 import json
 from django.http import HttpResponse
 from django.urls import reverse
-
-def is_htmx_request(request):
-    return request.headers.get("HX-Request") == "true"
+from apps.common.utils.http import is_htmx_request
 
 def _week_range(center_date: date | None = None):
     """

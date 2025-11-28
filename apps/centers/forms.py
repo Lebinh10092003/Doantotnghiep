@@ -55,7 +55,7 @@ class RoomForm(forms.ModelForm):
         model = Room
         fields = ["center", "name", "note"]
         widgets = {
-            "center": forms.Select(attrs={"class": "form-select"}),
+            "center": forms.Select(attrs={"class": "form-select tom-select"}),
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "note": forms.TextInput(attrs={"class": "form-control"}),
         }

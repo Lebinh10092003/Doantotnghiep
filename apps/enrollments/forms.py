@@ -81,7 +81,7 @@ class EnrollmentForm(forms.ModelForm):
         queryset=Discount.objects.none(),
         required=False,
         label="Mã giảm giá",
-        widget=forms.Select(attrs={"class": "form-select"}),
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
 
     class Meta:
@@ -109,7 +109,7 @@ class EnrollmentForm(forms.ModelForm):
                     "step": 1000,
                 }
             ),
-            "discount": forms.Select(attrs={"class": "form-select"}),
+            "discount": forms.Select(attrs={"class": "form-select tom-select"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -144,8 +144,8 @@ class EnrollmentForm(forms.ModelForm):
             }
         )
 
-        self.fields["klass"].widget.attrs.update({"class": "form-select"})
-        self.fields["status"].widget.attrs.update({"class": "form-select"})
+        self.fields["klass"].widget.attrs.update({"class": "form-select tom-select"})
+        self.fields["status"].widget.attrs.update({"class": "form-select tom-select"})
         if klass_queryset is not None:
             self.fields["klass"].queryset = klass_queryset
 

@@ -17,21 +17,20 @@ from django import forms
 from .models import Subject, Module, Lesson, Lecture, Exercise
 from apps.students.models import StudentExerciseSubmission
 from .forms import SubjectForm, ModuleForm, LessonForm, LectureForm, ExerciseForm, ImportCurriculumForm
-
-
-def is_htmx_request(request):
-    return (
-        request.headers.get("HX-Request") == "true"
-        or request.META.get("HTTP_HX_REQUEST") == "true"
-        or bool(getattr(request, "htmx", False))
-    )
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
+from apps.filters.models import SavedFilter
+from apps.filters.utils import build_filter_badges, determine_active_filter_name
+from .filters import SubjectFilter, ModuleFilter, LessonFilter
 
 
 # Subjects
 @login_required
 @permission_required("curriculum.view_subject", raise_exception=True)
 def subjects_manage(request):
-    q = request.GET.get("q", "").strip()
+    subject_filter = SubjectFilter(request.GET, queryset=Subject.objects.all())
+    qs = subject_filter.qs.order_by("code")
+
     try:
         per_page = int(request.GET.get("per_page", 10))
     except (TypeError, ValueError):
@@ -41,20 +40,36 @@ def subjects_manage(request):
     except (TypeError, ValueError):
         page = 1
 
-    qs = Subject.objects.all()
-    if q:
-        qs = qs.filter(Q(name__icontains=q) | Q(code__icontains=q) | Q(description__icontains=q))
-
-    paginator = Paginator(qs.order_by("code"), per_page)
+    paginator = Paginator(qs, per_page)
     try:
         page_obj = paginator.page(page)
     except EmptyPage:
         page_obj = paginator.page(1)
 
-    context = {"page_obj": page_obj, "paginator": paginator, "q": q, "per_page": per_page}
+    saved_filters = SavedFilter.objects.filter(model_name="Subject").filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+    active_filter_name = determine_active_filter_name(request, saved_filters)
+    active_filter_badges = build_filter_badges(subject_filter)
+
+    query_params = request.GET.copy()
+    for key in ["page", "per_page"]:
+        if key in query_params:
+            del query_params[key]
+
+    context = {
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "per_page": per_page,
+        "filter": subject_filter,
+        "model_name": "Subject",
+        "current_query_params": query_params.urlencode(),
+        "active_filter_name": active_filter_name,
+        "active_filter_badges": active_filter_badges,
+    }
 
     if is_htmx_request(request):
-        return render(request, "_subjects_table.html", context)
+        return render(request, "_subjects_filterable_content.html", context)
 
     return render(request, "manage_subjects.html", context)
 
@@ -73,7 +88,16 @@ def subject_create_view(request):
                 "show-sweet-alert": {"icon": "success", "title": f"Đã tạo Môn học '{subject.name}'"}
             })
             return resp
-        return render(request, "_subject_form.html", {"form": form, "is_create": True}, status=422)
+        response = render(request, "_subject_form.html", {"form": form, "is_create": True}, status=422)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể tạo Môn học",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
 
     form = SubjectForm()
     return render(request, "_subject_form.html", {"form": form, "is_create": True})
@@ -94,7 +118,16 @@ def subject_edit_view(request, subject_id: int):
                 "show-sweet-alert": {"icon": "success", "title": f"Đã cập nhật Môn học '{subject.name}'"}
             })
             return resp
-        return render(request, "_subject_form.html", {"form": form, "subject": subject}, status=422)
+        response = render(request, "_subject_form.html", {"form": form, "subject": subject}, status=422)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể cập nhật Môn học",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
 
     form = SubjectForm(instance=subject)
     return render(request, "_subject_form.html", {"form": form, "subject": subject})
@@ -160,8 +193,9 @@ def subject_delete_single_view(request, subject_id: int):
 @login_required
 @permission_required("curriculum.view_module", raise_exception=True)
 def modules_manage(request):
-    q = request.GET.get("q", "").strip()
-    subject_id = request.GET.get("subject", "").strip()
+    module_filter = ModuleFilter(request.GET, queryset=Module.objects.select_related("subject"))
+    qs = module_filter.qs.order_by("subject__name", "order")
+
     try:
         per_page = int(request.GET.get("per_page", 10))
     except (TypeError, ValueError):
@@ -171,33 +205,36 @@ def modules_manage(request):
     except (TypeError, ValueError):
         page = 1
 
-    qs = Module.objects.select_related("subject").all()
-    if q:
-        qs = qs.filter(Q(title__icontains=q) | Q(subject__name__icontains=q) | Q(subject__code__icontains=q))
-    if subject_id:
-        try:
-            qs = qs.filter(subject_id=int(subject_id))
-        except (TypeError, ValueError):
-            pass
-
-    paginator = Paginator(qs.order_by("subject__name", "order"), per_page)
+    paginator = Paginator(qs, per_page)
     try:
         page_obj = paginator.page(page)
     except EmptyPage:
         page_obj = paginator.page(1)
 
-    subjects = Subject.objects.order_by("name").all()
+    saved_filters = SavedFilter.objects.filter(model_name="Module").filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+    active_filter_name = determine_active_filter_name(request, saved_filters)
+    active_filter_badges = build_filter_badges(module_filter)
+
+    query_params = request.GET.copy()
+    for key in ["page", "per_page"]:
+        if key in query_params:
+            del query_params[key]
+
     context = {
         "page_obj": page_obj,
         "paginator": paginator,
-        "q": q,
         "per_page": per_page,
-        "subjects": subjects,
-        "selected_subject": subject_id,
+        "filter": module_filter,
+        "model_name": "Module",
+        "current_query_params": query_params.urlencode(),
+        "active_filter_name": active_filter_name,
+        "active_filter_badges": active_filter_badges,
     }
 
     if is_htmx_request(request):
-        return render(request, "_modules_table.html", context)
+        return render(request, "_modules_filterable_content.html", context)
 
     return render(request, "manage_modules.html", context)
 
@@ -216,7 +253,16 @@ def module_create_view(request):
                 "show-sweet-alert": {"icon": "success", "title": f"Đã tạo Học phần '{module.title}'"}
             })
             return resp
-        return render(request, "_module_form.html", {"form": form, "is_create": True}, status=422)
+        response = render(request, "_module_form.html", {"form": form, "is_create": True}, status=422)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể tạo Học phần",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
 
     initial = {}
     if request.GET.get("subject"):
@@ -243,7 +289,16 @@ def module_edit_view(request, module_id: int):
                 "show-sweet-alert": {"icon": "success", "title": f"Đã cập nhật Học phần '{module.title}'"}
             })
             return resp
-        return render(request, "_module_form.html", {"form": form, "module": module}, status=422)
+        response = render(request, "_module_form.html", {"form": form, "module": module}, status=422)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể cập nhật Học phần",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
 
     form = ModuleForm(instance=module)
     return render(request, "_module_form.html", {"form": form, "module": module})
@@ -290,9 +345,12 @@ def module_delete_view(request):
 @login_required
 @permission_required("curriculum.view_lesson", raise_exception=True)
 def lessons_manage(request):
-    q = request.GET.get("q", "").strip()
-    subject_id = request.GET.get("subject", "").strip()
-    module_id = request.GET.get("module", "").strip()
+    lesson_filter = LessonFilter(
+        request.GET,
+        queryset=Lesson.objects.select_related("module", "module__subject", "lecture", "exercise"),
+    )
+    qs = lesson_filter.qs.order_by("module__subject__name", "module__title", "order")
+
     try:
         per_page = int(request.GET.get("per_page", 10))
     except (TypeError, ValueError):
@@ -302,41 +360,36 @@ def lessons_manage(request):
     except (TypeError, ValueError):
         page = 1
 
-    qs = Lesson.objects.select_related("module", "module__subject", "lecture", "exercise").all()
-    if q:
-        qs = qs.filter(Q(title__icontains=q) | Q(module__title__icontains=q) | Q(module__subject__name__icontains=q) | Q(module__subject__code__icontains=q))
-    if subject_id:
-        try:
-            qs = qs.filter(module__subject_id=int(subject_id))
-        except (TypeError, ValueError):
-            pass
-    if module_id:
-        try:
-            qs = qs.filter(module_id=int(module_id))
-        except (TypeError, ValueError):
-            pass
-
-    paginator = Paginator(qs.order_by("module__subject__name", "module__title", "order"), per_page)
+    paginator = Paginator(qs, per_page)
     try:
         page_obj = paginator.page(page)
     except EmptyPage:
         page_obj = paginator.page(1)
 
-    subjects = Subject.objects.order_by("name").all()
-    modules = Module.objects.order_by("title").all()
+    saved_filters = SavedFilter.objects.filter(model_name="Lesson").filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+    active_filter_name = determine_active_filter_name(request, saved_filters)
+    active_filter_badges = build_filter_badges(lesson_filter)
+
+    query_params = request.GET.copy()
+    for key in ["page", "per_page"]:
+        if key in query_params:
+            del query_params[key]
+
     context = {
         "page_obj": page_obj,
         "paginator": paginator,
-        "q": q,
         "per_page": per_page,
-        "subjects": subjects,
-        "selected_subject": subject_id,
-        "modules": modules,
-        "selected_module": module_id,
+        "filter": lesson_filter,
+        "model_name": "Lesson",
+        "current_query_params": query_params.urlencode(),
+        "active_filter_name": active_filter_name,
+        "active_filter_badges": active_filter_badges,
     }
 
     if is_htmx_request(request):
-        return render(request, "_lessons_table.html", context)
+        return render(request, "_lessons_filterable_content.html", context)
 
     return render(request, "manage_lessons.html", context)
 
@@ -355,7 +408,16 @@ def lesson_create_view(request):
                 "show-sweet-alert": {"icon": "success", "title": f"Đã tạo Bài học '{lesson.title}'"}
             })
             return resp
-        return render(request, "_lesson_form.html", {"form": form, "is_create": True}, status=422)
+        response = render(request, "_lesson_form.html", {"form": form, "is_create": True}, status=422)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể tạo Bài học",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
 
     initial = {}
     if request.GET.get("module"):
@@ -382,7 +444,16 @@ def lesson_edit_view(request, lesson_id: int):
                 "show-sweet-alert": {"icon": "success", "title": f"Đã cập nhật Bài học '{lesson.title}'"}
             })
             return resp
-        return render(request, "_lesson_form.html", {"form": form, "lesson": lesson}, status=422)
+        response = render(request, "_lesson_form.html", {"form": form, "lesson": lesson}, status=422)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể cập nhật Bài học",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
 
     form = LessonForm(instance=lesson)
     return render(request, "_lesson_form.html", {"form": form, "lesson": lesson})

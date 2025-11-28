@@ -24,7 +24,6 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from collections import defaultdict, OrderedDict
 from django.contrib.auth import update_session_auth_hash 
-from django import forms as dj_forms
 from apps.filters.models import SavedFilter
 from apps.filters.utils import (
     build_filter_badges,
@@ -33,6 +32,8 @@ from apps.filters.utils import (
 from .filters import UserFilter
 from django.conf import settings
 from django.utils.http import url_has_allowed_host_and_scheme
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 User = get_user_model()
 # Định nghĩa các nhóm không được phép xóa
 PROTECTED_GROUPS = [
@@ -50,14 +51,6 @@ PROTECTED_GROUPS = [
     'CENTER_MANAGER',
     'ASSISTANT'
 ]
-# Kiểm tra request HTMX
-def is_htmx_request(request):
-    return (
-        request.headers.get("HX-Request") == "true"
-        or request.META.get("HTTP_HX_REQUEST") == "true"
-        or bool(getattr(request, "htmx", False))
-    )
-
 # Đăng nhập và đăng xuất
 @ensure_csrf_cookie
 def login_view(request):
@@ -257,28 +250,6 @@ def manage_accounts(request):
     return render(request, "manage_accounts.html", context)
 
 
-def _form_errors_as_text(form) -> str:
-    """
-    Trả lỗi dạng text, mỗi lỗi một dòng.
-    Hỗ trợ cả field errors và non-field errors.
-    """
-    parts = []
-
-    # Field errors
-    for field_name, error_list in form.errors.items():  # error_list là ErrorList
-        if field_name == dj_forms.forms.NON_FIELD_ERRORS:
-            continue
-        label = getattr(form.fields.get(field_name), "label", field_name)
-        for err in error_list:  # ErrorList có thể lặp
-            parts.append(f"{label}: {err}")
-
-    # Non-field errors
-    for err in form.non_field_errors():
-        parts.append(str(err))
-
-    # Loại bỏ trùng lặp, giữ thứ tự
-    uniq = list(dict.fromkeys(parts))
-    return "\n".join(uniq) if uniq else "Dữ liệu không hợp lệ."
 @login_required
 @permission_required("accounts.add_user", raise_exception=True)
 def user_create_view(request):
@@ -311,7 +282,7 @@ def user_create_view(request):
         "show-sweet-alert": {
             "icon": "error",
             "title": "Không thể tạo tài khoản",
-            "text": _form_errors_as_text(form),
+            "text": form_errors_as_text(form),
             "showConfirmButton": True
         }
     })
@@ -488,7 +459,7 @@ def user_edit_view(request, user_id):
         "show-sweet-alert": {
             "icon": "error",
             "title": "Không thể cập nhật",
-            "text": _form_errors_as_text(form),
+            "text": form_errors_as_text(form),
             "showConfirmButton": True
         }
     })
@@ -587,7 +558,15 @@ def import_users_view(request):
                         error_messages.append(str(original_error))
                 errors.append(f"Dòng {row_num}: {', '.join(error_messages)}")
             form = ImportUserForm()
-            return render(request, '_import_users_form.html', {'form': form, 'errors': errors}, status=422)
+            response = render(request, '_import_users_form.html', {'form': form, 'errors': errors}, status=422)
+            response['HX-Trigger'] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Import thất bại",
+                    "text": "Vui lòng kiểm tra chi tiết lỗi trong form."
+                }
+            })
+            return response
 
     else:
         form = ImportUserForm()
@@ -761,7 +740,15 @@ def group_create_view(request):
                 'functional_grouped_permissions': functional_grouped_permissions,
                 'permission_actions': PERMISSION_ACTIONS,
             }
-            return render(request, '_group_form.html', context, status=422)
+            response = render(request, '_group_form.html', context, status=422)
+            response['HX-Trigger'] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể tạo nhóm",
+                    "text": form_errors_as_text(form)
+                }
+            })
+            return response
     else: # GET
         form = SimpleGroupForm()
         all_permissions = Permission.objects.all()
@@ -801,7 +788,15 @@ def group_edit_view(request, group_id):
                 'functional_grouped_permissions': functional_grouped_permissions,
                 'permission_actions': PERMISSION_ACTIONS,
             }
-            return render(request, '_group_form.html', context, status=422)
+            response = render(request, '_group_form.html', context, status=422)
+            response['HX-Trigger'] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể cập nhật nhóm",
+                    "text": form_errors_as_text(form)
+                }
+            })
+            return response
     else: # GET
         form = SimpleGroupForm(instance=group)
         all_permissions = Permission.objects.all()
@@ -980,8 +975,15 @@ def profile_view(request):
             })
             return response
         else:
-            # Nếu form không hợp lệ, render lại form edit với lỗi
-            return render(request, '_profile_form_edit.html', {'form': form}, status=422)
+            response = render(request, '_profile_form_edit.html', {'form': form}, status=422)
+            response['HX-Trigger'] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể cập nhật hồ sơ",
+                    "text": form_errors_as_text(form)
+                }
+            })
+            return response
 
     # Xử lý GET request (tải trang lần đầu hoặc bấm nút "Hủy")
     # Mặc định là hiển thị thông tin "chỉ xem"

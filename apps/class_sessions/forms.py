@@ -32,7 +32,7 @@ class ClassSessionForm(forms.ModelForm):
             'lesson', 'status', 'teacher_override', 'room_override', 'assistants'
         ]
         widgets = {
-            'klass': forms.Select(attrs={'class': 'form-select'}),
+            'klass': forms.Select(attrs={'class': 'form-select tom-select'}),
             'index': forms.NumberInput(attrs={'class': 'form-control'}),
             'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'start_time': forms.TimeInput(

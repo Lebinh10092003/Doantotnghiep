@@ -27,10 +27,8 @@ from apps.filters.utils import (
 )
 from django import forms
 from django.utils.dateparse import parse_date
-
-
-def is_htmx_request(request):
-    return request.headers.get("HX-Request") == "true"
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 
 
 def _role_flags(user):
@@ -317,6 +315,22 @@ def enrollment_create(request):
                 return response
             messages.success(request, "Đã tạo ghi danh mới.")
             return redirect("enrollments:list")
+        context = {
+            "form": form,
+            "is_create": True,
+            "enrollment": None,
+        }
+        status_code = 422 if is_htmx_request(request) else 200
+        response = render(request, "_enrollment_form.html", context, status=status_code)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể tạo ghi danh",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
     else:
         form = EnrollmentForm(klass_queryset=klass_queryset)
 
@@ -368,6 +382,22 @@ def enrollment_update(request, pk):
                 return response
             messages.success(request, "Đã cập nhật ghi danh.")
             return redirect("enrollments:list")
+        context = {
+            "form": form,
+            "is_create": False,
+            "enrollment": enrollment,
+        }
+        status_code = 422 if is_htmx_request(request) else 200
+        response = render(request, "_enrollment_form.html", context, status=status_code)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể cập nhật ghi danh",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
     else:
         form = EnrollmentForm(instance=enrollment, klass_queryset=klass_queryset)
 
@@ -425,6 +455,21 @@ def enrollment_transfer(request, pk):
                     return response
                 messages.success(request, "Đã chuyển phí giữa hai ghi danh.")
                 return redirect("enrollments:list")
+        context = {
+            "form": form,
+            "source_enrollment": source,
+        }
+        status_code = 422 if is_htmx_request(request) else 200
+        response = render(request, "_enrollment_transfer_form.html", context, status=status_code)
+        if is_htmx_request(request):
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể chuyển phí",
+                    "text": form_errors_as_text(form),
+                }
+            })
+        return response
     else:
         form = EnrollmentTransferForm(
             source_enrollment=source,

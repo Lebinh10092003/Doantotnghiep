@@ -28,6 +28,8 @@ from apps.filters.models import SavedFilter
 from django.core.paginator import Paginator, EmptyPage
 from apps.centers.models import Center
 from apps.curriculum.models import Subject, Lesson
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 
 
 def _session_teacher_label(session):
@@ -61,9 +63,6 @@ def _session_group_label(session, group_by):
         return session.date.strftime("%d/%m/%Y") if session.date else "Chưa có ngày"
     return ""
 
-
-def is_htmx_request(request):
-    return request.headers.get("HX-Request") == "true"
 
 @login_required
 @permission_required("class_sessions.view_classsession", raise_exception=True)
@@ -206,7 +205,16 @@ def session_create_view(request):
             return response
         else:
             context = {"form": form}
-            return render(request, "_session_form.html", context, status=422)
+            response = render(request, "_session_form.html", context, status=422)
+            if is_htmx_request(request):
+                response["HX-Trigger"] = json.dumps({
+                    "show-sweet-alert": {
+                        "icon": "error",
+                        "title": "Không thể tạo buổi học",
+                        "text": form_errors_as_text(form),
+                    }
+                })
+            return response
     
     form = ClassSessionForm()
     context = {"form": form, "is_create": True}
@@ -233,7 +241,16 @@ def session_edit_view(request, pk):
             return response
         else:
             context = {"form": form, "session": session}
-            return render(request, "_session_form.html", context, status=422)
+            response = render(request, "_session_form.html", context, status=422)
+            if is_htmx_request(request):
+                response["HX-Trigger"] = json.dumps({
+                    "show-sweet-alert": {
+                        "icon": "error",
+                        "title": "Không thể cập nhật buổi học",
+                        "text": form_errors_as_text(form),
+                    }
+                })
+            return response
     
     form = ClassSessionForm(instance=session)
     context = {"form": form, "session": session}

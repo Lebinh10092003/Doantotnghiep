@@ -17,13 +17,8 @@ from apps.rewards.models import (
     SessionPointEventType,
 )
 from apps.rewards import services
-
-
-def is_htmx_request(request):
-    return (
-        request.headers.get("HX-Request") == "true"
-        or request.META.get("HTTP_HX_REQUEST") == "true"
-    )
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 
 
 def _role_flags(user):
@@ -164,12 +159,20 @@ def manage_items(request):
             messages.success(request, "Đã lưu phần quà.")
             return redirect("rewards:manage_items")
         if is_htmx_request(request):
-            return render(
+            response = render(
                 request,
                 "_reward_item_form.html",
                 {"form": form, "instance": instance},
-                status=400,
+                status=422,
             )
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể lưu phần quà",
+                    "text": form_errors_as_text(form),
+                }
+            })
+            return response
     else:
         form = RewardItemForm(instance=instance)
 
@@ -224,7 +227,15 @@ def approve_request(request, pk):
         messages.success(request, "Đã duyệt yêu cầu đổi quà.")
     except ValidationError as e:
         if is_htmx_request(request):
-            return HttpResponse(e.message, status=400)
+            resp = HttpResponse("", status=400)
+            resp["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể duyệt yêu cầu",
+                    "text": str(e),
+                }
+            })
+            return resp
         messages.error(request, e.message)
     return redirect("rewards:manage_requests")
 
@@ -247,7 +258,15 @@ def reject_request(request, pk):
         messages.success(request, "Đã từ chối yêu cầu.")
     except ValidationError as e:
         if is_htmx_request(request):
-            return HttpResponse(e.message, status=400)
+            resp = HttpResponse("", status=400)
+            resp["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể từ chối",
+                    "text": str(e),
+                }
+            })
+            return resp
         messages.error(request, e.message)
     return redirect("rewards:manage_requests")
 
@@ -270,7 +289,15 @@ def fulfill_request(request, pk):
         messages.success(request, "Đã đánh dấu đã trao quà.")
     except ValidationError as e:
         if is_htmx_request(request):
-            return HttpResponse(e.message, status=400)
+            resp = HttpResponse("", status=400)
+            resp["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể đánh dấu đã trao",
+                    "text": str(e),
+                }
+            })
+            return resp
         messages.error(request, e.message)
     return redirect("rewards:manage_requests")
 
@@ -293,6 +320,14 @@ def cancel_request(request, pk):
         messages.success(request, "Đã hủy yêu cầu.")
     except ValidationError as e:
         if is_htmx_request(request):
-            return HttpResponse(e.message, status=400)
+            resp = HttpResponse("", status=400)
+            resp["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể hủy yêu cầu",
+                    "text": str(e),
+                }
+            })
+            return resp
         messages.error(request, e.message)
     return redirect("rewards:manage_requests")

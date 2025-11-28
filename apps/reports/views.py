@@ -33,6 +33,7 @@ from apps.reports.filters import (
     StudentReportFilter,
     TeachingHoursReportFilter,
 )
+from apps.common.utils.http import is_htmx_request
 
 
 def _normalize_identifier(value) -> str:
@@ -65,10 +66,6 @@ def _role_flags(user):
 def _user_is_admin_or_center_manager(user):
     flags = _role_flags(user)
     return flags["is_admin"], flags["is_center_manager"]
-
-
-def is_htmx_request(request):
-    return request.headers.get("Hx-Request") == "true" or request.META.get("HTTP_HX_REQUEST") == "true"
 
 
 def _session_duration_hours(session):

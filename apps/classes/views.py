@@ -25,6 +25,8 @@ from apps.class_sessions.models import ClassSession
 from apps.class_sessions.utils import recalculate_session_indices
 from django.db import transaction
 from apps.curriculum.models import Lesson
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 
 
 def _class_timeslot_label(klass):
@@ -61,9 +63,6 @@ def _class_group_label(klass, group_by):
         return _class_timeslot_label(klass)
     return ""
 
-
-def is_htmx_request(request):
-    return request.headers.get("HX-Request") == "true"
 
 @login_required
 @permission_required("classes.view_class", raise_exception=True)
@@ -205,7 +204,19 @@ def class_create_view(request):
             return response
         else:
             context = {"form": form, "formset": formset}
-            return render(request, "_class_form.html", context, status=400)
+            response = render(request, "_class_form.html", context, status=422)
+            if is_htmx_request(request):
+                errors = [form_errors_as_text(form)]
+                if formset.non_form_errors() or any(f.errors for f in formset.forms):
+                    errors.append("Vui lòng kiểm tra thông tin lịch học.")
+                response["HX-Trigger"] = json.dumps({
+                    "show-sweet-alert": {
+                        "icon": "error",
+                        "title": "Không thể tạo lớp",
+                        "text": "\n".join([msg for msg in errors if msg]).strip() or "Dữ liệu không hợp lệ.",
+                    }
+                })
+            return response
     
     form = ClassForm()
     formset = ClassScheduleFormSet(prefix='schedules')
@@ -246,7 +257,19 @@ def class_edit_view(request, pk):
             return response
         else:
             context = {"form": form, "formset": formset, "klass": klass}
-            return render(request, "_class_form.html", context, status=400)
+            response = render(request, "_class_form.html", context, status=422)
+            if is_htmx_request(request):
+                errors = [form_errors_as_text(form)]
+                if formset.non_form_errors() or any(f.errors for f in formset.forms):
+                    errors.append("Vui lòng kiểm tra thông tin lịch học.")
+                response["HX-Trigger"] = json.dumps({
+                    "show-sweet-alert": {
+                        "icon": "error",
+                        "title": "Không thể cập nhật lớp",
+                        "text": "\n".join([msg for msg in errors if msg]).strip() or "Dữ liệu không hợp lệ.",
+                    }
+                })
+            return response
     
     form = ClassForm(instance=klass)
     formset = ClassScheduleFormSet(instance=klass, prefix='schedules')

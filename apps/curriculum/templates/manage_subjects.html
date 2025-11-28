@@ -3,7 +3,7 @@
 {% block title %}Quản lý Môn học{% endblock %}
 
 {% block content %}
-<div x-data="{ modalTitle: 'Tiêu đề Modal' }">
+<div x-data="{ modalTitle: 'Tiêu đề Modal', showFilters: false }">
   <div id="main">
     <header class="mb-3">
       <a href="#" class="burger-btn d-block d-xl-none">
@@ -70,36 +70,15 @@
           </div>
 
           <div class="card-body">
-            <div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
-              <form id="filters-form" class="dataTable-top d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="dataTable-dropdown d-flex align-items-center gap-2">
-                  <select name="per_page" class="dataTable-selector form-select form-select-sm w-auto"
-                          hx-get="{% url 'curriculum:subjects_manage' %}" hx-target="#subjects-table" hx-include="#filters-form" hx-trigger="change">
-                    <option value="5" {% if request.GET.per_page == '5' %}selected{% endif %}>5</option>
-                    <option value="10" {% if request.GET.per_page == '10' or not request.GET.per_page %}selected{% endif %}>10</option>
-                    <option value="25" {% if request.GET.per_page == '25' %}selected{% endif %}>25</option>
-                  </select>
-                  <label class="mb-0">mục/trang</label>
-                </div>
-
-                <div class="dataTable-search" style="min-width:250px;">
-                  <input name="q" value="{{ request.GET.q|default:'' }}" class="dataTable-input form-control form-control-sm"
-                         style="width:100%;" placeholder="Tìm theo tên, mã, mô tả"
-                         hx-get="{% url 'curriculum:subjects_manage' %}" hx-target="#subjects-table" hx-include="#filters-form" hx-trigger="keyup changed delay:300ms">
-                </div>
-              </form>
-
-              <form id="subjects-table-form"
-                    hx-trigger="reload-subjects-table from:body"
-                    hx-get="{% url 'curriculum:subjects_manage' %}"
-                    hx-target="#subjects-table"
-                    hx-swap="innerHTML"
-                    hx-include="#filters-form">
-                {% csrf_token %}
-                <div id="subjects-table">
-                  {% include "_subjects_table.html" %}
-                </div>
-              </form>
+            <div id="subjects-filterable-content"
+                 hx-get="{% url 'curriculum:subjects_manage' %}{% if current_query_params %}?{{ current_query_params }}{% endif %}"
+                 hx-trigger="load, reload-subjects-table from:body"
+                 hx-target="#subjects-filterable-content"
+                 hx-swap="innerHTML" data-loading-target>
+              <div class="text-center p-5">
+                <span class="spinner-border" role="status"></span>
+                Đang tải dữ liệu...
+              </div>
             </div>
           </div>
         </div>
@@ -116,6 +95,20 @@
             <div class="modal-body">
               <p>Đang tải...</p>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="filter-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
+      <div class="modal-dialog modal-md modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div id="filter-modal-content">
+            <div class="modal-body"><p>Đang tải...</p></div>
           </div>
         </div>
       </div>

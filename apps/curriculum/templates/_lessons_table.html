@@ -30,7 +30,7 @@
             <span class="text-success fw-bold">✓</span>
           {% endif %}
         </td>
-        <td class="d-flex flex-wrap gap-1">
+        <td class="text-nowrap">
           {% if perms.curriculum.view_lesson %}
           <button type="button" class="btn btn-sm btn-info"
                   hx-get="{% url 'curriculum:lesson_detail' l.id %}"
@@ -46,7 +46,7 @@
                   @click="modalTitle = 'Chỉnh sửa Bài học: {{ l.title|escapejs }}'">
             <i class="bi bi-pencil-square"></i>
           </button>
-          <button type="button" class="btn btn-sm {% if l.lecture_id or l.exercise_id %}btn-primary{% else %}btn-outline-primary{% endif %}"
+            <button type="button" class="btn btn-sm {% if l.lecture_id or l.exercise_id %}btn-primary{% else %}btn-outline-primary{% endif %}"
                   hx-get="{% url 'curriculum:lesson_content_edit' l.id %}"
                   hx-target="#curriculum-modal-content"
                   @click="modalTitle = 'Nội dung Bài học: {{ l.title|escapejs }}'">
@@ -80,24 +80,24 @@
     <ul class="pagination">
       {% if page_obj.number > 1 %}
       <li class="page-item">
-        <a hx-get="{% url 'curriculum:lessons_manage' %}?page=1&per_page={{ per_page }}&q={{ q|urlencode }}&subject={{ selected_subject|urlencode }}&module={{ selected_module|urlencode }}"
-           hx-target="#lessons-table" hx-swap="innerHTML" class="page-link">Đầu</a>
+          <a hx-get="{% url 'curriculum:lessons_manage' %}?page=1&per_page={{ per_page }}{% if current_query_params %}&{{ current_query_params }}{% endif %}"
+            hx-target="#{{ target_id|default:'lessons-filterable-content' }}" hx-swap="innerHTML" hx-push-url="true" class="page-link">Đầu</a>
       </li>
       {% endif %}
 
       {% for p in paginator.page_range %}
         {% if p >= page_obj.number|add:-2 and p <= page_obj.number|add:2 %}
         <li class="page-item {% if page_obj.number == p %}active{% endif %}">
-          <a hx-get="{% url 'curriculum:lessons_manage' %}?page={{ p }}&per_page={{ per_page }}&q={{ q|urlencode }}&subject={{ selected_subject|urlencode }}&module={{ selected_module|urlencode }}"
-             hx-target="#lessons-table" hx-swap="innerHTML" class="page-link">{{ p }}</a>
+           <a hx-get="{% url 'curriculum:lessons_manage' %}?page={{ p }}&per_page={{ per_page }}{% if current_query_params %}&{{ current_query_params }}{% endif %}"
+             hx-target="#{{ target_id|default:'lessons-filterable-content' }}" hx-swap="innerHTML" hx-push-url="true" class="page-link">{{ p }}</a>
         </li>
         {% endif %}
       {% endfor %}
 
       {% if page_obj.number < paginator.num_pages %}
       <li class="page-item">
-        <a hx-get="{% url 'curriculum:lessons_manage' %}?page={{ paginator.num_pages }}&per_page={{ per_page }}&q={{ q|urlencode }}&subject={{ selected_subject|urlencode }}&module={{ selected_module|urlencode }}"
-           hx-target="#lessons-table" hx-swap="innerHTML" class="page-link">Cuối</a>
+          <a hx-get="{% url 'curriculum:lessons_manage' %}?page={{ paginator.num_pages }}&per_page={{ per_page }}{% if current_query_params %}&{{ current_query_params }}{% endif %}"
+            hx-target="#{{ target_id|default:'lessons-filterable-content' }}" hx-swap="innerHTML" hx-push-url="true" class="page-link">Cuối</a>
       </li>
       {% endif %}
     </ul>

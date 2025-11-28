@@ -1,0 +1,28 @@
+{% include "_filter_ui_controls.html" with filter=filter active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='lessons-filterable-content' %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <div class="dataTable-dropdown d-flex align-items-center gap-2 mb-0">
+    <select name="per_page"
+            class="dataTable-selector form-select form-select-sm w-auto"
+            hx-get="{% url 'curriculum:lessons_manage' %}"
+            hx-target="#lessons-filterable-content"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-include="#filter-form"
+            hx-trigger="change"
+            hx-vals='{"page":"1"}'>
+      <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+      <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+      <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+      <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+    </select>
+    <label class="mb-0">mục trên trang</label>
+  </div>
+</div>
+
+<div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
+  <form id="lessons-table-form">
+    {% csrf_token %}
+    {% include "_lessons_table.html" with page_obj=page_obj paginator=paginator per_page=per_page current_query_params=current_query_params target_id='lessons-filterable-content' %}
+  </form>
+</div>
