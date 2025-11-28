@@ -12,55 +12,25 @@
       </tr>
     </thead>
     <tbody>
-      {% for klass in page_obj.object_list %}
-      <tr>
-        <td>{{ klass.name }}</td>
-        <td>{% if klass.center %}{{ klass.center.name }}{% else %}-{% endif %}</td>
-        <td>{% if klass.subject %}{{ klass.subject.name }}{% else %}-{% endif %}</td>
-        <td>{% if klass.main_teacher %}{{ klass.main_teacher.display_name_with_email }}{% else %}-{% endif %}</td>
-        <td>{{ klass.start_date|date:"d/m/Y"|default:"-" }}</td>
-        <td>
-          {% if klass.status == 'PLANNED' %}
-            <span class="badge bg-info">{{ klass.get_status_display }}</span>
-          {% elif klass.status == 'ONGOING' %}
-            <span class="badge bg-success">{{ klass.get_status_display }}</span>
-          {% elif klass.status == 'COMPLETED' %}
-            <span class="badge bg-secondary">{{ klass.get_status_display }}</span>
-          {% else %}
-            <span class="badge bg-danger">{{ klass.get_status_display }}</span>
-          {% endif %}
-        </td>
-        <td class="text-nowrap">
-          <div class="d-flex gap-1">
-            {% if perms.classes.view_class %}
-            <button type="button" class="btn btn-sm btn-info" title="Xem chi tiết"
-               hx-get="{% url 'classes:class_detail' klass.pk %}"
-               hx-target="#classes-modal-content"
-               data-bs-toggle="modal" data-bs-target="#classes-modal"
-               @click="modalTitle = 'Chi tiết Lớp học: {{ klass.name|escapejs }}'">
-                <i class="bi bi-eye"></i>
-            </button>
-            {% endif %}
-            {% if perms.classes.change_class %}
-            <button type="button" class="btn btn-sm btn-warning" title="Chỉnh sửa"
-               hx-get="{% url 'classes:class_edit' klass.pk %}"
-               hx-target="#classes-modal-content"
-               data-bs-toggle="modal" data-bs-target="#classes-modal"
-               @click="modalTitle = 'Cập nhật Lớp học: {{ klass.name|escapejs }}'">
-                <i class="bi bi-pencil-square"></i>
-            </button>
-            {% endif %}
-            {% if perms.classes.delete_class %}
-            <button type="button" class="btn btn-sm btn-danger" title="Xóa"
-               hx-post="{% url 'classes:class_delete' klass.pk %}" hx-swap="none"
-               data-confirm-title="Xác nhận xóa" data-confirm-text="Bạn chắc chắn muốn xóa lớp '{{ klass.name|escapejs }}'?"><i class="bi bi-trash"></i></button>
-            {% endif %}
-          </div>
-        </td>
-      </tr>
-      {% empty %}
+      {% if page_obj.object_list %}
+        {% if group_by %}
+          {% regroup page_obj.object_list by group_label as class_groups %}
+          {% for group in class_groups %}
+            <tr class="table-group">
+              <td colspan="7"><strong>{{ group.grouper|default:"Chưa xác định" }}</strong></td>
+            </tr>
+            {% for klass in group.list %}
+              {% include "_class_row.html" with klass=klass %}
+            {% endfor %}
+          {% endfor %}
+        {% else %}
+          {% for klass in page_obj.object_list %}
+            {% include "_class_row.html" with klass=klass %}
+          {% endfor %}
+        {% endif %}
+      {% else %}
       <tr><td colspan="7" class="text-center">Không tìm thấy lớp học nào khớp.</td></tr>
-      {% endfor %}
+      {% endif %}
     </tbody>
   </table>
 </div>

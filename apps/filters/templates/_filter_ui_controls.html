@@ -11,27 +11,6 @@
     </button>
 
     <div class="d-flex flex-wrap gap-2">
-      <div class="btn-group">
-        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" 
-                data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="bi bi-lightning-charge-fill"></i> Lọc nhanh
-        </button>
-        <ul class="dropdown-menu">
-          {% for qf in quick_filters %}
-            <li>
-              <button class="dropdown-item" type="button"
-                      hx-get="?{{ qf.params }}"
-                      hx-target="#{{ target_id|default:'filterable-content' }}"
-                      hx-swap="innerHTML" 
-                      hx-push-url="true">{{ qf.name }}</button>
-            </li>
-          {% empty %}
-            <li><a class="dropdown-item disabled" href="#">Không có</a></li>
-          {% endfor %}
-        </ul>
-      </div>
-      
-      {# #}
       <button type="button" class="btn btn-outline-secondary btn-sm"
               hx-get="{% url 'filters:load_saved_filters' model_name %}?target_id={{ target_id|default:'filterable-content' }}&current_query_params={{ request.GET.urlencode }}&origin_path={{ request.path }}"
               hx-target="#filter-modal-content"

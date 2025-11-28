@@ -19,67 +19,87 @@
         {% endif %}
       </p>
   </div>
-
-  <div class="row">
-    <div class="col-md-6">
-      <p><strong>Trung tâm:</strong> {{ session.klass.center.name|default:"-" }}</p>
-      <p><strong>Ngày:</strong> {{ session.date|date:"d/m/Y"|default:"-" }}</p>
-      <p><strong>Giờ bắt đầu:</strong> {{ session.start_time|time:"H:i"|default:"-" }}</p>
-      <p><strong>Giờ kết thúc:</strong> {{ session.end_time|time:"H:i"|default:"-" }}</p>
-    </div>
-    <div class="col-md-6">
-      <p><strong>Bài học:</strong> {% if session.lesson %}{{ session.lesson.title }}{% else %}-{% endif %}</p>
-      <p><strong>Phòng học:</strong>
-        {% if session.room_override %}
-          {{ session.room_override.name }} (Thay thế)
-        {% elif session.klass.room %}
-          {{ session.klass.room.name }} (Mặc định)
-        {% else %}-{% endif %}
-      </p>
-      <p><strong>Giáo viên:</strong>
-        {% if session.teacher_override %}
-          {{ session.teacher_override.display_name_with_email|default:"-" }} (Thay thế)
-        {% else %}
-          {{ session.klass.main_teacher.display_name_with_email|default:"-" }} (Chính)
-        {% endif %}
-      </p>
+{% if not as_page %}
+<div id="session-modal-staging" class="d-none">
+  <div class="modal fade" id="attendance-modal" data-session-modal="attendance" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Điểm danh &amp; Đánh giá</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div id="attendance-modal-content">
+          <div class="modal-body text-center p-5">
+            <span class="spinner-border" role="status"></span>
+            <p class="mt-2">Đang tải...</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <p><strong>Trợ giảng (Buổi):</strong>
-    {% for assistant in session.assistants.all %}
-      <span class="badge bg-secondary">{{ assistant.get_full_name }}</span>
-    {% empty %}
-      <span class="text-muted">Không có</span>
-    {% endfor %}
-  </p>
-  <p><strong>Trợ giảng (Lớp):</strong>
-    {% for assistant in session.klass.assistants.all %}
-      <span class="badge bg-light text-dark border">{{ assistant.get_full_name }}</span>
-    {% empty %}
-      <span class="text-muted">Không có</span>
-    {% endfor %}
-  </p>
-
-  <p><strong>Ghi chú:</strong> {{ session.klass.note|default:"Không có ghi chú." }}</p>
-
-  <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-    <h6 class="mb-0">Danh sách học sinh, điểm danh & đánh giá</h6>
-    {% if can_edit_session_records %}
-    <div class="d-flex gap-2">
-      <button type="button"
-              class="btn btn-sm btn-outline-primary"
-              data-bs-toggle="modal"
-              data-bs-target="#attendance-modal">
-        <i class="bi bi-clipboard-check"></i> Mở form điểm danh
-      </button>
-      <button type="button"
-              class="btn btn-sm btn-outline-secondary"
-              data-bs-toggle="modal"
-              data-bs-target="#session-photos-modal">
-        <i class="bi bi-camera"></i> Ảnh buổi học
-      </button>
+  <div class="modal fade" id="session-photos-modal" data-session-modal="photos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <form method="post"
+              enctype="multipart/form-data"
+              action="{% url 'class_sessions:session_photos_upload' session.pk %}"
+              hx-post="{% url 'class_sessions:session_photos_upload' session.pk %}"
+              hx-encoding="multipart/form-data"
+              hx-swap="none"
+              hx-indicator="#global-loading-overlay"
+              id="session-photos-form">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title d-flex align-items-center gap-2">
+              <i class="bi bi-camera"></i> Tải ảnh buổi học
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Chọn ảnh (có thể chọn nhiều)</label>
+              <input type="file"
+                     class="form-control"
+                     name="images"
+                     id="session-photo-input"
+                     accept="image/*"
+                     multiple>
+              <div class="form-text">Hỗ trợ chọn nhiều ảnh hoặc chụp trực tiếp từ điện thoại.</div>
+            </div>
+            <div id="session-photo-preview" class="row g-2"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Đóng</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-upload"></i> Tải lên
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
+  </div>
+</div>
+<script>
+  (function () {
+    const staging = document.getElementById('session-modal-staging');
+    if (!staging) {
+      return;
+    }
+    staging.querySelectorAll('[data-session-modal]').forEach(function (modal) {
+      const key = modal.dataset.sessionModal;
+      const existing = document.querySelector(`[data-session-modal="${key}"][data-session-modal-mounted="true"]`);
+      if (existing) {
+        existing.replaceWith(modal);
+      } else {
+        document.body.appendChild(modal);
+      }
+      modal.dataset.sessionModalMounted = 'true';
+    });
+    staging.remove();
+  })();
+</script>
+{% endif %}
     {% endif %}
   </div>
   <div class="table-responsive">

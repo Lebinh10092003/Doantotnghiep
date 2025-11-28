@@ -4,8 +4,8 @@ from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.shortcuts import get_object_or_404, render, redirect
+from django.contrib.auth import authenticate, login, logout, get_user_model, REDIRECT_FIELD_NAME
+from django.shortcuts import get_object_or_404, render, redirect, resolve_url
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Group
 from django.http import HttpResponse, JsonResponse
@@ -25,6 +25,14 @@ from django.contrib.contenttypes.models import ContentType
 from collections import defaultdict, OrderedDict
 from django.contrib.auth import update_session_auth_hash 
 from django import forms as dj_forms
+from apps.filters.models import SavedFilter
+from apps.filters.utils import (
+    build_filter_badges,
+    determine_active_filter_name,
+)
+from .filters import UserFilter
+from django.conf import settings
+from django.utils.http import url_has_allowed_host_and_scheme
 User = get_user_model()
 # Định nghĩa các nhóm không được phép xóa
 PROTECTED_GROUPS = [
@@ -109,6 +117,16 @@ def login_view(request):
         else:
             request.session.set_expiry(0)  # hết khi đóng browser
 
+        redirect_to = request.POST.get(REDIRECT_FIELD_NAME) or request.GET.get(REDIRECT_FIELD_NAME)
+        if redirect_to and url_has_allowed_host_and_scheme(
+            redirect_to,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            final_redirect = redirect_to
+        else:
+            final_redirect = resolve_url(settings.LOGIN_REDIRECT_URL)
+
         # Nếu request HTMX: trả modal + redirect
         if is_htmx_request(request):
             resp = HttpResponse("")
@@ -116,13 +134,13 @@ def login_view(request):
                 "show-sweet-alert": {
                     "icon": "success",
                     "title": "Đăng nhập thành công!",
-                    "redirect": "/"   # redirect sau khi modal đóng
+                    "redirect": final_redirect   # redirect sau khi modal đóng
                 }
             })
             return resp
 
         # Nếu request thường: redirect về home
-        return redirect("common:home")
+        return redirect(final_redirect)
 
     # GET: render form login
     return render(request, "login.html")
@@ -147,118 +165,53 @@ def logout_view(request):
 def is_admin(user):
     return user.is_superuser or getattr(user, "role", None) == "ADMIN"
 # Lọc queryset người dùng dựa trên tham số request
-def _filter_users_queryset(request):
-    current_user = request.user
-    # Kiểm tra xem người dùng có thuộc các nhóm vai trò cụ thể hay không
-    is_parent = current_user.groups.filter(name='PARENT').exists()
-    is_student = current_user.groups.filter(name='STUDENT').exists()
+def _base_users_queryset(current_user):
+    """Return the base queryset that respects the viewer's role."""
+    is_parent = current_user.groups.filter(name="PARENT").exists()
+    is_student = current_user.groups.filter(name="STUDENT").exists()
 
-    # Bắt đầu với một queryset cơ sở dựa trên quyền của người dùng
     if is_parent:
-        # Phụ huynh chỉ thấy danh sách con của mình
-        children_ids = ParentStudentRelation.objects.filter(parent=current_user).values_list('student_id', flat=True)
+        children_ids = (
+            ParentStudentRelation.objects.filter(parent=current_user)
+            .values_list("student_id", flat=True)
+        )
         qs = User.objects.filter(id__in=list(children_ids))
     elif is_student:
-        # Học sinh chỉ thấy chính mình
         qs = User.objects.filter(pk=current_user.pk)
     else:
-        # Các vai trò khác (Admin, Manager, Staff, Teacher,...) không bị giới hạn
         qs = User.objects.all()
-    
-    # Áp dụng các bộ lọc bổ sung trên queryset cơ sở
-    # params
-    q = request.GET.get("q", "").strip()
-    status = request.GET.get("status", "")
-    role_choice = request.GET.get("role", "")      
-    group_name = request.GET.get("group", "")    
-    center_id = request.GET.get("center", "")
-    is_staff = request.GET.get("is_staff", "")
-    is_superuser = request.GET.get("is_superuser", "")
-    date_from = request.GET.get("date_joined_from", "")
-    date_to = request.GET.get("date_joined_to", "")
-    last_login_from = request.GET.get("last_login_from", "")
-    last_login_to = request.GET.get("last_login_to", "")
 
-    # Search
-    if q:
-        tokens = [t for t in q.split() if t]
-        for t in tokens:
-            qs = qs.filter(
-                Q(first_name__icontains=t) |
-                Q(last_name__icontains=t) |
-                Q(email__icontains=t) |
-                Q(phone__icontains=t) |
-                Q(username__icontains=t)
-            )
-
-    # Status
-    if status == "active":
-        qs = qs.filter(is_active=True)
-    elif status == "inactive":
-        qs = qs.filter(is_active=False)
-
-    # Filter by role (choice field on User)
-    if role_choice:
-        qs = qs.filter(groups__name=role_choice).distinct()
-
-    # Filter by Django Group (accept name or id)
-    if group_name:
-        if group_name.isdigit():
-            qs = qs.filter(groups__id=int(group_name))
-        else:
-            qs = qs.filter(groups__name=group_name)
-        qs = qs.distinct()
-
-    # Center filter
-    if center_id:
-        try:
-            cid = int(center_id)
-            qs = qs.filter(center_id=cid)
-        except (ValueError, TypeError):
-            pass
-
-    # staff / superuser filters
-    if is_staff: # is_staff will be a string or None. If it's an empty string, it evaluates to False.
-        v = is_staff.lower()
-        if v in ("1", "true", "yes", "on"):
-            qs = qs.filter(is_staff=True)
-        elif v in ("0", "false", "no"):
-            qs = qs.filter(is_staff=False)
-
-    if is_superuser: # Same logic for is_superuser
-        v = is_superuser.lower()
-        if v in ("1", "true", "yes", "on"):
-            qs = qs.filter(is_superuser=True)
-        elif v in ("0", "false", "no"):
-            qs = qs.filter(is_superuser=False)
-
-    # Date range filters
-    def apply_date_range(qs_in, field, start_str, end_str):
-        qs_out = qs_in
-        if start_str:
-            d = parse_date(start_str)
-            if d:
-                qs_out = qs_out.filter(**{f"{field}__date__gte": d})
-        if end_str:
-            d = parse_date(end_str)
-            if d:
-                qs_out = qs_out.filter(**{f"{field}__date__lte": d})
-        return qs_out
-
-    qs = apply_date_range(qs, "date_joined", date_from, date_to)
-    qs = apply_date_range(qs, "last_login", last_login_from, last_login_to)
-    
     return qs.select_related("center").prefetch_related("groups").distinct()
+
+
+def _filter_users_queryset(request, with_filter=False):
+    base_qs = _base_users_queryset(request.user)
+    user_filter = UserFilter(request.GET, queryset=base_qs)
+    qs = user_filter.qs.select_related("center").prefetch_related("groups").distinct()
+    if with_filter:
+        return qs, user_filter
+    return qs
 
 # Quản lý người dùng
 @login_required
 @permission_required("accounts.view_user", raise_exception=True)
 def manage_accounts(request):
-    qs = _filter_users_queryset(request)
-    groups_for_dropdown = list(Group.objects.values_list("name", "name"))
-    
-    # Params for sorting and pagination
-    group_by = request.GET.get("group_by", "")
+    qs, user_filter = _filter_users_queryset(request, with_filter=True)
+
+    # Determine grouping mode from filter data
+    if user_filter.form.is_bound:
+        user_filter.form.is_valid()
+        group_by = user_filter.form.cleaned_data.get("group_by", "") or ""
+    else:
+        group_by = request.GET.get("group_by", "") or ""
+
+    if group_by == "role":
+        qs = qs.order_by("groups__name", "last_name", "first_name").distinct()
+    elif group_by == "center":
+        qs = qs.order_by("center__name", "last_name", "first_name")
+    else:
+        qs = qs.order_by("last_name", "first_name")
+
     try:
         per_page = int(request.GET.get("per_page", 10))
     except (TypeError, ValueError):
@@ -268,54 +221,38 @@ def manage_accounts(request):
     except (TypeError, ValueError):
         page = 1
 
-
-    # Ordering / grouping
-    if group_by == "role":
-        # Sắp xếp theo tên của nhóm đầu tiên để `regroup` hoạt động chính xác khi nhóm theo vai trò
-        qs = qs.order_by("groups__name", "last_name", "first_name").distinct()
-    elif group_by == "group": # group_by=group không được sử dụng trong template, nhưng để lại cho nhất quán
-        qs = qs.order_by("groups__name", "last_name", "first_name")
-    elif group_by == "center":
-        qs = qs.order_by("center__name", "last_name", "first_name")
-    else:
-        qs = qs.order_by("last_name", "first_name")
-
-    # Pagination
     paginator = Paginator(qs, per_page)
     try:
         page_obj = paginator.page(page)
     except EmptyPage:
         page_obj = paginator.page(1)
 
-    relations = ParentStudentRelation.objects.select_related("parent", "student").all()
-    groups_list = list(Group.objects.values_list("name", flat=True))
-    centers_list = list(Center.objects.values("id", "name").order_by("name"))
+    saved_filters = SavedFilter.objects.filter(model_name="User").filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+
+    active_filter_name = determine_active_filter_name(request, saved_filters)
+    active_filter_badges = build_filter_badges(user_filter)
+
+    query_params = request.GET.copy()
+    for key in ["page", "per_page"]:
+        if key in query_params:
+            del query_params[key]
 
     context = {
         "page_obj": page_obj,
         "paginator": paginator,
-        "q": request.GET.get("q", "").strip(),
-        "status": request.GET.get("status", ""),
-        "role": request.GET.get("role", ""),
-        "group_list": groups_for_dropdown,
-        "group": request.GET.get("group", ""),
-        "groups_list": groups_list,
-        "center": request.GET.get("center", ""),
-        "centers_list": centers_list,
-        "is_staff": request.GET.get("is_staff", ""),
-        "is_superuser": request.GET.get("is_superuser", ""),
-        "date_joined_from": request.GET.get("date_joined_from", ""),
-        "date_joined_to": request.GET.get("date_joined_to", ""),
-        "last_login_from": request.GET.get("last_login_from", ""),
-        "last_login_to": request.GET.get("last_login_to", ""),
-        "group_by": request.GET.get("group_by", ""),
         "per_page": per_page,
-        "relations": relations,
-        "current_query_params": request.GET.urlencode(),
+        "filter": user_filter,
+        "model_name": "User",
+        "active_filter_name": active_filter_name,
+        "active_filter_badges": active_filter_badges,
+        "current_query_params": query_params.urlencode(),
+        "group_by": group_by,
     }
 
     if is_htmx_request(request):
-        return render(request, "_accounts_table.html", context)
+        return render(request, "_account_filterable_content.html", context)
 
     return render(request, "manage_accounts.html", context)
 

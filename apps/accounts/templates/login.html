@@ -50,6 +50,7 @@
             hx-swap="none"
           >
             {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
             <div class="form-group position-relative has-icon-left mb-4">
               <input type="text" name="phone" class="form-control form-control-xl" placeholder="Số điện thoại" required>
               <div class="form-control-icon">

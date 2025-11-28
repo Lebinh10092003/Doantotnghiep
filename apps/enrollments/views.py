@@ -20,8 +20,11 @@ from apps.enrollments.services import (
     transfer_enrollment_funds,
 )
 from apps.enrollments.filters import EnrollmentFilter
-from django.http import QueryDict, HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from apps.filters.models import SavedFilter
+from apps.filters.utils import (
+    determine_active_filter_name,
+)
 from django import forms
 from django.utils.dateparse import parse_date
 
@@ -204,36 +207,10 @@ def enrollment_list(request):
                         {"label": field_label, "value": display_value, "key": name}
                     )
 
-    quick_filters = [
-        {"name": "Đang học", "params": "status=ACTIVE"},
-        {"name": "Bảo lưu", "params": "status=PAUSED"},
-        {"name": "Nghỉ học", "params": "status=CANCELLED"},
-        {"name": "Mới", "params": "status=NEW"},
-    ]
-
     saved_filters = SavedFilter.objects.filter(model_name="Enrollment").filter(
         Q(user=request.user) | Q(is_public=True)
     ).distinct()
-
-    active_filter_name = None
-    current_params_dict = {
-        k: v_list for k, v_list in request.GET.lists() if k not in ["page", "per_page"]
-    }
-    if current_params_dict:
-        for qf in quick_filters:
-            qf_dict = {k: v_list for k, v_list in QueryDict(qf["params"]).lists()}
-            if qf_dict == current_params_dict:
-                active_filter_name = qf["name"]
-                break
-        if not active_filter_name:
-            for sf in saved_filters:
-                try:
-                    sf_dict = sf.query_params
-                    if sf_dict == current_params_dict:
-                        active_filter_name = sf.name
-                        break
-                except (json.JSONDecodeError, TypeError):
-                    continue
+    active_filter_name = determine_active_filter_name(request, saved_filters)
 
     query_params_no_page = request.GET.copy()
     query_params_no_page._mutable = True
@@ -247,7 +224,6 @@ def enrollment_list(request):
         "per_page": per_page,
         "current_query_params": current_query_params,
         "filter": enrollment_filter,
-        "quick_filters": quick_filters,
         "active_filter_name": active_filter_name,
         "active_filter_badges": active_filter_badges,
         "model_name": "Enrollment",

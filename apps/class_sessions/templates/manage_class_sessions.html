@@ -91,3 +91,14 @@
   </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+  window.syncSessionGroupBy = function(value) {
+    const hiddenField = document.querySelector('#filter-form [name="group_by"]');
+    if (hiddenField) {
+      hiddenField.value = value;
+    }
+  };
+</script>
+{% endblock %}

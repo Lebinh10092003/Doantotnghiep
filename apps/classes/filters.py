@@ -10,6 +10,15 @@ from apps.accounts.models import User
 
 
 class ClassFilter(filters.FilterSet):
+    GROUP_BY_CHOICES = (
+        ("", "Không nhóm"),
+        ("subject", "Nhóm theo môn"),
+        ("center", "Nhóm theo cơ sở"),
+        ("teacher", "Nhóm theo giáo viên"),
+        ("status", "Nhóm theo trạng thái"),
+        ("timeslot", "Nhóm theo khung giờ"),
+    )
+
     # Lọc theo tên hoặc mã lớp
     query = filters.CharFilter(
         method="filter_query",
@@ -50,11 +59,34 @@ class ClassFilter(filters.FilterSet):
         ),
     )
 
+    group_by = filters.ChoiceFilter(
+        choices=GROUP_BY_CHOICES,
+        label="Nhóm theo",
+        method="filter_group_by",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.form.fields["group_by"].widget = forms.HiddenInput()
+        self.group_by_value = ""
+
     def filter_query(self, queryset, name, value):
         if not value:
             return queryset
         return queryset.filter(Q(name__icontains=value) | Q(code__icontains=value))
 
+    def filter_group_by(self, queryset, name, value):
+        self.group_by_value = value or ""
+        return queryset
+
     class Meta:
         model = Class
-        fields = ["query", "status", "center", "subject", "main_teacher", "start_date"]
+        fields = [
+            "query",
+            "status",
+            "center",
+            "subject",
+            "main_teacher",
+            "start_date",
+            "group_by",
+        ]

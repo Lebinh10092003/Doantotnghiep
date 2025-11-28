@@ -1,0 +1,63 @@
+<tr>
+  <td>{{ session.klass.name }}</td>
+  <td>{{ session.index }}</td>
+  <td>{{ session.date|date:"d/m/Y"|default:"-" }}</td>
+  <td class="text-nowrap">{{ session.start_time|time:"H:i"|default:"-" }} - {{ session.end_time|time:"H:i"|default:"-" }}</td>
+  <td>{% if session.lesson %}{{ session.lesson.title }}{% else %}-{% endif %}</td>
+  <td>
+    {% if session.teacher_override %}
+      {{ session.teacher_override.display_name_with_email }}
+    {% elif session.klass.main_teacher %}
+      {{ session.klass.main_teacher.display_name_with_email }}
+    {% else %}
+      -
+    {% endif %}
+  </td>
+  <td>
+    {% if session.status == 'PLANNED' %}
+      <span class="badge bg-info">{{ session.get_status_display }}</span>
+    {% elif session.status == 'COMPLETED' or session.status == 'DONE' %}
+      <span class="badge bg-success">{{ session.get_status_display }}</span>
+    {% elif session.status == 'CANCELLED' %}
+      <span class="badge bg-danger">{{ session.get_status_display }}</span>
+    {% elif session.status == 'MISSED' %}
+      <span class="badge bg-warning text-dark">{{ session.get_status_display }}</span>
+    {% else %}
+      <span class="badge bg-secondary">{{ session.get_status_display }}</span>
+    {% endif %}
+  </td>
+  <td class="text-nowrap">
+    <div class="d-flex gap-1">
+      {% if perms.class_sessions.view_classsession %}
+      <button type="button" class="btn btn-sm btn-info"
+              hx-get="{% url 'class_sessions:session_detail' session.pk %}" hx-target="#sessions-modal-content"
+              data-bs-toggle="modal"
+              data-bs-target="#sessions-modal"
+              @click="modalTitle = 'Chi tiết Buổi học: {{ session.klass.name|escapejs }} - Buổi {{ session.index }}'"
+              title="Xem chi tiết">
+        <i class="bi bi-eye"></i>
+      </button>
+      {% endif %}
+      {% if perms.class_sessions.change_classsession %}
+      <button type="button" class="btn btn-sm btn-warning"
+              hx-get="{% url 'class_sessions:session_edit' session.pk %}" hx-target="#sessions-modal-content"
+              data-bs-toggle="modal"
+              data-bs-target="#sessions-modal"
+              @click="modalTitle = 'Cập nhật Buổi học: {{ session.klass.name|escapejs }} - Buổi {{ session.index }}'"
+              title="Chỉnh sửa">
+        <i class="bi bi-pencil-square"></i>
+      </button>
+      {% endif %}
+      {% if perms.class_sessions.delete_classsession %}
+      <button type="button" class="btn btn-sm btn-danger"
+              hx-post="{% url 'class_sessions:session_delete' session.pk %}"
+              hx-swap="none"
+              data-confirm-title="Xác nhận xóa"
+              data-confirm-text="Bạn chắc chắn muốn xóa Buổi {{ session.index }} của lớp '{{ session.klass.name|escapejs }}'?"
+              title="Xóa">
+        <i class="bi bi-trash"></i>
+      </button>
+      {% endif %}
+    </div>
+  </td>
+</tr>

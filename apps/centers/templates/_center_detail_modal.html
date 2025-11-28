@@ -7,6 +7,7 @@
       <div class="mb-1"><strong>{{ center.name }}</strong> ({{ center.code }})</div>
       <div><strong>Địa chỉ:</strong> {{ center.address|default:"-" }}</div>
       <div><strong>Điện thoại:</strong> {{ center.phone|default:"-" }}</div>
+      <div><strong>Email:</strong> {{ center.email|default:"-" }}</div>
       <div><strong>Trạng thái:</strong> {% if center.is_active %}<span class="badge bg-success">Hoạt động</span>{% else %}<span class="badge bg-danger">Không hoạt động</span>{% endif %}</div>
     </div>
   </div>

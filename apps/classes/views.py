@@ -7,7 +7,6 @@ from django.views.decorators.http import require_POST
 from django_filters.views import FilterView
 from django.db.models import Q
 from django.http import HttpResponse
-from django.http import QueryDict
 from django.core.exceptions import PermissionDenied
 from django import forms
 from apps.centers.models import Center
@@ -18,12 +17,49 @@ from .models import Class
 from .filters import ClassFilter
 from .forms import ClassForm, ClassScheduleFormSet
 from apps.filters.models import SavedFilter
+from apps.filters.utils import (
+    determine_active_filter_name,
+)
 from django.core.paginator import Paginator, EmptyPage
 from apps.class_sessions.models import ClassSession
 from apps.class_sessions.utils import recalculate_session_indices
 from django.db import transaction
 from apps.curriculum.models import Lesson
 
+
+def _class_timeslot_label(klass):
+    schedules = []
+    if hasattr(klass, "weekly_schedules"):
+        schedules = list(klass.weekly_schedules.all())
+    if not schedules:
+        return "Chưa có khung giờ"
+    schedule = schedules[0]
+    start = schedule.start_time.strftime("%H:%M") if schedule.start_time else "--"
+    end = schedule.end_time.strftime("%H:%M") if schedule.end_time else "--"
+    return f"{schedule.get_day_of_week_display()} {start} - {end}"
+
+
+def _teacher_label(user):
+    if not user:
+        return "Chưa có giáo viên"
+    if hasattr(user, "display_name_with_email") and user.display_name_with_email:
+        return user.display_name_with_email
+    full_name = user.get_full_name()
+    return full_name or user.username
+
+
+def _class_group_label(klass, group_by):
+    if group_by == "subject":
+        return klass.subject.name if klass.subject else "Chưa có môn"
+    if group_by == "center":
+        return klass.center.name if klass.center else "Chưa có cơ sở"
+    if group_by == "teacher":
+        return _teacher_label(klass.main_teacher)
+    if group_by == "status":
+        return klass.get_status_display()
+    if group_by == "timeslot":
+        return _class_timeslot_label(klass)
+    return ""
 
 
 def is_htmx_request(request):
@@ -36,11 +72,27 @@ def manage_classes(request):
     # 1. Lọc
     base_qs = Class.objects.select_related(
         "center", "subject", "main_teacher"
-    )
+    ).prefetch_related("weekly_schedules")
     class_filter = ClassFilter(request.GET, queryset=base_qs)
+
+    if class_filter.form.is_bound:
+        class_filter.form.is_valid()
+    group_by = getattr(class_filter.form, "cleaned_data", {}).get("group_by", "") or ""
     
     # 2. Sắp xếp
-    qs = class_filter.qs.order_by("-start_date", "name")
+    qs = class_filter.qs
+    if group_by == "subject":
+        qs = qs.order_by("subject__name", "name")
+    elif group_by == "center":
+        qs = qs.order_by("center__name", "name")
+    elif group_by == "teacher":
+        qs = qs.order_by("main_teacher__last_name", "main_teacher__first_name", "name")
+    elif group_by == "status":
+        qs = qs.order_by("status", "name")
+    elif group_by == "timeslot":
+        qs = qs.order_by("weekly_schedules__day_of_week", "weekly_schedules__start_time", "name").distinct()
+    else:
+        qs = qs.order_by("-start_date", "name")
 
     # +++ THÊM LOGIC TẠO BADGE LỌC +++
     active_filter_badges = []
@@ -95,41 +147,16 @@ def manage_classes(request):
     except EmptyPage:
         page_obj = paginator.page(1)
 
-    # Lấy quick_filters 
-    quick_filters = [
-        {"name": "Đang diễn ra", "params": "status=ONGOING"},
-        {"name": "Đã lên kế hoạch", "params": "status=PLANNED"},
-        {"name": "Đã hoàn thành", "params": "status=COMPLETED"},
-    ]
-    
+    for klass in page_obj.object_list:
+        klass.group_label = _class_group_label(klass, group_by)
+
     # Lấy saved_filters
     saved_filters = SavedFilter.objects.filter(model_name="Class").filter(
         Q(user=request.user) | Q(is_public=True)
     ).distinct()
 
     # Tìm tên bộ lọc đang hoạt động
-    active_filter_name = None
-    current_params_dict = {k: v_list for k, v_list in request.GET.lists() if k != 'page'}
-
-    if current_params_dict:
-        # Kiểm tra quick filters
-        for qf in quick_filters:
-            qf_dict = {k: v_list for k, v_list in QueryDict(qf['params']).lists()}
-            if qf_dict == current_params_dict:
-                active_filter_name = qf['name']
-                break
-        # Nếu không phải quick filter, kiểm tra saved filters
-        if not active_filter_name:
-            for sf in saved_filters:
-                try:
-                    # Chú ý: Dựa trên file 'filters/views.py' của bạn, 
-                    # query_params được lưu dưới dạng JSONField (dict)
-                    sf_dict = sf.query_params
-                    if sf_dict == current_params_dict:
-                        active_filter_name = sf.name
-                        break
-                except (json.JSONDecodeError, TypeError):
-                    continue
+    active_filter_name = determine_active_filter_name(request, saved_filters)
 
     # Xử lý query params cho phân trang / đổi số dòng
     query_params_no_page = request.GET.copy()
@@ -145,9 +172,9 @@ def manage_classes(request):
         "filter": class_filter,
         "model_name": "Class",
         "current_query_params": query_params_no_page.urlencode(),
-        "quick_filters": quick_filters,
         "active_filter_name": active_filter_name,
         "active_filter_badges": active_filter_badges, # <-- Thêm dòng này
+        "group_by": group_by,
     }
 
     # 5. Render

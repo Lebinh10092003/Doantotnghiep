@@ -243,7 +243,6 @@ def _build_student_report_context(request, *, paginate=False) -> dict:
             request,
             filterset,
             model_name="StudentReport",
-            quick_filters=[],
         )
     )
     return context
@@ -454,7 +453,6 @@ def enrollment_summary(request):
             request,
             filterset,
             model_name="EnrollmentSummary",
-            quick_filters=[],
             target_id="filterable-content",
         )
     )
@@ -504,11 +502,9 @@ def _build_filter_ui_context(
     filterset,
     *,
     model_name,
-    quick_filters=None,
     target_id="filterable-content",
     data=None,
 ):
-    quick_filters = quick_filters or []
     params_source = data if data is not None else request.GET
     cleaned_data = {}
     if filterset.form.is_bound and filterset.form.is_valid():
@@ -536,20 +532,12 @@ def _build_filter_ui_context(
     current_query_params = current_query.urlencode()
 
     current_params_dict = _canonicalize_params(params_source, exclude=exclude_keys)
-    active_filter_name = None
-    for qf in quick_filters:
-        qf_dict = _canonicalize_params(QueryDict(qf.get("params", "")), exclude=exclude_keys)
-        if qf_dict == current_params_dict and qf_dict:
-            active_filter_name = qf.get("name")
-            break
-    if not active_filter_name:
-        active_filter_name = _saved_filter_match_name(
-            request, model_name=model_name, current_params=current_params_dict
-        )
+    active_filter_name = _saved_filter_match_name(
+        request, model_name=model_name, current_params=current_params_dict
+    )
 
     return {
         "filter": filterset,
-        "quick_filters": quick_filters,
         "active_filter_badges": active_filter_badges,
         "active_filter_name": active_filter_name,
         "current_query_params": current_query_params,
@@ -705,7 +693,6 @@ def revenue_report(request):
             request,
             filterset,
             model_name="RevenueReport",
-            quick_filters=[],
             target_id="filterable-content",
         )
     )
@@ -814,7 +801,6 @@ def teaching_hours_report(request):
             request,
             filterset,
             model_name="TeachingHoursReport",
-            quick_filters=[],
             target_id="filterable-content",
         )
     )
@@ -938,7 +924,6 @@ def class_activity_report(request):
             request,
             filterset,
             model_name="ClassActivityReport",
-            quick_filters=[],
             target_id="filterable-content",
         )
     )

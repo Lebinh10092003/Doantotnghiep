@@ -1,0 +1,47 @@
+{% include "_filter_ui_controls.html" with filter=filter active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='centers-filterable-content' %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <form id="center-group-by-form"
+        class="d-flex align-items-center gap-2"
+        hx-get="{% url 'centers:centers_manage' %}"
+        hx-target="#centers-filterable-content"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        hx-include="#filter-form"
+        hx-trigger="change from:#center-group-by-select"
+        hx-vals='{"page":"1"}'>
+    <label for="center-group-by-select" class="mb-0 small text-muted fw-semibold">Nhóm theo</label>
+    <select id="center-group-by-select"
+            name="group_by"
+            class="form-select form-select-sm"
+            onchange="window.syncCenterGroupBy && window.syncCenterGroupBy(this.value)">
+      <option value="" {% if not group_by %}selected{% endif %}>Không nhóm</option>
+      <option value="status" {% if group_by == 'status' %}selected{% endif %}>Trạng thái</option>
+    </select>
+  </form>
+
+  <div class="dataTable-dropdown d-flex align-items-center gap-2 mb-0">
+    <select name="per_page"
+            class="dataTable-selector form-select form-select-sm w-auto"
+            hx-get="{% url 'centers:centers_manage' %}"
+            hx-target="#centers-filterable-content"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-include="#filter-form"
+            hx-trigger="change"
+            hx-vals='{"page":"1"}'>
+      <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+      <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+      <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+      <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+    </select>
+    <label class="mb-0">mục trên trang</label>
+  </div>
+</div>
+
+<div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
+  <form id="centers-table-form">
+    {% csrf_token %}
+    {% include "_centers_table.html" with page_obj=page_obj paginator=paginator per_page=per_page current_query_params=current_query_params target_id='centers-filterable-content' group_by=group_by %}
+  </form>
+</div>

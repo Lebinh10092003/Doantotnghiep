@@ -9,8 +9,8 @@ class RoomInline(admin.TabularInline):
 
 @admin.register(Center)
 class CenterAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "address", "phone")
-    search_fields = ("name", "code", "address", "phone")
+    list_display = ("name", "code", "address", "phone", "email")
+    search_fields = ("name", "code", "address", "phone", "email")
     inlines = [RoomInline]
 
 

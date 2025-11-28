@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Q
-from django.http import HttpResponse, QueryDict
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -15,6 +15,9 @@ from apps.centers.models import Center
 from apps.enrollments.models import Enrollment
 from apps.enrollments.services import sessions_remaining
 from apps.filters.models import SavedFilter
+from apps.filters.utils import (
+    determine_active_filter_name,
+)
 
 
 def is_htmx_request(request):
@@ -50,35 +53,10 @@ def billing_home(request):
                         {"label": field_label, "value": display_value, "key": name}
                     )
 
-    quick_filters = [
-        {"name": "Dang hoc", "params": "status=ACTIVE"},
-        {"name": "Bao luu", "params": "status=PAUSED"},
-        {"name": "Nghi hoc", "params": "status=CANCELLED"},
-        {"name": "Hoan thanh", "params": "status=COMPLETED"},
-    ]
     saved_filters = SavedFilter.objects.filter(model_name="BillingEnrollment").filter(
         Q(user=request.user) | Q(is_public=True)
     )
-
-    active_filter_name = None
-    current_params_dict = {
-        k: v_list for k, v_list in request.GET.lists() if k not in ["page", "per_page"]
-    }
-    if current_params_dict:
-        for qf in quick_filters:
-            qf_dict = {k: v_list for k, v_list in QueryDict(qf["params"]).lists()}
-            if qf_dict == current_params_dict:
-                active_filter_name = qf["name"]
-                break
-        if not active_filter_name:
-            for sf in saved_filters:
-                try:
-                    sf_dict = sf.query_params
-                    if sf_dict == current_params_dict:
-                        active_filter_name = sf.name
-                        break
-                except (json.JSONDecodeError, TypeError):
-                    continue
+    active_filter_name = determine_active_filter_name(request, saved_filters)
 
     try:
         per_page = int(request.GET.get("per_page", 10))
@@ -109,7 +87,6 @@ def billing_home(request):
         "total": total,
         "per_page": per_page,
         "current_query_params": query_params_no_page.urlencode(),
-        "quick_filters": quick_filters,
         "active_filter_name": active_filter_name,
         "active_filter_badges": active_filter_badges,
         "model_name": "BillingEnrollment",

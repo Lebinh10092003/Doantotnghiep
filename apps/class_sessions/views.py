@@ -3,10 +3,13 @@ from datetime import date, timedelta
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.decorators import login_required, permission_required
+from apps.filters.utils import (
+    determine_active_filter_name,
+)
 from django.views.decorators.http import require_POST
 from django_filters.views import FilterView
 from django.db.models import Q
-from django.http import HttpResponse, QueryDict, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.urls import reverse
 from django import forms 
 from django.template.loader import render_to_string
@@ -27,6 +30,37 @@ from apps.centers.models import Center
 from apps.curriculum.models import Subject, Lesson
 
 
+def _session_teacher_label(session):
+    teacher = session.teacher_override or session.klass.main_teacher
+    if not teacher:
+        return "Chưa có giáo viên"
+    if hasattr(teacher, "display_name_with_email") and teacher.display_name_with_email:
+        return teacher.display_name_with_email
+    full_name = teacher.get_full_name()
+    return full_name or teacher.username
+
+
+def _session_timeslot_label(session):
+    start = session.start_time.strftime("%H:%M") if session.start_time else "--"
+    end = session.end_time.strftime("%H:%M") if session.end_time else "--"
+    return f"{start} - {end}"
+
+
+def _session_group_label(session, group_by):
+    if group_by == "subject":
+        return session.klass.subject.name if session.klass and session.klass.subject else "Chưa có môn"
+    if group_by == "center":
+        return session.klass.center.name if session.klass and session.klass.center else "Chưa có cơ sở"
+    if group_by == "teacher":
+        return _session_teacher_label(session)
+    if group_by == "status":
+        return session.get_status_display()
+    if group_by == "timeslot":
+        return _session_timeslot_label(session)
+    if group_by == "date":
+        return session.date.strftime("%d/%m/%Y") if session.date else "Chưa có ngày"
+    return ""
+
 
 def is_htmx_request(request):
     return request.headers.get("HX-Request") == "true"
@@ -40,10 +74,33 @@ def manage_class_sessions(request):
         "klass__center", "klass__subject", "lesson", "teacher_override", "klass__main_teacher"
     )
     session_filter = ClassSessionFilter(request.GET, queryset=base_qs)
+    if session_filter.form.is_bound:
+        session_filter.form.is_valid()
+    group_by = getattr(session_filter.form, "cleaned_data", {}).get("group_by", "") or ""
     qs = session_filter.qs
     
     # 2. Sắp xếp
-    qs = qs.order_by("-date", "-start_time", "klass__name")
+    if group_by == "subject":
+        qs = qs.order_by("klass__subject__name", "klass__name", "index")
+    elif group_by == "center":
+        qs = qs.order_by("klass__center__name", "klass__name", "index")
+    elif group_by == "teacher":
+        qs = qs.order_by(
+            "teacher_override__last_name",
+            "teacher_override__first_name",
+            "klass__main_teacher__last_name",
+            "klass__main_teacher__first_name",
+            "klass__name",
+            "index",
+        )
+    elif group_by == "status":
+        qs = qs.order_by("status", "klass__name", "index")
+    elif group_by == "timeslot":
+        qs = qs.order_by("start_time", "end_time", "klass__name", "index")
+    elif group_by == "date":
+        qs = qs.order_by("date", "start_time", "klass__name", "index")
+    else:
+        qs = qs.order_by("-date", "-start_time", "klass__name")
 
     # Logic tạo Badge lọc
     active_filter_badges = []
@@ -91,6 +148,9 @@ def manage_class_sessions(request):
     except EmptyPage:
         page_obj = paginator.page(1)
 
+    for session in page_obj.object_list:
+        session.group_label = _session_group_label(session, group_by)
+
     # Tạo query params cho phân trang, loại bỏ 'page' để tránh lặp lại
     query_params_for_pagination = request.GET.copy()
     for key in ["page", "per_page"]:
@@ -107,43 +167,18 @@ def manage_class_sessions(request):
         "model_name": model_name,
         "current_query_params": query_params_for_pagination.urlencode(),
         "active_filter_badges": active_filter_badges,
+        "group_by": group_by,
     }
-    
-    # Quick filters và Saved filters
-    context["quick_filters"] = [
-        {"name": "Đã diễn ra", "params": "status=DONE"},
-        {"name": "Đã lên kế hoạch", "params": "status=PLANNED"},
-        {"name": "Đã hủy", "params": "status=CANCELLED"},
-    ]
-    
-    active_filter_name = None 
-    if request.user.is_authenticated:
-        saved = SavedFilter.objects.filter(model_name=model_name).filter(
-            Q(user=request.user) | Q(is_public=True)
-        ).distinct()
-        
-        if not is_htmx_request(request):
-            context["my_filters"] = saved.filter(user=request.user)
-            context["public_filters"] = saved.filter(is_public=True).exclude(user=request.user)
-        
-        current_params_dict = {k: v_list for k, v_list in request.GET.lists() if k != 'page'}
-        if current_params_dict:
-            for qf in context["quick_filters"]:
-                qf_dict = {k: v_list for k, v_list in QueryDict(qf['params']).lists()}
-                if qf_dict == current_params_dict:
-                    active_filter_name = qf['name']
-                    break
-            if not active_filter_name:
-                for sf in saved: 
-                    try:
-                        sf_dict = sf.query_params
-                        if sf_dict == current_params_dict:
-                            active_filter_name = sf.name
-                            break
-                    except (json.JSONDecodeError, TypeError):
-                        continue
-                        
-    context["active_filter_name"] = active_filter_name
+
+    saved = SavedFilter.objects.filter(model_name=model_name).filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+
+    if not is_htmx_request(request):
+        context["my_filters"] = saved.filter(user=request.user)
+        context["public_filters"] = saved.filter(is_public=True).exclude(user=request.user)
+
+    context["active_filter_name"] = determine_active_filter_name(request, saved)
 
     # 5. Render
     if is_htmx_request(request):

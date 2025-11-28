@@ -6,6 +6,7 @@ from steam_center.storages import MediaStorage
 class Center(NamedModel):
     address = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(max_length=254, blank=True)
     avatar = models.ImageField(
         upload_to="center_avatars/",
         storage=MediaStorage(),

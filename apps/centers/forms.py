@@ -6,12 +6,22 @@ import json
 class CenterForm(forms.ModelForm):
     class Meta:
         model = Center
-        fields = ['name','code','address','phone','description','avatar','is_active']
+        fields = [
+            'name',
+            'code',
+            'address',
+            'phone',
+            'email',
+            'description',
+            'avatar',
+            'is_active',
+        ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'code': forms.TextInput(attrs={'class': 'form-control'}),
             'address': forms.TextInput(attrs={'class': 'form-control'}),
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control'}),
             'avatar': forms.ClearableFileInput(attrs={'class': 'form-control-file'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -23,6 +33,7 @@ class CenterForm(forms.ModelForm):
         self.fields['code'].label = "Mã Trung tâm"
         self.fields['address'].label = "Địa chỉ Trung tâm"
         self.fields['phone'].label = "Điện thoại Trung tâm"
+        self.fields['email'].label = "Email Trung tâm"
         self.fields['description'].label = "Mô tả Trung tâm"
         self.fields['avatar'].label = "Ảnh đại diện Trung tâm"
         self.fields['is_active'].label = "Hoạt động"

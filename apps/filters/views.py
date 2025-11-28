@@ -7,6 +7,7 @@ from .models import SavedFilter
 from .forms import SavedFilterForm
 from django.utils.http import urlencode
 from django.db.models import Q
+from .utils import resolve_dynamic_params, serialize_query_params
 
 def is_htmx_request(request):
     return request.headers.get("HX-Request") == "true"
@@ -107,8 +108,17 @@ def load_saved_filters_view(request, model_name: str):
         Q(user=request.user) | Q(is_public=True)
     ).distinct()
     
-    my_filters = saved.filter(user=request.user)
-    public_filters = saved.filter(is_public=True).exclude(user=request.user)
+    my_filters = list(saved.filter(user=request.user))
+    public_filters = list(saved.filter(is_public=True).exclude(user=request.user))
+
+    def _attach_resolved_metadata(filters):
+        for sf in filters:
+            resolved = resolve_dynamic_params(sf.query_params)
+            sf.resolved_query_params = resolved
+            sf.resolved_query_string = serialize_query_params(resolved)
+
+    _attach_resolved_metadata(my_filters)
+    _attach_resolved_metadata(public_filters)
     
     context = {
         "my_filters": my_filters,
@@ -130,7 +140,6 @@ def load_saved_filters_view(request, model_name: str):
                     query_dict[key] = value_list
     
     if query_dict:
-        # Truyền DICT vào context, KHÔNG PHẢI json.dumps
         context["current_query_params"] = query_dict
     # Render một template fragment mới CHỈ chứa các <li>
     return render(request, "_saved_filters_list.html", context)

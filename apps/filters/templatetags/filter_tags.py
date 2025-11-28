@@ -1,6 +1,5 @@
-import json
 from django import template
-from urllib.parse import urlencode
+from apps.filters.utils import serialize_query_params
 
 register = template.Library()
 
@@ -9,14 +8,7 @@ def json_to_query_string(value):
     """
     Converts a dictionary or a JSON string into a URL query string.
     """
-    if isinstance(value, str):
-        try:
-            value = json.loads(value)
-        except json.JSONDecodeError:
-            return ""
-    if isinstance(value, dict):
-        return urlencode(value)
-    return ""
+    return serialize_query_params(value)
 
 @register.simple_tag(takes_context=True)
 def remove_query_param(context, key_to_remove):

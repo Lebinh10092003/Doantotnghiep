@@ -6,8 +6,14 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator, EmptyPage
 from django.db.models import Q
+from apps.filters.models import SavedFilter
+from apps.filters.utils import (
+    build_filter_badges,
+    determine_active_filter_name,
+)
 from .models import Center, Room
 from .forms import CenterForm, RoomForm
+from .filters import CenterFilter
 
 # Create your views here.
 def is_htmx_request(request):
@@ -16,26 +22,6 @@ def is_htmx_request(request):
         or request.META.get("HTTP_HX_REQUEST") == "true"
         or bool(getattr(request, "htmx", False))
     )
-def _filter_centers_queryset(request):
-    qs = Center.objects.all()
-    q = request.GET.get("q", "").strip()
-    status = request.GET.get("status", "")
-
-    if q:
-        qs = qs.filter(
-            Q(name__icontains=q) |
-            Q(code__icontains=q) |
-            Q(address__icontains=q)
-        )
-    
-    if status == "active":
-        qs = qs.filter(is_active=True)
-    elif status == "inactive":
-        qs = qs.filter(is_active=False)
-
-    return qs
-
-
 def _filter_rooms_queryset(request):
     qs = Room.objects.select_related("center").all()
     q = request.GET.get("q", "").strip()
@@ -60,10 +46,25 @@ def _filter_rooms_queryset(request):
 @login_required
 @permission_required("centers.view_center", raise_exception=True)
 def centers_manage(request):
-    qs = _filter_centers_queryset(request)
-    
-    # Params for sorting and pagination
+    center_filter = CenterFilter(request.GET, queryset=Center.objects.all())
+    qs = center_filter.qs
+
+    if center_filter.form.is_bound:
+        center_filter.form.is_valid()
+        group_by = center_filter.form.cleaned_data.get("group_by", "") or ""
+    else:
+        group_by = request.GET.get("group_by", "") or ""
+
     sort_by = request.GET.get("sort_by", "code")
+    valid_sort_fields = ["name", "-name", "code", "-code"]
+    if sort_by in valid_sort_fields:
+        qs = qs.order_by(sort_by)
+    else:
+        qs = qs.order_by("code")
+
+    if group_by == "status":
+        qs = qs.order_by("-is_active", "name")
+
     try:
         per_page = int(request.GET.get("per_page", 10))
     except (TypeError, ValueError):
@@ -73,31 +74,39 @@ def centers_manage(request):
     except (TypeError, ValueError):
         page = 1
 
-    # Ordering
-    valid_sort_fields = ["name", "-name", "code", "-code"]
-    if sort_by in valid_sort_fields:
-        qs = qs.order_by(sort_by)
-    else:
-        qs = qs.order_by("code")
-
-    # Pagination
     paginator = Paginator(qs, per_page)
     try:
         page_obj = paginator.page(page)
     except EmptyPage:
         page_obj = paginator.page(1)
 
+    saved_filters = SavedFilter.objects.filter(model_name="Center").filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+
+    active_filter_name = determine_active_filter_name(request, saved_filters)
+    active_filter_badges = build_filter_badges(center_filter)
+
+    query_params = request.GET.copy()
+    for key in ["page", "per_page"]:
+        if key in query_params:
+            del query_params[key]
+
     context = {
         "page_obj": page_obj,
         "paginator": paginator,
-        "q": request.GET.get("q", "").strip(),
-        "status": request.GET.get("status", ""),
         "per_page": per_page,
         "sort_by": sort_by,
+        "filter": center_filter,
+        "model_name": "Center",
+        "active_filter_name": active_filter_name,
+        "active_filter_badges": active_filter_badges,
+        "current_query_params": query_params.urlencode(),
+        "group_by": group_by,
     }
 
     if is_htmx_request(request):
-        return render(request, "_centers_table.html", context)
+        return render(request, "_center_filterable_content.html", context)
 
     return render(request, "manage_centers.html", context)
 

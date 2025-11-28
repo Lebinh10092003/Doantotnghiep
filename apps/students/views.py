@@ -128,7 +128,6 @@ def _render_products_page(request, products, flags, page_title, page_description
         "can_view_all": flags["can_manage_all"] and not (flags["is_student"] or flags["is_parent"] or flags["is_teacher"] or flags["is_assistant"]),
         "filter": product_filter,
         "model_name": "StudentProduct",
-        "quick_filters": [],
         "active_filter_name": None,
         "active_filter_badges": active_filter_badges,
         "current_query_params": query_params_no_page.urlencode(),
