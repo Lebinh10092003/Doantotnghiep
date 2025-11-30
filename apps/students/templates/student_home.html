@@ -15,6 +15,22 @@
     <div class="page-heading">
       <section class="section">
 
+        {% if is_parent_portal %}
+        <div class="alert alert-success-subtle border border-success-subtle text-success-emphasis rounded-4 mb-4">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <i class="bi bi-people-fill"></i>
+            <div>
+              <strong>Chế độ phụ huynh</strong>
+              {% if has_linked_students and portal_student_labels %}
+                • Lịch đang hiển thị cho: <span class="fw-semibold">{{ portal_student_labels }}</span>
+              {% else %}
+                • Bạn chưa được liên kết với học sinh nào. Vui lòng liên hệ trung tâm để được cập nhật.
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
         {# ====== LỊCH HỌC (calendar ngang + panel bên phải) ====== #}
         <div class="card mb-4 border-0 shadow-sm">
           <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
@@ -71,6 +87,13 @@
                       {% endif %}
 
                       <div class="card-body d-flex flex-column">
+                        {% if is_parent_portal and item.student_label %}
+                        <div class="mb-2">
+                          <span class="badge rounded-pill bg-success-subtle text-success">
+                            {{ item.student_label }}
+                          </span>
+                        </div>
+                        {% endif %}
                         <div class="d-flex align-items-center mb-2">
                           <span class="border-start border-3 border-success me-2" style="height: 18px;"></span>
                           <h6 class="mb-0">{{ k.subject.name }}</h6>
@@ -106,10 +129,17 @@
                 <div class="col-12">
                   <div class="text-center py-4">
                     <i class="bi bi-emoji-neutral display-6 text-muted mb-2"></i>
+                    {% if is_parent_portal and not has_linked_students %}
+                    <p class="text-muted mb-1">Chưa có học sinh nào được liên kết với tài khoản phụ huynh.</p>
+                    <p class="text-muted small mb-0">
+                      Vui lòng liên hệ trung tâm để được hỗ trợ thêm.
+                    </p>
+                    {% else %}
                     <p class="text-muted mb-1">Bạn chưa đăng ký khóa học nào.</p>
                     <p class="text-muted small mb-0">
                       Liên hệ trung tâm hoặc giáo viên để được tư vấn và xếp lớp.
                     </p>
+                    {% endif %}
                   </div>
                 </div>
               {% endfor %}

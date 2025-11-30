@@ -1,4 +1,4 @@
-# apps/students/views.py
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from django.contrib.auth.decorators import login_required
@@ -144,6 +144,20 @@ def _render_products_page(request, products, flags, page_title, page_description
     return render(request, "student_products_list.html", context)
 
 
+def _format_student_display(student):
+    preferred = getattr(student, "display_name_with_email", None)
+    if callable(preferred):
+        preferred = preferred()
+    if preferred:
+        return preferred
+    full_name = getattr(student, "get_full_name", None)
+    if callable(full_name):
+        full_name = full_name()
+    if full_name:
+        return full_name
+    return getattr(student, "username", "")
+
+
 @login_required
 def portal_home(request):
     """
@@ -152,6 +166,23 @@ def portal_home(request):
     - Card các lớp đang học với giáo viên.
     """
     user = request.user
+    flags = _product_role_flags(user)
+    is_parent = flags["is_parent"]
+
+    linked_children = []
+    target_students = []
+    if is_parent:
+        linked_children = list(
+            ParentStudentRelation.objects.filter(parent=user)
+            .select_related("student", "student__center")
+            .order_by("student__first_name", "student__last_name")
+        )
+        target_students = [rel.student for rel in linked_children if rel.student]
+    else:
+        target_students = [user]
+
+    target_student_ids = [student.id for student in target_students if student]
+    has_linked_students = bool(target_student_ids)
 
     # Ngày đang được chọn (trên thanh lịch)
     day_str = request.GET.get("day")
@@ -167,29 +198,46 @@ def portal_home(request):
     start, end = _week_range(selected_date)
     week_days = [start + timedelta(days=i) for i in range(7)]
 
-    # Các buổi học trong tuần của học sinh
-    week_sessions = (
-        ClassSession.objects.filter(
-            klass__enrollments__student=user,
-            date__gte=start,
-            date__lte=end,
+    if has_linked_students:
+        week_sessions_qs = (
+            ClassSession.objects.filter(
+                klass__enrollments__student_id__in=target_student_ids,
+                klass__enrollments__active=True,
+                date__gte=start,
+                date__lte=end,
+            )
+            .select_related("klass", "klass__subject", "klass__center")
+            .order_by("date", "start_time")
+            .distinct()
         )
-        .select_related("klass", "klass__subject", "klass__center")
-        .order_by("date", "start_time")
-    )
+        week_sessions = list(week_sessions_qs)
+    else:
+        week_sessions = []
+
+    # Lớp đang học
+    if has_linked_students:
+        enrollments = (
+            Enrollment.objects.filter(student_id__in=target_student_ids, active=True)
+            .select_related("klass", "klass__subject", "klass__main_teacher", "student")
+            .order_by("student__first_name", "student__last_name", "joined_at")
+        )
+    else:
+        enrollments = Enrollment.objects.none()
+
+    klass_student_map = defaultdict(list)
+    for en in enrollments:
+        klass_student_map[en.klass_id].append(en.student)
+
+    for session in week_sessions:
+        related_students = klass_student_map.get(session.klass_id, [])
+        session.portal_students = related_students
+        session.portal_student_labels = ", ".join(_format_student_display(stu) for stu in related_students)
 
     # Các buổi học trong đúng ngày đang chọn
     selected_sessions = [s for s in week_sessions if s.date == selected_date]
 
     # Những ngày trong tuần có buổi học (dùng để hiện chấm tròn dưới ngày)
     session_dates = {s.date for s in week_sessions}
-
-    # Lớp đang học
-    enrollments = (
-        Enrollment.objects.filter(student=user, active=True)
-        .select_related("klass", "klass__subject", "klass__main_teacher")
-        .order_by("joined_at")
-    )
 
     class_cards = []
     for en in enrollments:
@@ -202,6 +250,8 @@ def portal_home(request):
             {
                 "klass": en.klass,
                 "next_session": next_session,
+                "student": en.student,
+                "student_label": _format_student_display(en.student),
             }
         )
 
@@ -222,6 +272,11 @@ def portal_home(request):
         "next_week_str": next_week_day.strftime("%Y-%m-%d"),
         # Lớp
         "class_cards": class_cards,
+        # Parent context
+        "is_parent_portal": is_parent,
+        "linked_children": linked_children,
+        "has_linked_students": has_linked_students,
+        "portal_student_labels": ", ".join(_format_student_display(stu) for stu in target_students) if target_students else "",
     }
     return render(request, "student_home.html", context)
 

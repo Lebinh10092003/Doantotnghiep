@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Theo dõi kết quả của con{% endblock %}
+
+{% block content %}
+<div id="main">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-12 col-md-8 order-md-1 order-last">
+          <h3 class="mb-1">Theo dõi kết quả của con</h3>
+          <p class="text-muted mb-0">Tổng hợp tình hình học tập, điểm danh và nhận xét mới nhất.</p>
+        </div>
+        <div class="col-12 col-md-4 order-md-2 order-first text-md-end mt-2 mt-md-0">
+          <a href="?tab=overview" class="btn btn-outline-primary btn-sm {% if active_tab == "overview" %}active disabled{% endif %}">Tổng quan</a>
+          <a href="?tab=photos" class="btn btn-outline-secondary btn-sm {% if active_tab == "photos" %}active disabled{% endif %}">Ảnh &amp; khoảnh khắc</a>
+        </div>
+      </div>
+    </div>
+
+    {% if has_children %}
+      {% if active_tab == "photos" %}
+        <div class="row g-4 mt-1">
+          {% for child in children_data %}
+          <div class="col-12">
+            <div class="card shadow-sm h-100">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <div>
+                  <h5 class="mb-0">{{ child.student.display_name_with_email|default:child.student.get_full_name|default:child.student.username }}</h5>
+                  <small class="text-muted">{{ child.enrollments|length }} lớp đang tham gia</small>
+                </div>
+                {% if child.note %}
+                <span class="badge bg-info text-dark">Ghi chú: {{ child.note }}</span>
+                {% endif %}
+              </div>
+              <div class="card-body">
+                {% if child.recent_photos %}
+                <div class="row g-3">
+                  {% for photo in child.recent_photos %}
+                  <div class="col-6 col-md-3">
+                    <div class="border rounded-3 p-1 h-100">
+                      <img src="{{ photo.image.url }}" class="img-fluid rounded mb-2" alt="Ảnh buổi học" style="width:100%;height:160px;object-fit:cover;">
+                      <div class="small text-muted">
+                        {{ photo.session.date|date:"d/m" }}  {{ photo.session.klass.name }}
+                      </div>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">Chưa có ảnh nào gần đây.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="row g-4 mt-1">
+          {% for child in children_data %}
+          <div class="col-12">
+            <div class="card shadow-sm">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                  <h5 class="mb-0">{{ child.student.display_name_with_email|default:child.student.get_full_name|default:child.student.username }}</h5>
+                  <small class="text-muted">{{ child.student.center.name|default:"Chưa có trung tâm" }}</small>
+                </div>
+                {% if child.note %}
+                <span class="badge bg-light text-dark border">Ghi chú: {{ child.note }}</span>
+                {% endif %}
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-4">
+                    <div class="border rounded p-3 h-100 bg-light">
+                      <h6 class="mb-3">Điểm danh</h6>
+                      {% if child.attendance_summary %}
+                      <div class="d-flex justify-content-between small mb-1"><span>Có mặt</span><strong>{{ child.attendance_summary.present }}</strong></div>
+                      <div class="d-flex justify-content-between small mb-1"><span>Vắng</span><strong>{{ child.attendance_summary.absent }}</strong></div>
+                      <div class="d-flex justify-content-between small"><span>Muộn</span><strong>{{ child.attendance_summary.late }}</strong></div>
+                      <div class="text-muted small mt-2">Tổng: {{ child.attendance_summary.total }} buổi</div>
+                      {% else %}
+                      <p class="text-muted mb-0">Chưa có dữ liệu điểm danh.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="border rounded p-3 h-100">
+                      <h6 class="mb-3">Điểm &amp; nhận xét</h6>
+                      {% if child.avg_score %}
+                        <p class="mb-1">Điểm trung bình: <strong>{{ child.avg_score|floatformat:1 }}</strong></p>
+                      {% else %}
+                        <p class="text-muted mb-1">Chưa có điểm.</p>
+                      {% endif %}
+                      {% if child.latest_attendance %}
+                        <div class="small text-muted">Buổi gần nhất: {{ child.latest_attendance.session.date|date:"d/m" }}  {{ child.latest_attendance.session.klass.name }}</div>
+                        <span class="badge mt-2
+                          {% if child.latest_attendance.status == "P" %}bg-success{% elif child.latest_attendance.status == "A" %}bg-danger{% elif child.latest_attendance.status == "L" %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                          {{ child.latest_attendance.get_status_display }}
+                        </span>
+                        {% if child.latest_attendance.note %}
+                          <p class="small mt-2 mb-0">Ghi chú: {{ child.latest_attendance.note }}</p>
+                        {% endif %}
+                      {% else %}
+                        <p class="text-muted mb-0">Chưa có dữ liệu buổi gần nhất.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="border rounded p-3 h-100">
+                      <h6 class="mb-3">Lớp đang học</h6>
+                      {% if child.enrollments %}
+                      <ul class="list-unstyled mb-0 small">
+                        {% for enrollment in child.enrollments %}
+                        <li class="mb-2">
+                          <strong>{{ enrollment.klass.name }}</strong><br>
+                          <span class="text-muted">{{ enrollment.klass.subject.name|default:"" }}  {{ enrollment.klass.center.name|default:"" }}</span>
+                        </li>
+                        {% endfor %}
+                      </ul>
+                      {% else %}
+                      <p class="text-muted mb-0">Chưa ghi danh lớp nào.</p>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="alert alert-info mt-3">
+        <i class="bi bi-info-circle"></i> Bạn chưa được liên kết với học sinh nào. Vui lòng liên hệ trung tâm để được cập nhật.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

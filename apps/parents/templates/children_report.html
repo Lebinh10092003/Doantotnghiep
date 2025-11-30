@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title|default:"Báo cáo học tập của con" }}{% endblock %}
+
+{% block content %}
+<div id="main">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-12 col-md-8">
+          <h3 class="mb-1">{{ page_title|default:"Báo cáo học tập của con" }}</h3>
+          <p class="text-muted mb-0">{{ page_description|default:"Toàn bộ dữ liệu được lọc tự động theo các con mà phụ huynh được liên kết." }}</p>
+        </div>
+        <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+          <a href="{{ pdf_url }}" class="btn btn-outline-danger btn-sm rounded-pill">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Xuất PDF
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div id="filterable-content">
+      {% include "_student_report_filterable_content.html" %}
+    </div>
+  </section>
+</div>
+{% endblock %}

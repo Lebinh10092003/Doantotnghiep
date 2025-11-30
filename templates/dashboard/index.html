@@ -129,6 +129,134 @@
           </div>
           
           {# --- YÊU CẦU 2: Giao diện Dashboard cho Giáo viên/Trợ giảng --- #}
+          {% elif dashboard_role == 'parent' %}
+          <div class="row g-3">
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <small class="text-muted">Số con</small>
+                <h3 class="mb-0">{{ parent_summary_metrics.total_children|default:"0" }}</h3>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <small class="text-muted">Lớp đang học</small>
+                <h3 class="mb-0">{{ parent_summary_metrics.active_classes|default:"0" }}</h3>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <small class="text-muted">Tỉ lệ đi học</small>
+                <h3 class="mb-0">{{ parent_summary_metrics.attendance_rate|default:"-" }}{% if parent_summary_metrics.attendance_rate %}<span class="small">%</span>{% endif %}</h3>
+              </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="card h-100"><div class="card-body">
+                <small class="text-muted">Điểm trung bình</small>
+                <h3 class="mb-0">{{ parent_summary_metrics.average_score|default:"-" }}</h3>
+              </div></div>
+            </div>
+          </div>
+
+          {% if parent_has_children %}
+          <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <h5 class="card-title mb-0">Tổng quan học tập</h5>
+              <a class="btn btn-sm btn-outline-primary" href="{% url 'parents:children_overview' %}">
+                <i class="bi bi-arrow-up-right-square me-1"></i>Xem chi tiết
+              </a>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                {% for child in parent_children_cards %}
+                <div class="col-12">
+                  <div class="border rounded p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                      <div>
+                        <h6 class="mb-0">{{ child.student.display_name_with_email|default:child.student.get_full_name|default:child.student.username }}</h6>
+                        <small class="text-muted">{{ child.student.center.name|default:"Chưa có trung tâm" }}</small>
+                      </div>
+                      {% if child.avg_score %}
+                      <span class="badge bg-light text-dark">Điểm TB {{ child.avg_score|floatformat:1 }}</span>
+                      {% endif %}
+                    </div>
+                    <div class="row g-3 small">
+                      <div class="col-6 col-md-4">
+                        <div class="bg-light rounded p-2 h-100">
+                          <div class="text-muted">Điểm danh</div>
+                          {% if child.attendance_summary %}
+                          <strong>{{ child.attendance_summary.present }}/{{ child.attendance_summary.total }}</strong>
+                          <div class="text-muted">Có mặt/Tổng</div>
+                          {% else %}
+                          <div class="text-muted">Chưa có dữ liệu</div>
+                          {% endif %}
+                        </div>
+                      </div>
+                      <div class="col-6 col-md-4">
+                        <div class="border rounded p-2 h-100">
+                          <div class="text-muted">Lớp đang học</div>
+                          <strong>{{ child.enrollments|length }}</strong>
+                          <div class="text-truncate">{% firstof child.enrollments.0.klass.name "Chưa ghi danh" %}</div>
+                        </div>
+                      </div>
+                      <div class="col-12 col-md-4">
+                        <div class="border rounded p-2 h-100">
+                          <div class="text-muted">Buổi gần nhất</div>
+                          {% if child.latest_attendance %}
+                          <div class="d-flex align-items-center gap-2">
+                            <span class="badge
+                              {% if child.latest_attendance.status == "P" %}bg-success{% elif child.latest_attendance.status == "A" %}bg-danger{% elif child.latest_attendance.status == "L" %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                              {{ child.latest_attendance.get_status_display }}
+                            </span>
+                            <div>
+                              <div>{{ child.latest_attendance.session.date|date:"d/m" }}</div>
+                              <small class="text-muted">{{ child.latest_attendance.session.klass.name }}</small>
+                            </div>
+                          </div>
+                          {% else %}
+                          <div class="text-muted">Chưa có dữ liệu</div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% empty %}
+                <div class="col-12 text-center text-muted">Chưa có dữ liệu hiển thị.</div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <div class="card mt-3">
+            <div class="card-header">
+              <h5 class="card-title mb-0">Cập nhật mới nhất</h5>
+            </div>
+            <div class="card-body">
+              <ul class="list-unstyled mb-0">
+                {% for update in parent_recent_updates %}
+                <li class="mb-3 pb-3 border-bottom">
+                  <strong>{{ update.student.display_name_with_email|default:update.student.get_full_name|default:update.student.username }}</strong>
+                  <div class="small text-muted">{{ update.date|date:"d/m" }} · {{ update.klass.name }}</div>
+                  <div>
+                    <span class="badge
+                      {% if update.status == "P" %}bg-success{% elif update.status == "A" %}bg-danger{% elif update.status == "L" %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                      {{ update.status_label }}
+                    </span>
+                    {% if update.note %}<span class="ms-2 text-muted">{{ update.note }}</span>{% endif %}
+                  </div>
+                </li>
+                {% empty %}
+                <li class="text-muted">Chưa có cập nhật nào gần đây.</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+          {% else %}
+          <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle"></i> Bạn chưa được liên kết với học sinh nào. Vui lòng liên hệ trung tâm để được cập nhật.
+          </div>
+          {% endif %}
+
           {% elif dashboard_role == 'teacher_assistant' %}
           <div class="row g-3">
             <div class="col-6 col-md-6">
@@ -204,19 +332,25 @@
               <h5 class="card-title mb-0">Hành động nhanh</h5>
             </div>
             <div class="card-body d-grid gap-2">
-              {% if perms.centers.view_center %}
-              <a class="btn btn-outline-primary" href="{% url 'centers:centers_manage' %}"><i class="bi bi-building me-2"></i>Quản lý Trung tâm</a>
+              {% if dashboard_role == 'parent' %}
+              <a class="btn btn-outline-primary" href="{% url 'parents:children_overview' %}"><i class="bi bi-person-lines-fill me-2"></i>Theo dõi kết quả</a>
+              <a class="btn btn-outline-success" href="{% url 'parents:children_report' %}"><i class="bi bi-bar-chart-line me-2"></i>Báo cáo học tập</a>
+              <a class="btn btn-outline-secondary" href="{% url 'students:portal_home' %}"><i class="bi bi-calendar-check me-2"></i>Lịch và lớp học</a>
+              {% else %}
+                {% if perms.centers.view_center %}
+                <a class="btn btn-outline-primary" href="{% url 'centers:centers_manage' %}"><i class="bi bi-building me-2"></i>Quản lý Trung tâm</a>
+                {% endif %}
+                {% if perms.centers.view_room %}
+                <a class="btn btn-outline-warning" href="{% url 'centers:rooms_manage' %}"><i class="bi bi-door-closed me-2"></i>Quản lý Phòng học</a>
+                {% endif %}
+                {% if perms.accounts.view_user %}
+                <a class="btn btn-outline-success" href="{% url 'accounts:manage_accounts' %}"><i class="bi bi-people me-2"></i>Quản lý Tài khoản</a>
+                {% endif %}
+                {% if perms.auth.view_group %}
+                <a class="btn btn-outline-danger" href="{% url 'accounts:manage_groups' %}"><i class="bi bi-shield-lock me-2"></i>Nhóm & Phân quyền</a>
+                {% endif %}
+                <a class="btn btn-outline-secondary" href="{% url 'common:dashboard' %}"><i class="bi bi-grid-fill me-2"></i>Dashboard</a>
               {% endif %}
-              {% if perms.centers.view_room %}
-              <a class="btn btn-outline-warning" href="{% url 'centers:rooms_manage' %}"><i class="bi bi-door-closed me-2"></i>Quản lý Phòng học</a>
-              {% endif %}
-              {% if perms.accounts.view_user %}
-              <a class="btn btn-outline-success" href="{% url 'accounts:manage_accounts' %}"><i class="bi bi-people me-2"></i>Quản lý Tài khoản</a>
-              {% endif %}
-              {% if perms.auth.view_group %}
-              <a class="btn btn-outline-danger" href="{% url 'accounts:manage_groups' %}"><i class="bi bi-shield-lock me-2"></i>Nhóm & Phân quyền</a>
-              {% endif %}
-              <a class="btn btn-outline-secondary" href="{% url 'common:dashboard' %}"><i class="bi bi-grid-fill me-2"></i>Dashboard</a>
             </div>
           </div>
         </div>
@@ -229,11 +363,19 @@
               <h5 class="card-title mb-0">Hướng dẫn sử dụng nhanh</h5>
             </div>
             <div class="card-body">
+              {% if dashboard_role == 'parent' %}
+              <ul class="mb-0">
+                <li>Dùng nút "Theo dõi kết quả" để xem chi tiết từng lớp, điểm danh và hình ảnh.</li>
+                <li>Truy cập "Báo cáo học tập" để lọc và tải xuống thống kê theo lớp hoặc thời gian.</li>
+                <li>Xem mục "Cập nhật mới nhất" để nắm tình hình gần đây của các con.</li>
+              </ul>
+              {% else %}
               <ul class="mb-0">
                 <li>Vào Quản lý Trung tâm để thêm/sửa Trung tâm và phòng học.</li>
                 <li>Vào Quản lý Tài khoản để tạo/sửa người dùng và phân quyền.</li>
                 <li>Dùng các nút trong “Hành động nhanh” để thao tác nhanh.</li>
               </ul>
+              {% endif %}
             </div>
           </div>
         </div>

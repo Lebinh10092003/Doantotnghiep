@@ -11,6 +11,13 @@
         </div>
       </div>
 
+      {% if is_parent_portal and not has_linked_students %}
+        <div class="alert alert-info small mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Bạn chưa được liên kết với học sinh nào, nên chưa có lịch để hiển thị.
+        </div>
+      {% endif %}
+
       <div class="d-flex gap-2 justify-content-between flex-nowrap">
         {% for day in week_days %}
           <a href="?day={{ day|date:'Y-m-d' }}"
@@ -74,6 +81,12 @@
                   - {{ s.end_time|time:"H:i" }}
                 {% endif %}
               </div>
+              {% if is_parent_portal and s.portal_student_labels %}
+              <div class="small text-muted mb-1">
+                <i class="bi bi-person-heart me-1"></i>
+                {{ s.portal_student_labels }}
+              </div>
+              {% endif %}
               <div class="fw-semibold mb-1">
                 {{ s.klass.name }}
               </div>

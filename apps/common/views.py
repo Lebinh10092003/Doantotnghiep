@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db.models import Count, Q
-from datetime import date, timedelta 
+from datetime import date
 
 # Domain models
 try:
@@ -24,6 +24,10 @@ try:
     from apps.students.models import StudentProduct
 except Exception:
     StudentProduct = None
+try:
+    from apps.parents.services import build_parent_children_snapshot
+except Exception:
+    build_parent_children_snapshot = None
    
 def home(request):
     home_products = []
@@ -72,6 +76,7 @@ def dashboard(request):
     is_center_manager = role == "CENTER_MANAGER" or in_group("Center Manager") or in_group("CENTER_MANAGER")
     is_teacher = role == "TEACHER" or in_group("Teacher") or in_group("TEACHER")
     is_assistant = role == "ASSISTANT" or in_group("Assistant") or in_group("ASSISTANT")
+    is_parent = role == "PARENT" or in_group("Parent") or in_group("PARENT")
 
 
     context = {"dashboard_role": "user"}
@@ -108,6 +113,17 @@ def dashboard(request):
         else:
             context.update({"dashboard_role": "center_manager"})
     
+    elif is_parent and build_parent_children_snapshot:
+        snapshot = build_parent_children_snapshot(user)
+        context.update(
+            {
+                "dashboard_role": "parent",
+                "parent_summary_metrics": snapshot["summary_metrics"],
+                "parent_recent_updates": snapshot["recent_updates"],
+                "parent_children_cards": snapshot["children_data"][:3],
+                "parent_has_children": snapshot["has_children"],
+            }
+        )
     elif (is_teacher or is_assistant) and Class and ClassSession:
         today = date.today()
         # Lấy các buổi dạy sắp tới (planned, từ hôm nay)

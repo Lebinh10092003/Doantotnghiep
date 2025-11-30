@@ -216,12 +216,15 @@
                     {% url 'class_sessions:teaching_classes_my' as teaching_classes_my_url %}
                     {% url 'class_sessions:teaching_schedule' as teaching_schedule_admin_url %}
                     {% url 'class_sessions:teaching_schedule_my' as teaching_schedule_my_url %}
-                    <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' %}active{% endif %}">
+                    {% url 'parents:children_overview' as parents_children_overview_url %}
+                    {% url 'parents:children_overview_photos' as parents_children_photos_url %}
+                    {% url 'parents:children_report' as parents_children_report_url %}
+                    <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' or request.resolver_match.app_name == 'parents' %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-journal-bookmark-fill"></i>
                             <span>Lớp & Lịch học</span>
                         </a>
-                        <ul class="submenu {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' %}active{% endif %}">
+                        <ul class="submenu {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' or request.resolver_match.app_name == 'parents' %}active{% endif %}">
 
                             {% if perms.classes.view_class and perms.classes.add_class and perms.classes.change_class and perms.classes.delete_class %}
                             <li class="submenu-item {% if request.resolver_match.view_name == 'classes:manage_classes' %}active{% endif %}">
@@ -250,35 +253,23 @@
                             </li>
                             {% endif %}
 
-                            {% if user|in_group:'student' %}
-                            <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:my_schedule' %}active{% endif %}">
-                                <a href="{% url 'class_sessions:my_schedule' %}" class="submenu-link">
-                                    <i class="bi bi-calendar-heart"></i>
-                                    <span>Lịch học của tôi</span>
-                                </a>
-                            </li>
-                            {% endif %}
-
-                            {% if user|in_group:'teacher' or user|in_group:'assistant'%}
-                            <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_schedule' or request.resolver_match.view_name == 'class_sessions:teaching_schedule_my' %}active{% endif %}">
-                                <a href="{{ teaching_schedule_my_url }}" class="submenu-link">
-                                    <i class="bi bi-easel2"></i>
-                                    <span>Lịch dạy</span>
-                                </a>
-                            </li>
-                            {% endif %}
-
                             {% if user|in_group:'parent' %}
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'parents:children_overview' %}active{% endif %}">
+                                <a href="{{ parents_children_overview_url }}" class="submenu-link">
                                     <i class="bi bi-people"></i>
                                     <span>Kết quả của con</span>
                                 </a>
                             </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'parents:children_overview_photos' %}active{% endif %}">
+                                <a href="{{ parents_children_photos_url }}" class="submenu-link">
                                     <i class="bi bi-images"></i>
-                                    <span>Ảnh & Đánh giá</span>
+                                    <span>Ảnh &amp; Đánh giá</span>
+                                </a>
+                            </li>
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'parents:children_report' %}active{% endif %}">
+                                <a href="{{ parents_children_report_url }}" class="submenu-link">
+                                    <i class="bi bi-graph-up"></i>
+                                    <span>Báo cáo học tập</span>
                                 </a>
                             </li>
                             {% endif %}
@@ -310,7 +301,7 @@
                     {% if is_admin_group or is_center_manager_group %}
                     {% url 'enrollments:list' as enrollments_list_url %}
                     {% url 'reports:enrollment_summary' as reports_enrollment_summary_url %}
-                    <li class="sidebar-item has-sub {% if current_app == 'enrollments' or current_view == 'reports:enrollment_summary' %}active{% endif %}">
+                    <li class="sidebar-item has-sub {% if current_app == 'enrollments' %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-clipboard-data"></i>
                             <span>Ghi danh</span>

@@ -118,8 +118,6 @@ def _build_student_report_context(request, *, paginate=False) -> dict:
     start_date = _parse_date_safe(request.GET.get("start_date")) if has_active_filters else None
     end_date = _parse_date_safe(request.GET.get("end_date")) if has_active_filters else None
 
-    fallback_notice = None
-    fallback_used = False
     if not has_active_filters and base_enrollments.exists():
         enrollments = base_enrollments.select_related(
             "student",
@@ -127,15 +125,6 @@ def _build_student_report_context(request, *, paginate=False) -> dict:
             "klass__subject",
             "klass__main_teacher",
         ).order_by("student__last_name", "student__first_name", "student__username")
-        fallback_used = True
-        if flags["is_admin"]:
-            fallback_notice = "Đang hiển thị toàn bộ học sinh vì chưa áp dụng bộ lọc."
-        elif flags["is_center_manager"]:
-            fallback_notice = "Đang hiển thị học sinh thuộc trung tâm của bạn vì chưa áp dụng bộ lọc."
-        elif flags["is_teacher"] or flags["is_assistant"]:
-            fallback_notice = "Đang hiển thị học sinh các lớp bạn phụ trách vì chưa áp dụng bộ lọc."
-        else:
-            fallback_notice = "Đang hiển thị học sinh khả dụng vì chưa áp dụng bộ lọc."
 
     per_page_default = 25
     try:
@@ -232,8 +221,6 @@ def _build_student_report_context(request, *, paginate=False) -> dict:
         "page_obj": page_obj,
         "per_page": per_page if paginate else None,
         "current_query_params": current_query_params,
-        "is_fallback": fallback_used,
-        "fallback_notice": fallback_notice,
     }
     context.update(
         _build_filter_ui_context(
