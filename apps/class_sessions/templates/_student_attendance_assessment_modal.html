@@ -16,6 +16,7 @@
     hx-swap="outerHTML"
   >
     {% csrf_token %}
+    <input type="hidden" name="as_page" value="{{ as_page|yesno:'true,false,false' }}">
 
     <div class="row g-3">
       <div class="col-md-6">

@@ -44,7 +44,7 @@
     
     <div class="row">
         <div class="col-md-8 mb-3">
-          <label for "{{ form.lesson.id_for_label }}" class="form-label">{{ form.lesson.label }}{% if form.lesson.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+          <label for="{{ form.lesson.id_for_label }}" class="form-label">{{ form.lesson.label }}{% if form.lesson.field.required %} <span class="text-danger">*</span>{% endif %}</label>
           {% render_field form.lesson class+="form-select" %}
           <div class="text-danger small mt-1">{{ form.lesson.errors|striptags }}</div>
         </div>
@@ -54,6 +54,38 @@
           <div class="text-danger small mt-1">{{ form.status.errors|striptags }}</div>
         </div>
     </div>
+
+    {% if session %}
+      <div class="alert alert-light border mb-3">
+        <div class="fw-semibold mb-2">Thông tin giáo viên</div>
+        {% with default_teacher=session.klass.main_teacher current_teacher=session.teacher_override %}
+          <div>
+            <span class="text-muted small d-block">Giáo viên đang phụ trách buổi này</span>
+            <span class="fw-semibold">
+              {% if current_teacher %}
+                {{ current_teacher.display_name_with_email }}
+                {% if default_teacher and current_teacher.pk != default_teacher.pk %}
+                  <span class="badge bg-warning text-dark ms-1 align-middle">Đang thay thế</span>
+                {% endif %}
+              {% elif default_teacher %}
+                {{ default_teacher.display_name_with_email }}
+              {% else %}
+                Chưa được phân công
+              {% endif %}
+            </span>
+          </div>
+          <div class="text-muted small mt-2">
+            {% if default_teacher and current_teacher and current_teacher.pk != default_teacher.pk %}
+              <span class="d-block">Giáo viên cũ (theo lớp): {{ default_teacher.display_name_with_email }}</span>
+            {% elif default_teacher %}
+              <span class="d-block">Giáo viên lớp: {{ default_teacher.display_name_with_email }}</span>
+            {% else %}
+              <span class="d-block">Lớp chưa có giáo viên mặc định.</span>
+            {% endif %}
+          </div>
+        {% endwith %}
+      </div>
+    {% endif %}
 
     <div class="row">
         <div class="col-md-6 mb-3">
@@ -79,3 +111,5 @@
     <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">Hủy</button>
     <button type="submit" class="btn btn-primary">Lưu</button>
   </div>
+
+</form>

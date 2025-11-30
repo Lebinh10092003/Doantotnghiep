@@ -7,12 +7,12 @@
             {% else %}
             <img src="{% static 'assets/images/faces/1.jpg' %}" class="img-fluid rounded-circle mb-3" style="width: 120px; height: 120px;" alt="Default Avatar">
             {% endif %}
-            <h5 class="mb-1">{{ user.display_name_with_email }}</h5>
-            <p class="text-muted mb-0">@{{ user.username }}</p>
-            <span class="badge bg-info mt-2">{{ user.groups.first.name|default:"Chưa có vai trò" }}</span>
+            <h5 class="mb-1 text-break">{{ user.display_name_with_email }}</h5>
+            <p class="text-muted mb-0 text-break">@{{ user.username }}</p>
+            <span class="badge bg-info mt-2 text-wrap text-break">{{ user.groups.first.name|default:"Chưa có vai trò" }}</span>
         </div>
         <div class="col-md-8">
-            <table class="table table-borderless">
+            <table class="table table-borderless text-break">
                 <tbody>
                     <tr><th style="width: 30%;">Username:</th><td>{{ user.username }}</td></tr>
                     <tr><th>Email:</th><td>{{ user.email }}</td></tr>
@@ -22,11 +22,13 @@
                     {% endif %}
                     <tr><th>Nhóm:</th>
                         <td>
-                            {% for group in user.groups.all %}
-                                {% with color_class=group.profile.color_class|default:"bg-secondary" %}
-                                    <span class="badge {{ color_class }} me-1">{{ group.name }}</span>
-                                {% endwith %}
-                            {% empty %}<span class="text-muted">Không thuộc nhóm nào</span>{% endfor %}
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for group in user.groups.all %}
+                                    {% with color_class=group.profile.color_class|default:"bg-secondary" %}
+                                        <span class="badge {{ color_class }} text-wrap text-break">{{ group.name }}</span>
+                                    {% endwith %}
+                                {% empty %}<span class="text-muted">Không thuộc nhóm nào</span>{% endfor %}
+                            </div>
                         </td>
                     </tr>
                     <tr><th>Trạng thái:</th>
@@ -47,7 +49,7 @@
     <div class="mt-4 border-top pt-3">
         <h6><i class="bi bi-person-vcard me-2"></i>Thông tin cá nhân</h6>
         <div class="table-responsive">
-            <table class="table table-sm table-borderless">
+            <table class="table table-sm table-borderless text-break">
                 <tbody>
                     <tr><th style="width: 30%;">Ngày sinh:</th><td>{{ user.dob|date:"d/m/Y"|default:"Chưa có" }}</td></tr>
                     <tr><th>Giới tính:</th><td>{{ user.get_gender_display|default:"Chưa có" }}</td></tr>
@@ -64,7 +66,7 @@
     <div class="mt-4 border-top pt-3">
         <h6><i class="bi bi-people-fill me-2"></i>Danh sách con</h6>
         <div class="table-responsive">
-            <table class="table table-sm table-hover table-bordered">
+            <table class="table table-sm table-hover table-bordered text-break">
                 <thead class="table-light">
                     <tr>
                         <th>Họ và tên</th>
@@ -96,7 +98,7 @@
         <h6><i class="bi bi-person-check-fill me-2"></i>Danh sách phụ huynh</h6>
         <ul class="list-group list-group-flush">
             {% for relation in parents %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
+            <li class="list-group-item d-flex justify-content-between align-items-center text-break">
                 <span><i class="bi bi-person"></i> {{ relation.parent.display_name_with_email }} ({{ relation.parent.phone }})</span>
                 {% if relation.note %}<small class="text-muted">Ghi chú: {{ relation.note }}</small>{% endif %}
             </li>
@@ -112,7 +114,7 @@
     <div class="mt-4 border-top pt-3">
         <h6><i class="bi bi-journal-bookmark me-2"></i>Lớp học đang tham gia</h6>
         <div class="table-responsive">
-            <table class="table table-sm table-hover table-bordered">
+            <table class="table table-sm table-hover table-bordered text-break">
                 <thead class="table-light">
                     <tr>
                         <th>Tên lớp</th>
@@ -141,7 +143,7 @@
     <div class="mt-4 border-top pt-3">
         <h6><i class="bi bi-easel-fill me-2"></i>Lớp học đang giảng dạy</h6>
         <div class="table-responsive">
-            <table class="table table-sm table-hover table-bordered">
+            <table class="table table-sm table-hover table-bordered text-break">
                 <thead class="table-light">
                     <tr>
                         <th>Tên lớp</th>
@@ -170,7 +172,7 @@
     <div class="mt-4 border-top pt-3">
         <h6><i class="bi bi-people me-2"></i>Lớp đang trợ giảng</h6>
         <div class="table-responsive">
-            <table class="table table-sm table-hover table-bordered">
+            <table class="table table-sm table-hover table-bordered text-break">
                 <thead class="table-light">
                     <tr>
                         <th>Tên lớp</th>

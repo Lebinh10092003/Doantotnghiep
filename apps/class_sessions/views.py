@@ -64,6 +64,17 @@ def _session_group_label(session, group_by):
     return ""
 
 
+def _user_is_session_staff(session, user):
+    if not getattr(user, "is_authenticated", False):
+        return False
+    return (
+        user == session.klass.main_teacher
+        or user == session.teacher_override
+        or session.assistants.filter(id=user.id).exists()
+        or session.klass.assistants.filter(id=user.id).exists()
+    )
+
+
 @login_required
 @permission_required("class_sessions.view_classsession", raise_exception=True)
 def manage_class_sessions(request):
@@ -267,12 +278,7 @@ def session_detail_view(request, pk):
         pk=pk
     )
     viewer = request.user
-    is_my_session = (
-        viewer == session.klass.main_teacher
-        or viewer == session.teacher_override
-        or session.assistants.filter(id=viewer.id).exists()
-        or session.klass.assistants.filter(id=viewer.id).exists()
-    )
+    is_my_session = _user_is_session_staff(session, viewer)
     if not (viewer.has_perm("class_sessions.view_classsession") or is_my_session):
         raise PermissionDenied
     can_edit_session_records = (
@@ -280,6 +286,7 @@ def session_detail_view(request, pk):
         or viewer.has_perm("assessments.change_assessment")
         or is_my_session
     )
+    can_manage_session_photos = viewer.has_perm("class_sessions.change_classsession") or is_my_session
     
     # 1. Lấy danh sách học sinh đã đăng ký (active)
     enrollments = Enrollment.objects.filter(
@@ -321,6 +328,7 @@ def session_detail_view(request, pk):
         "session": session,
         "student_data_list": student_data_list, 
         "can_edit_session_records": can_edit_session_records,
+        "can_manage_session_photos": can_manage_session_photos,
         "photos": ClassSessionPhoto.objects.filter(session=session).select_related("uploaded_by").order_by("-created_at"),
     }
     
@@ -336,12 +344,7 @@ def session_detail_view(request, pk):
 def session_photos_upload(request, pk):
     session = get_object_or_404(ClassSession, pk=pk)
     viewer = request.user
-    is_my_session = (
-        viewer == session.klass.main_teacher
-        or viewer == session.teacher_override
-        or session.assistants.filter(id=viewer.id).exists()
-        or session.klass.assistants.filter(id=viewer.id).exists()
-    )
+    is_my_session = _user_is_session_staff(session, viewer)
     if not (viewer.has_perm("class_sessions.change_classsession") or is_my_session):
         raise PermissionDenied
     if request.method != "POST":
@@ -377,12 +380,7 @@ def session_photo_delete(request, session_pk, photo_pk):
     session = get_object_or_404(ClassSession, pk=session_pk)
     photo = get_object_or_404(ClassSessionPhoto, pk=photo_pk, session=session)
     viewer = request.user
-    is_my_session = (
-        viewer == session.klass.main_teacher
-        or viewer == session.teacher_override
-        or session.assistants.filter(id=viewer.id).exists()
-        or session.klass.assistants.filter(id=viewer.id).exists()
-    )
+    is_my_session = _user_is_session_staff(session, viewer)
     if not (viewer.has_perm("class_sessions.change_classsession") or is_my_session):
         raise PermissionDenied
 
@@ -410,7 +408,6 @@ def session_photo_delete(request, session_pk, photo_pk):
 
 
 @login_required
-@permission_required("class_sessions.view_classsession", raise_exception=True)
 def student_attendance_assessment_modal(request, session_id, student_id):
     """
     Modal hiển thị form Điểm danh & Đánh giá cho một học sinh trong một buổi học,
@@ -423,15 +420,21 @@ def student_attendance_assessment_modal(request, session_id, student_id):
         pk=session_id,
     )
     student = get_object_or_404(User, pk=student_id)
-
+    viewer = request.user
+    is_my_session = _user_is_session_staff(session, viewer)
+    if not (viewer.has_perm("class_sessions.view_classsession") or is_my_session):
+        raise PermissionDenied
     attendance = Attendance.objects.filter(session=session, student=student).first()
     assessment = Assessment.objects.filter(session=session, student=student).first()
+
+    as_page = request.GET.get("as_page", "false").lower() == "true"
 
     context = {
         "session": session,
         "student": student,
         "attendance": attendance,
         "assessment": assessment,
+        "as_page": as_page,
     }
     # Template này nằm trực tiếp dưới apps/class_sessions/templates/
     return render(request, "_student_attendance_assessment_modal.html", context)
@@ -457,8 +460,6 @@ def session_delete_view(request, pk):
     return response
 @require_POST
 @login_required
-@permission_required("attendance.change_attendance")
-@permission_required("assessments.change_assessment")
 def update_student_session_status(request, session_id, student_id):
     """
     Xử lý một request HTMX POST để cập nhật đồng thời
@@ -466,6 +467,15 @@ def update_student_session_status(request, session_id, student_id):
     """
     session = get_object_or_404(ClassSession, pk=session_id)
     student = get_object_or_404(User, pk=student_id)
+    viewer = request.user
+    is_my_session = _user_is_session_staff(session, viewer)
+    can_edit_session_records = (
+        viewer.has_perm("attendance.change_attendance")
+        or viewer.has_perm("assessments.change_assessment")
+        or is_my_session
+    )
+    if not can_edit_session_records:
+        raise PermissionDenied
     
     # 1. Lấy hoặc tạo các đối tượng
     attendance, _ = Attendance.objects.get_or_create(session=session, student=student)
@@ -474,6 +484,8 @@ def update_student_session_status(request, session_id, student_id):
     # 2. Tạo form từ dữ liệu POST
     attendance_form = AttendanceForm(request.POST, instance=attendance)
     assessment_form = AssessmentForm(request.POST, instance=assessment)
+
+    as_page = request.POST.get("as_page", "false").lower() == "true"
 
     # 3. Validate và Lưu
     if attendance_form.is_valid() and assessment_form.is_valid():
@@ -497,7 +509,13 @@ def update_student_session_status(request, session_id, student_id):
         # Render lại chỉ cái hàng <tr> đó
         html = render_to_string(
             "_session_student_row.html",
-            {"data": student_data, "session": session, "request": request, "success": True},
+            {
+                "data": student_data,
+                "session": session,
+                "request": request,
+                "success": True,
+                "as_page": as_page,
+            },
             request=request,
         )
         response = HttpResponse(html)

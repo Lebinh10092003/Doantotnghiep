@@ -1,20 +1,34 @@
+const NATIVE_SELECT_HIDE_CLASS = 'tomselect-native-hidden';
+
+function hideNativeSelect(el) {
+    if (!el || typeof el.classList?.add !== 'function') return;
+    if (!el.classList.contains(NATIVE_SELECT_HIDE_CLASS)) {
+        el.classList.add(NATIVE_SELECT_HIDE_CLASS);
+    }
+    el.setAttribute('aria-hidden', 'true');
+}
+
 /**
  * Hàm khởi tạo TomSelect cho các ô input.
  * Hàm này phải được gọi SAU KHI thư viện tom-select.js đã được tải.
  */
 function initializeTomSelect(elements) {
-  if (typeof elements.forEach !== 'function') return;
-  elements.forEach((el) => {
-    if (!el.classList.contains('tomselected')) {
-      let tom = new TomSelect(el, {
-        create: true, // Đảm bảo có thể tạo giá trị mới nếu cần
-        sortField: { field: "text", direction: "asc" },
-        openOnFocus: true, 
-      });
-      // Đánh dấu là đã khởi tạo
-      el.tomselect = tom;
-    }
-  });
+    if (typeof elements.forEach !== 'function') return;
+    elements.forEach((el) => {
+        if (!el.classList.contains('tomselected')) {
+            let tom = new TomSelect(el, {
+                create: true, // Đảm bảo có thể tạo giá trị mới nếu cần
+                sortField: { field: "text", direction: "asc" },
+                openOnFocus: true, 
+            });
+            // Đánh dấu là đã khởi tạo
+            el.tomselect = tom;
+        }
+
+        if (el.classList.contains('tomselected') || el.tomselect) {
+            hideNativeSelect(el);
+        }
+    });
 }
 
 // Dọn dẹp trạng thái modal còn sót (modal-open/backdrop)
@@ -270,8 +284,29 @@ function handleFormsetActions(evt) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+    try {
+        const initialTomSelects = document.querySelectorAll('.tom-select');
+        if (initialTomSelects.length) {
+            initializeTomSelect(initialTomSelects);
+        }
+    } catch (_) { /* noop */ }
+
     document.addEventListener('hidden.bs.modal', () => {
         setTimeout(forceModalCleanup, 0);
+    });
+
+    document.addEventListener('show.bs.modal', (evt) => {
+        if (evt.target && evt.target.id === 'session-student-detail-modal') {
+            const container = document.getElementById('session-student-detail-modal-content');
+            if (container) {
+                container.innerHTML = `
+                    <div class="modal-body text-center p-5">
+                        <span class="spinner-border" role="status"></span>
+                        <p class="mt-2">Đang tải...</p>
+                    </div>
+                `;
+            }
+        }
     });
 
     // Fallback khi body kẹt modal-open nhưng không modal nào show
@@ -281,8 +316,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- GẮN CÁC LISTENER CHÍNH ---
 
-    // 1. Xử lý trigger từ server
+    // 1. Xử lý trigger từ server (bao gồm cả phản hồi lỗi HTTP như 4xx/5xx)
     document.body.addEventListener('htmx:afterRequest', handleHtmxTriggerEvents);
+    document.body.addEventListener('htmx:responseError', handleHtmxTriggerEvents);
 
     // 2. Ghi đè confirm mặc định
     document.body.addEventListener('htmx:confirm', handleHtmxConfirm);

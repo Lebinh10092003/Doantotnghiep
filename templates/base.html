@@ -41,10 +41,20 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <style>
-      .global-loading-overlay { display: none; }
-      .global-loading-overlay.htmx-request { display: flex; }
-    </style>
+        <style>
+            .global-loading-overlay { display: none; }
+            .global-loading-overlay.htmx-request { display: flex; }
+            .tomselect-native-hidden {
+                    position: absolute !important;
+                    width: 1px !important;
+                    height: 1px !important;
+                    padding: 0 !important;
+                    margin: -1px !important;
+                    overflow: hidden !important;
+                    clip: rect(0 0 0 0) !important;
+                    border: 0 !important;
+            }
+        </style>
 </head>
 
 <body>
@@ -560,6 +570,24 @@
         {% block content %}
         {% endblock %}
     </div>
+
+    <div class="modal fade" id="session-student-detail-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Chi tiết học sinh</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div id="session-student-detail-modal-content">
+                    <div class="modal-body text-center p-5">
+                        <span class="spinner-border" role="status"></span>
+                        <p class="mt-2">Đang tải...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="{% static 'assets/js/components/dark.js' %}"></script>
     <script src="{% static 'extensions/perfect-scrollbar/perfect-scrollbar.min.js' %}"></script>
     <script src="{% static 'compiled/js/app.js' %}"></script>

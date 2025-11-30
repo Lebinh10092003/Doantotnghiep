@@ -186,7 +186,7 @@
       <div class="card border-primary">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
           <h5 class="card-title mb-0">Điểm danh &amp; Đánh giá</h5>
-          {% if perms.attendance.change_attendance or perms.assessments.change_assessment %}
+          {% if can_edit_session_records %}
             <span class="small">Quản lý điểm danh và đánh giá theo từng học sinh</span>
           {% endif %}
         </div>
@@ -200,15 +200,17 @@
                   <th style="min-width: 180px;">Ghi chú</th>
                   <th style="width: 80px;">Điểm</th>
                   <th style="min-width: 200px;">Nhận xét</th>
+                  {% if can_edit_session_records %}
                   <th style="width: 1%;" class="text-nowrap">Hành động</th>
+                  {% endif %}
                 </tr>
               </thead>
               <tbody>
                 {% for data in student_data_list %}
-                  {% include "_session_student_row.html" with data=data session=session %}
+                  {% include "_session_student_row.html" with data=data session=session as_page=True can_edit_records=can_edit_session_records %}
                 {% empty %}
                 <tr>
-                  <td colspan="7" class="text-center text-muted">Lớp học này chưa có học sinh.</td>
+                  <td colspan="{% if can_edit_session_records %}6{% else %}5{% endif %}" class="text-center text-muted">Lớp học này chưa có học sinh.</td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -220,7 +222,7 @@
       <div class="card border-0 shadow-sm mt-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center">
           <h6 class="mb-0">Ảnh buổi học</h6>
-          {% if can_edit_session_records %}
+          {% if can_manage_session_photos %}
           <button class="btn btn-sm btn-outline-secondary"
                   data-bs-toggle="modal"
                   data-bs-target="#session-photos-modal">
@@ -242,7 +244,7 @@
                   {% if photo.caption %}
                   <div class="text-muted small mt-1">{{ photo.caption }}</div>
                   {% endif %}
-                  {% if can_edit_session_records %}
+                  {% if can_manage_session_photos %}
                   <div class="mt-1 d-flex justify-content-end">
                     <form method="post"
                           action="{% url 'class_sessions:session_photo_delete' session.pk photo.pk %}"
