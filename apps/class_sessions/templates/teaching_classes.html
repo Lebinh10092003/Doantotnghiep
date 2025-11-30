@@ -17,6 +17,20 @@
           <p class="text-subtitle text-muted mb-0">
             Danh sách lớp bạn đang phụ trách. Lọc nhanh theo giáo viên (nếu có quyền xem nhiều giáo viên).
           </p>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <a class="btn btn-outline-primary btn-sm"
+               href="{% url 'class_sessions:teaching_schedule_my' %}">
+              <i class="bi bi-calendar-week"></i>
+              Xem lịch dạy của tôi
+            </a>
+            {% if perms.class_sessions.view_classsession and perms.class_sessions.add_classsession and perms.class_sessions.change_classsession and perms.class_sessions.delete_classsession %}
+            <a class="btn btn-outline-secondary btn-sm"
+               href="{% url 'class_sessions:teaching_schedule' %}">
+              <i class="bi bi-calendar-event"></i>
+              Lịch dạy trung tâm
+            </a>
+            {% endif %}
+          </div>
         </div>
       </div>
     </div>

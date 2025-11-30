@@ -66,6 +66,62 @@ def _related_products_queryset(user):
         )
     return qs
 
+
+def _fetch_class_sessions(klass: Class):
+    sessions = list(
+        ClassSession.objects.filter(klass=klass)
+        .select_related("lesson")
+        .order_by("date", "start_time")
+    )
+    lesson_map = {}
+    for session in sessions:
+        if session.lesson_id and session.lesson_id not in lesson_map:
+            lesson_map[session.lesson_id] = session
+    return sessions, lesson_map
+
+
+def _next_upcoming_session(sessions):
+    today = date.today()
+    for session in sessions:
+        if session.date and session.date >= today:
+            return session
+    return None
+
+
+def _pick_selected_session(sessions, session_id):
+    try:
+        session_id = int(session_id)
+    except (TypeError, ValueError):
+        session_id = None
+
+    if session_id:
+        for session in sessions:
+            if session.id == session_id:
+                return session
+
+    upcoming = _next_upcoming_session(sessions)
+    if upcoming:
+        return upcoming
+
+    return sessions[-1] if sessions else None
+
+
+def _student_course_products(user, klass, session):
+    base_qs = (
+        StudentProduct.objects.filter(student=user, session__klass=klass)
+        .select_related("session", "session__klass")
+        .order_by("-created_at")
+    )
+    if session:
+        session_qs = base_qs.filter(session=session)
+        other_qs = base_qs.exclude(session=session)
+        latest = session_qs.first()
+    else:
+        session_qs = StudentProduct.objects.none()
+        other_qs = base_qs
+        latest = None
+    return base_qs, session_qs, other_qs, latest
+
 def _render_products_page(request, products, flags, page_title, page_description):
     order = request.GET.get("order", "desc")
 
@@ -302,25 +358,22 @@ def portal_course_detail(request, class_id: int):
     if not Enrollment.objects.filter(student=user, klass=klass, active=True).exists():
         return render(request, "not_enrolled.html", {"klass": klass})
 
-    # Buổi học sắp tới nhất
-    upcoming: ClassSession | None = (
-        ClassSession.objects.filter(klass=klass, date__gte=date.today())
-        .select_related("lesson")
-        .order_by("date", "start_time")
-        .first()
-    )
+    class_sessions, lesson_sessions = _fetch_class_sessions(klass)
+    session_param = request.GET.get("session_id")
+    upcoming = _next_upcoming_session(class_sessions)
+    selected_session = _pick_selected_session(class_sessions, session_param)
 
     subject = klass.subject
     modules = subject.modules.prefetch_related("lessons").all()
 
     # Lấy bài học, bài giảng, bài tập (nếu có)
-    lesson = upcoming.lesson if (upcoming and upcoming.lesson_id) else None
+    lesson = selected_session.lesson if (selected_session and selected_session.lesson_id) else None
     lecture = None
     exercise = None
 
     if lesson:
         try:
-            lecture = lesson.lecture  # OneToOne, có thể chưa tồn tại
+            lecture = lesson.lecture  
         except ObjectDoesNotExist:
             lecture = None
 
@@ -329,20 +382,10 @@ def portal_course_detail(request, class_id: int):
         except ObjectDoesNotExist:
             exercise = None
 
-    # Sản phẩm học sinh trong buổi sắp tới
-    session_products = StudentProduct.objects.none()
-    latest_product = None
-    if upcoming:
-        session_products = (
-            StudentProduct.objects.filter(session=upcoming, student=user)
-            .select_related("session", "student")
-            .all()
-        )
-        latest_product = session_products.first()
-    my_products = (
-        StudentProduct.objects.filter(student=user, session__klass=klass)
-        .select_related("session", "student")
-        .order_by("-created_at")
+    my_products, session_products, other_products, latest_product = _student_course_products(
+        user,
+        klass,
+        selected_session,
     )
 
     exercise_submissions = StudentExerciseSubmission.objects.none()
@@ -367,27 +410,70 @@ def portal_course_detail(request, class_id: int):
         "latest_submission": latest_submission,
         "session_products": session_products,
         "latest_product": latest_product,
+        "other_products": other_products,
         "my_products": my_products,
+        "selected_session": selected_session,
+        "lesson_sessions": lesson_sessions,
+        "class_sessions": class_sessions,
+        "swap_session_meta": False,
     }
     return render(request, "course_detail.html", context)
+
+
+@login_required
+def portal_course_products_panel(request, class_id: int):
+    user = request.user
+
+    klass = get_object_or_404(
+        Class.objects.select_related("subject", "center", "main_teacher"),
+        id=class_id,
+    )
+
+    if not Enrollment.objects.filter(student=user, klass=klass, active=True).exists():
+        return HttpResponseForbidden("Bạn không có quyền truy cập lớp học này.")
+
+    class_sessions, _ = _fetch_class_sessions(klass)
+    selected_session = _pick_selected_session(class_sessions, request.GET.get("session_id"))
+    upcoming = _next_upcoming_session(class_sessions)
+
+    my_products, session_products, other_products, latest_product = _student_course_products(
+        user,
+        klass,
+        selected_session,
+    )
+
+    context = {
+        "klass": klass,
+        "selected_session": selected_session,
+        "session_products": session_products,
+        "other_products": other_products,
+        "latest_product": latest_product,
+        "upcoming": upcoming,
+        "my_products": my_products,
+        "swap_session_meta": True,
+    }
+    return render(request, "_course_products_panel.html", context)
 
 
 @login_required
 def product_create(request, session_id: int):
     # Danh sách buổi học của học sinh
     today = date.today()
-    available_sessions = (
+    session_queryset = (
         ClassSession.objects.filter(
             klass__enrollments__student=request.user,
             klass__enrollments__active=True,
-            date__lte=today,
         )
         .select_related("klass", "klass__subject")
         .order_by("-date", "-start_time")
     )
+    session_filter = Q(date__lte=today) | ~Q(status="PLANNED")
+    if session_id:
+        session_filter |= Q(id=session_id)
+    available_sessions = session_queryset.filter(session_filter)
     session = None
     if session_id and session_id != 0:
-        session = get_object_or_404(available_sessions, id=session_id)
+        session = get_object_or_404(session_queryset, id=session_id)
 
     if not available_sessions.exists():
         return HttpResponseForbidden("Bạn chưa có buổi học nào để đăng sản phẩm.")
@@ -404,7 +490,7 @@ def product_create(request, session_id: int):
             if not selected_session_id:
                 return HttpResponseForbidden("Vui lòng chọn buổi học.")
             try:
-                selected_session = available_sessions.get(id=selected_session_id)
+                selected_session = session_queryset.get(id=selected_session_id)
             except ClassSession.DoesNotExist:
                 return HttpResponseForbidden("Buổi học không hợp lệ.")
 

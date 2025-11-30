@@ -11,6 +11,22 @@ from apps.class_sessions.models import ClassSessionPhoto
 from apps.enrollments.models import Enrollment
 
 
+def _format_student_display(student):
+    if not student:
+        return ""
+    preferred = getattr(student, "display_name_with_email", None)
+    if callable(preferred):
+        preferred = preferred()
+    if preferred:
+        return preferred
+    full_name = getattr(student, "get_full_name", None)
+    if callable(full_name):
+        full_name = full_name()
+    if full_name:
+        return full_name
+    return getattr(student, "username", "")
+
+
 def build_parent_children_snapshot(parent) -> Dict[str, object]:
     """Aggregate learning overview data for a parent user."""
     relations = (
@@ -20,6 +36,8 @@ def build_parent_children_snapshot(parent) -> Dict[str, object]:
     )
 
     children_data: List[Dict[str, object]] = []
+    child_display_names: List[str] = []
+    recent_photo_feed: List[Dict[str, object]] = []
     summary_metrics = {
         "total_children": 0,
         "active_classes": 0,
@@ -95,17 +113,49 @@ def build_parent_children_snapshot(parent) -> Dict[str, object]:
             latest_attendance = latest_attendance_map.get(sid)
             avg_score = avg_score_map.get(sid)
             enrollments_list = enrollments_map.get(sid, [])
+            student_label = _format_student_display(rel.student)
+            if student_label:
+                child_display_names.append(student_label)
+            recent_photos = recent_photos_map.get(sid, [])
+            if attendance_summary and attendance_summary.get("total"):
+                attendance_rate = round(
+                    (attendance_summary.get("present", 0) / attendance_summary.get("total", 1)) * 100,
+                    1,
+                )
+            else:
+                attendance_rate = None
+
+            primary_subjects = []
+            for enrollment in enrollments_list:
+                subject_name = getattr(getattr(enrollment.klass, "subject", None), "name", None)
+                if subject_name and subject_name not in primary_subjects:
+                    primary_subjects.append(subject_name)
+                if len(primary_subjects) >= 3:
+                    break
+
             children_data.append(
                 {
                     "student": rel.student,
+                    "student_label": student_label,
                     "note": rel.note,
                     "enrollments": enrollments_list,
                     "attendance_summary": attendance_summary,
+                    "attendance_rate": attendance_rate,
                     "latest_attendance": latest_attendance,
                     "avg_score": avg_score,
-                    "recent_photos": recent_photos_map.get(sid, []),
+                    "primary_subjects": primary_subjects,
+                    "recent_photos": recent_photos,
                 }
             )
+            for photo in recent_photos:
+                recent_photo_feed.append(
+                    {
+                        "photo": photo,
+                        "student": rel.student,
+                        "student_label": student_label,
+                        "klass_name": getattr(photo.session.klass, "name", ""),
+                    }
+                )
             summary_metrics["active_classes"] += len(enrollments_list)
             if attendance_summary:
                 present_total += attendance_summary.get("present", 0)
@@ -133,10 +183,14 @@ def build_parent_children_snapshot(parent) -> Dict[str, object]:
         recent_updates = recent_updates[:5]
 
     summary_metrics["total_children"] = len(children_data)
+    recent_photo_feed.sort(key=lambda item: getattr(item["photo"], "created_at", date.min), reverse=True)
+    recent_photo_feed = recent_photo_feed[:8]
     return {
         "relations": relations,
         "children_data": children_data,
         "summary_metrics": summary_metrics,
         "recent_updates": recent_updates,
         "has_children": bool(children_data),
+        "child_display_names": child_display_names,
+        "recent_photo_feed": recent_photo_feed,
     }

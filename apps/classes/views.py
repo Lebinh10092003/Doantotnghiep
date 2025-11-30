@@ -1,4 +1,5 @@
 import json
+from collections import deque
 from datetime import date, timedelta
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -351,7 +352,24 @@ def generate_sessions(request, pk):
     
     with transaction.atomic():
         klass = get_object_or_404(Class, pk=pk)
-        schedules = klass.weekly_schedules.all()
+        schedules = list(klass.weekly_schedules.all())
+
+        def _hx_error(message):
+            response = HttpResponse(status=400)
+            response["HX-Trigger"] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Không thể tạo lịch học",
+                    "text": message,
+                }
+            })
+            return response
+
+        if not klass.start_date or not klass.end_date:
+            return _hx_error("Vui lòng cập nhật Ngày bắt đầu/Ngày kết thúc trước khi tạo lại buổi học.")
+
+        if not schedules:
+            return _hx_error("Lớp chưa có lịch học hàng tuần, không thể tạo buổi học.")
         # 1. TRUY VẤN VÀ LẬP BẢN ĐỒ LESSONS
         # Lấy tất cả Lesson của môn học, sắp xếp theo thứ tự Module và Lesson
         all_lessons = []
@@ -368,13 +386,13 @@ def generate_sessions(request, pk):
         today = timezone.now().date()
         start_date_for_generation = max(klass.start_date, today)
         
-        existing_sessions = {
-            s.date: s for s in ClassSession.objects.filter(
-                klass=klass, 
-                status=PLANNED_STATUS, 
-                date__gte=today 
-            )
-        }
+        existing_sessions_queue = deque(
+            ClassSession.objects.filter(
+                klass=klass,
+                status=PLANNED_STATUS,
+                date__gte=start_date_for_generation,
+            ).order_by("date", "start_time", "pk")
+        )
 
         # Bộ đếm index tạm thời 
         temp_index_counter = 999999 
@@ -401,28 +419,13 @@ def generate_sessions(request, pk):
                         lesson_to_assign = all_lessons[current_session_index - 1] 
                     
                     
-                    if current_date in existing_sessions:
-                        session_to_check = existing_sessions[current_date]
-                        
-                        fields_to_update = []
-                        is_time_changed = (session_to_check.start_time != schedule.start_time or 
-                                           session_to_check.end_time != schedule.end_time)
-                        
-                        # Chỉ gán Lesson nếu nó đang NULL
-                        is_lesson_changed = (session_to_check.lesson is None and lesson_to_assign)
-                        
-                        if is_time_changed:
-                            session_to_check.start_time = schedule.start_time
-                            session_to_check.end_time = schedule.end_time
-                            fields_to_update.extend(['start_time', 'end_time'])
-                        
-                        if is_lesson_changed:
-                            session_to_check.lesson = lesson_to_assign
-                            fields_to_update.append('lesson')
-                            
-                        # Chỉ thêm vào danh sách cập nhật nếu có trường cần cập nhật
-                        if fields_to_update:
-                            sessions_to_update.append(session_to_check)
+                    if existing_sessions_queue:
+                        session_to_check = existing_sessions_queue.popleft()
+                        session_to_check.date = current_date
+                        session_to_check.start_time = schedule.start_time
+                        session_to_check.end_time = schedule.end_time
+                        session_to_check.lesson = lesson_to_assign
+                        sessions_to_update.append(session_to_check)
 
                     else:
                         # Tạo buổi học mới
@@ -442,23 +445,33 @@ def generate_sessions(request, pk):
             current_date += timedelta(days=1)
 
         # 4. Thực hiện Bulk Operations
+        leftover_session_ids = [session.id for session in existing_sessions_queue]
+        deleted_count = 0
+        if leftover_session_ids:
+            deleted_count, _ = ClassSession.objects.filter(id__in=leftover_session_ids).delete()
+
         if sessions_to_create:
             ClassSession.objects.bulk_create(sessions_to_create) 
         
         if sessions_to_update:
-            # Cập nhật tất cả các trường có thể thay đổi (thời gian + Lesson)
-            ClassSession.objects.bulk_update(sessions_to_update, ['start_time', 'end_time', 'lesson'])
+            # Cập nhật tất cả các trường có thể thay đổi (ngày + thời gian + Lesson)
+            ClassSession.objects.bulk_update(sessions_to_update, ['date', 'start_time', 'end_time', 'lesson'])
 
         # 5. Đánh số lại index cho toàn bộ các buổi học (sửa chữa index tạm thời)
         updated_count = recalculate_session_indices(klass.pk) 
 
     # 6. Trả về phản hồi HTMX
+    summary_text = f"Đã tạo {len(sessions_to_create)} và cập nhật {len(sessions_to_update)} buổi học."
+    if deleted_count:
+        summary_text += f" Đã xóa {deleted_count} buổi dư."
+    summary_text += f" Đã đánh số lại {updated_count} index."
+
     response = HttpResponse(status=200)
     response["HX-Trigger"] = json.dumps({
         "show-sweet-alert": {
             "icon": "success",
             "title": "Thành công!",
-            "text": f"Đã tạo {len(sessions_to_create)} và cập nhật {len(sessions_to_update)} buổi học. Đã đánh số lại {updated_count} index."
+            "text": summary_text
         },
         "reload-sessions-table": True,
         "closeClassModal": True,

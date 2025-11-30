@@ -119,3 +119,11 @@
   {% endif %}
   {% include "_exercise_submissions_list.html" %}
 </div>
+
+{% if class_id %}
+  {% if class_session %}
+    {% include "_session_meta.html" with session=class_session klass=class_session.klass swap_oob=1 empty_message="" %}
+  {% else %}
+    {% include "_session_meta.html" with session=None klass=None swap_oob=1 empty_message="Không tìm thấy buổi học tương ứng cho bài học này." %}
+  {% endif %}
+{% endif %}

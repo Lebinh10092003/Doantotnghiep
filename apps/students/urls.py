@@ -11,6 +11,11 @@ urlpatterns = [
     path("products/<int:pk>/public/", views.student_product_detail_public, name="student_product_detail_public"),
     path("course/<int:class_id>/", views.portal_course_detail, name="portal_course_detail"),
     path(
+        "course/<int:class_id>/products-panel/",
+        views.portal_course_products_panel,
+        name="course_products_panel",
+    ),
+    path(
         "exercises/submissions/<int:pk>/edit/",
         views.submission_update,
         name="submission_update",

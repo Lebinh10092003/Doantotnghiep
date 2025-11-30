@@ -252,7 +252,10 @@
                           hx-swap="none"
                           class="photo-delete-form">
                       {% csrf_token %}
-                      <button type="submit" class="btn btn-sm btn-outline-danger">
+                      <button type="submit" class="btn btn-sm btn-outline-danger"
+                              data-confirm-title="Xóa ảnh này?"
+                              data-confirm-text="Ảnh sẽ bị xóa vĩnh viễn khỏi buổi học."
+                              data-confirm-button="Xóa ảnh">
                         <i class="bi bi-trash"></i>
                       </button>
                     </form>

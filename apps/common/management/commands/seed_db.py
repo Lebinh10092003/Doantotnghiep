@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import date, time, timedelta, datetime
 
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.db import transaction
 from django.db.utils import IntegrityError
 from faker import Faker
@@ -42,6 +42,218 @@ class Command(BaseCommand):
         "enrollments, attendance, assessments, rewards, and notifications."
     )
 
+    ROLE_PERMISSION_MAP = {
+        "ADMIN": "__all__",
+        "CENTER_MANAGER": [
+            "accounts.add_user",
+            "accounts.change_user",
+            "accounts.delete_user",
+            "accounts.view_user",
+            "auth.add_group",
+            "auth.change_group",
+            "auth.delete_group",
+            "auth.view_group",
+            "centers.add_center",
+            "centers.change_center",
+            "centers.delete_center",
+            "centers.view_center",
+            "centers.add_room",
+            "centers.change_room",
+            "centers.delete_room",
+            "centers.view_room",
+            "classes.add_class",
+            "classes.change_class",
+            "classes.delete_class",
+            "classes.view_class",
+            "class_sessions.add_classsession",
+            "class_sessions.change_classsession",
+            "class_sessions.delete_classsession",
+            "class_sessions.view_classsession",
+            "curriculum.view_subject",
+            "curriculum.view_module",
+            "curriculum.view_lesson",
+            "curriculum.view_lecture",
+            "curriculum.view_exercise",
+            "enrollments.add_enrollment",
+            "enrollments.change_enrollment",
+            "enrollments.delete_enrollment",
+            "enrollments.view_enrollment",
+            "enrollments.view_enrollmentstatuslog",
+            "attendance.add_attendance",
+            "attendance.change_attendance",
+            "attendance.delete_attendance",
+            "attendance.view_attendance",
+            "assessments.add_assessment",
+            "assessments.change_assessment",
+            "assessments.delete_assessment",
+            "assessments.view_assessment",
+            "billing.add_discount",
+            "billing.change_discount",
+            "billing.delete_discount",
+            "billing.view_discount",
+            "billing.add_billingentry",
+            "billing.change_billingentry",
+            "billing.delete_billingentry",
+            "billing.view_billingentry",
+            "rewards.add_rewarditem",
+            "rewards.change_rewarditem",
+            "rewards.delete_rewarditem",
+            "rewards.view_rewarditem",
+            "rewards.add_rewardtransaction",
+            "rewards.change_rewardtransaction",
+            "rewards.delete_rewardtransaction",
+            "rewards.view_rewardtransaction",
+            "rewards.add_redemptionrequest",
+            "rewards.change_redemptionrequest",
+            "rewards.delete_redemptionrequest",
+            "rewards.view_redemptionrequest",
+            "rewards.change_pointaccount",
+            "rewards.view_pointaccount",
+            "rewards.view_sessionpointevent",
+            "reports.view_enrollment_report",
+            "reports.view_student_report",
+            "reports.view_revenue_report",
+            "reports.view_teaching_hours_report",
+            "reports.view_class_activity_report",
+        ],
+        "TEACHER": [
+            "classes.view_class",
+            "class_sessions.view_classsession",
+            "class_sessions.change_classsession",
+            "attendance.add_attendance",
+            "attendance.change_attendance",
+            "attendance.view_attendance",
+            "curriculum.view_subject",
+            "curriculum.view_module",
+            "curriculum.view_lesson",
+            "curriculum.view_lecture",
+            "curriculum.view_exercise",
+            "rewards.add_rewardtransaction",
+            "rewards.view_rewardtransaction",
+            "rewards.add_sessionpointevent",
+            "rewards.view_sessionpointevent",
+            "rewards.view_pointaccount",
+            "students.view_studentproduct",
+        ],
+        "ASSISTANT": [
+            "classes.view_class",
+            "class_sessions.view_classsession",
+            "class_sessions.change_classsession",
+            "attendance.add_attendance",
+            "attendance.change_attendance",
+            "attendance.view_attendance",
+            "curriculum.view_subject",
+            "curriculum.view_module",
+            "curriculum.view_lesson",
+            "curriculum.view_lecture",
+            "curriculum.view_exercise",
+            "rewards.add_rewardtransaction",
+            "rewards.view_rewardtransaction",
+            "rewards.add_sessionpointevent",
+            "rewards.view_sessionpointevent",
+            "rewards.view_pointaccount",
+        ],
+        "PARENT": [
+            "classes.view_class",
+            "class_sessions.view_classsession",
+            "attendance.view_attendance",
+            "assessments.view_assessment",
+            "curriculum.view_subject",
+            "curriculum.view_module",
+            "curriculum.view_lesson",
+            "curriculum.view_lecture",
+            "curriculum.view_exercise",
+            "students.view_studentproduct",
+            "students.view_studentexercisesubmission",
+            "rewards.view_pointaccount",
+            "rewards.view_rewardtransaction",
+            "rewards.view_rewarditem",
+            "rewards.view_redemptionrequest",
+            "reports.view_student_report",
+        ],
+        "STUDENT": [
+            "classes.view_class",
+            "class_sessions.view_classsession",
+            "attendance.view_attendance",
+            "assessments.view_assessment",
+            "curriculum.view_subject",
+            "curriculum.view_module",
+            "curriculum.view_lesson",
+            "curriculum.view_lecture",
+            "curriculum.view_exercise",
+            "students.add_studentproduct",
+            "students.change_studentproduct",
+            "students.delete_studentproduct",
+            "students.view_studentproduct",
+            "students.add_studentexercisesubmission",
+            "students.change_studentexercisesubmission",
+            "students.delete_studentexercisesubmission",
+            "students.view_studentexercisesubmission",
+            "rewards.view_pointaccount",
+            "rewards.view_rewardtransaction",
+            "rewards.view_rewarditem",
+            "rewards.add_redemptionrequest",
+            "rewards.change_redemptionrequest",
+            "rewards.view_redemptionrequest",
+        ],
+    }
+
+    def _assign_default_permissions(self, groups_by_name, target_roles=None, force=False):
+        """Ensure each role group owns its default permission set."""
+        if target_roles is None:
+            target_roles = groups_by_name.keys()
+        all_permissions = list(Permission.objects.all())
+        for role_code, perm_keys in self.ROLE_PERMISSION_MAP.items():
+            if role_code not in target_roles:
+                continue
+            group = groups_by_name.get(role_code)
+            if not group:
+                continue
+            if not force and group.permissions.exists():
+                # Skip overriding existing assignments unless forced
+                continue
+
+            if perm_keys == "__all__":
+                group.permissions.set(all_permissions)
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Assigned {len(all_permissions)} permissions to group '{group.name}'"
+                    )
+                )
+                continue
+
+            resolved = []
+            missing = []
+            for perm_code in perm_keys:
+                if not perm_code:
+                    continue
+                try:
+                    app_label, codename = perm_code.split(".", 1)
+                except ValueError:
+                    missing.append(perm_code)
+                    continue
+                try:
+                    perm = Permission.objects.get(
+                        content_type__app_label=app_label,
+                        codename=codename,
+                    )
+                    resolved.append(perm)
+                except Permission.DoesNotExist:
+                    missing.append(perm_code)
+
+            group.permissions.set(resolved)
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Assigned {len(resolved)} permissions to group '{group.name}'"
+                )
+            )
+            if missing:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Missing permissions for role {role_code}: {', '.join(sorted(set(missing)))}"
+                    )
+                )
+
     def add_arguments(self, parser):
         parser.add_argument("--centers", type=int, default=3, help="Số lượng Trung tâm")
         parser.add_argument("--rooms_per_center", type=int, default=4, help="Số phòng học mỗi trung tâm")
@@ -55,6 +267,11 @@ class Command(BaseCommand):
         parser.add_argument("--assistants_per_center", type=int, default=None, help="Số trợ giảng mỗi trung tâm (tùy chọn)")
         parser.add_argument("--students_per_center", type=int, default=None, help="Số học sinh mỗi trung tâm (tùy chọn)")
         parser.add_argument("--parents_per_center", type=int, default=None, help="Số phụ huynh mỗi trung tâm (tùy chọn)")
+        parser.add_argument(
+            "--sync-permissions",
+            action="store_true",
+            help="Gán lại quyền mặc định cho tất cả nhóm vai trò (theo ROLE_PERMISSION_MAP).",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -79,10 +296,17 @@ class Command(BaseCommand):
             "STUDENT": "STD",
         }
         groups_by_name = {}
+        newly_created_roles = []
         for role_code, group_name in ROLE_GROUPS.items():
-            group, _ = Group.objects.get_or_create(name=group_name)
+            group, created = Group.objects.get_or_create(name=group_name)
             groups_by_name[role_code] = group
+            if created:
+                newly_created_roles.append(role_code)
         self.stdout.write(self.style.SUCCESS(f"Ensured {len(ROLE_GROUPS)} Groups exist."))
+        if options.get("sync_permissions"):
+            self._assign_default_permissions(groups_by_name, force=True)
+        elif newly_created_roles:
+            self._assign_default_permissions(groups_by_name, target_roles=newly_created_roles, force=False)
 
         # === 2. TẠO TRUNG TÂM & PHÒNG HỌC (Cần cho User, Class) ===
         centers = [CenterFactory() for _ in range(options["centers"])]

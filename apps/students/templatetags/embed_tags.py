@@ -4,6 +4,7 @@ from html import escape
 
 from django import template
 from django.conf import settings
+from django.utils.safestring import mark_safe
 
 register = template.Library()
 
@@ -78,13 +79,13 @@ def safe_embed(embed_code: str) -> str:
             "xr-spatial-tracking",
         ]
         if src:
-            return (
+            return mark_safe(
                 f'<iframe src="{escape(src)}" class="w-100 h-100" '
                 f'allow="{"; ".join(features)}" allowfullscreen="true" '
                 f'loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>'
             )
         if blocked_src:
-            return (
+            return mark_safe(
                 f'<div class="small text-muted">Nguồn nhúng không được hỗ trợ. '
                 f'<a href="{escape(blocked_src)}" target="_blank" rel="noopener">Mở liên kết</a></div>'
             )

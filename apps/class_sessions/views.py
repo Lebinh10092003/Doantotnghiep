@@ -396,11 +396,13 @@ def session_photo_delete(request, session_pk, photo_pk):
 
     if is_htmx_request(request):
         resp = HttpResponse(status=204)
-        resp["HX-Redirect"] = redirect_url
         resp["HX-Trigger"] = json.dumps({
             "show-sweet-alert": {
                 "icon": "success",
-                "title": "Đã xóa ảnh"
+                "title": "Đã xóa ảnh",
+                "text": "Ảnh đã được gỡ khỏi buổi học.",
+                "timer": 1200,
+                "redirect": redirect_url,
             }
         })
         return resp

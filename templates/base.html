@@ -251,6 +251,21 @@
                                     <span>Các lớp đang dạy</span>
                                 </a>
                             </li>
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_schedule_my' %}active{% endif %}">
+                                <a href="{{ teaching_schedule_my_url }}" class="submenu-link">
+                                    <i class="bi bi-calendar-week"></i>
+                                    <span>Lịch dạy của tôi</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% if perms.class_sessions.view_classsession and perms.class_sessions.add_classsession and perms.class_sessions.change_classsession and perms.class_sessions.delete_classsession %}
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'class_sessions:teaching_schedule' %}active{% endif %}">
+                                <a href="{{ teaching_schedule_admin_url }}" class="submenu-link">
+                                    <i class="bi bi-calendar-event"></i>
+                                    <span>Lịch dạy trung tâm</span>
+                                </a>
+                            </li>
                             {% endif %}
 
                             {% if user|in_group:'parent' %}

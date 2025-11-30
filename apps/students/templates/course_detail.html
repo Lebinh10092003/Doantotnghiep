@@ -1,508 +1,450 @@
 {% extends "base.html" %}
 {% load static %}
 {% load embed_tags %}
+{% load group_tags %}
 
 {% block title %}Chi tiết khóa học{% endblock %}
 
 {% block content %}
 {% now "Y-m-d" as today_str %}
-<div id="main"
+<div id="student-portal-root"
      x-data="{
        modalTitle: 'Đang tải...',
        selectedLessonTitle: null,
        selectedLessonId: {% if lesson %}{{ lesson.id }}{% else %}null{% endif %},
-       todayLessonId: {% if upcoming and upcoming.lesson and upcoming.date|date:'Y-m-d' == today_str %}{{ upcoming.lesson.id }}{% else %}null{% endif %}
+       selectedSessionId: {% if selected_session %}{{ selected_session.id }}{% else %}null{% endif %},
+       todayLessonId: {% if upcoming and upcoming.lesson and upcoming.date|date:'Y-m-d' == today_str %}{{ upcoming.lesson.id }}{% else %}null{% endif %},
+       productsPanelUrl: '{% url "students:course_products_panel" klass.id %}',
+       buildProductsUrl(sessionId) {
+          const params = new URLSearchParams();
+          if (sessionId) {
+            params.set('session_id', sessionId);
+          }
+          const query = params.toString();
+          return query ? `${this.productsPanelUrl}?${query}` : this.productsPanelUrl;
+        },
+        loadSessionProducts(sessionId) {
+          if (!sessionId) {
+            return;
+          }
+          this.selectedSessionId = sessionId;
+          const target = document.getElementById('pane-products');
+          if (!target || !window.htmx) {
+            return;
+          }
+          const url = this.buildProductsUrl(sessionId);
+          target.setAttribute('hx-get', url);
+          window.htmx.ajax('GET', url, { target: '#pane-products', swap: 'innerHTML' });
+        }
      }">
-  <header class="mb-3">
-    <button
-       hx-get="{% url 'students:portal_home' %}"
-       hx-target="body"
-       hx-push-url="true"
-       hx-indicator="#main"
-       class="btn btn-light btn-sm d-inline-flex align-items-center gap-2 shadow-sm">
-      <i class="fas fa-arrow-left fa-fw"></i>
-      <span class="d-none d-sm-inline">Quay lại trang học sinh</span>
-    </button>
-  </header>
+  <div id="main">
+    <header class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <a href="#" class="burger-btn d-block d-xl-none">
+        <i class="bi bi-justify fs-3"></i>
+      </a>
+      <button
+        hx-get="{% url 'students:portal_home' %}"
+        hx-target="body"
+        hx-push-url="true"
+        hx-indicator="#main"
+        class="btn btn-light btn-sm d-inline-flex align-items-center gap-2 shadow-sm">
+        <i class="fas fa-arrow-left fa-fw"></i>
+        <span class="d-none d-sm-inline">Quay lại trang học sinh</span>
+      </button>
+    </header>
 
-  <div class="page-heading">
-    <section class="section">
-      <div class="card mb-4 border-0 shadow-sm">
-        <div class="card-body">
-          <div class="row align-items-start">
-            <div class="col-md-6">
-              <h3 class="mb-2">{{ klass.name }}</h3>
-              <p class="text-muted mb-2">
-                Môn học: <strong>{{ subject.name }}</strong>
-              </p>
-              <p class="text-muted mb-1 small">
-                <i class="bi bi-person-badge me-1"></i>
+    <div class="page-heading">
+      <section class="section">
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+          <div class="row g-0 align-items-stretch">
+            <div class="col-lg-4">
+              <div class="ratio ratio-4x3 h-100">
+                {% if subject.avatar_url %}
+                  <img src="{{ subject.avatar_url }}" class="w-100 h-100" style="object-fit: cover;" alt="{{ subject.name }}">
+                {% else %}
+                  <img src="{% static 'compiled/jpg/1.jpg' %}" class="w-100 h-100" style="object-fit: cover;" alt="{{ subject.name }}">
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-lg-8 p-4">
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge bg-primary-subtle text-primary">{{ subject.name }}</span>
+                <span class="badge bg-info-subtle text-info">{{ klass.center.name }}</span>
+                <span class="badge rounded-pill
+                    {% if klass.status == 'ONGOING' %}bg-success-subtle text-success
+                    {% elif klass.status == 'COMPLETED' %}bg-secondary-subtle text-secondary
+                    {% elif klass.status == 'PLANNED' %}bg-warning-subtle text-warning
+                    {% else %}bg-light text-muted{% endif %}">
+                  {{ klass.get_status_display }}
+                </span>
+              </div>
+              <h2 class="mb-2">{{ klass.name }}</h2>
+              <p class="text-muted mb-4">
                 Giáo viên:
                 {% if klass.main_teacher %}
                   <strong>{{ klass.main_teacher.get_full_name }}</strong>
                 {% else %}
                   <strong>Chưa phân công</strong>
                 {% endif %}
+                &middot; Phòng học: {{ klass.room.name|default:"Chưa có" }}
               </p>
-              <p class="text-muted mb-1 small">
-                <i class="bi bi-building me-1"></i>
-                Cơ sở:
-                <strong>{{ klass.center.name }}</strong>
-              </p>
-            </div>
-            <div class="col-md-6">
-              <div class="row g-2 justify-content-md-end">
-                <div class="col-12 col-sm-6">
+
+              <div class="row g-3">
+                <div class="col-md-4">
                   <div class="border rounded-4 p-3 h-100">
-                    <div class="small text-muted mb-1">Lịch học</div>
-                    {% if upcoming %}
-                      <div class="fw-semibold small">
-                        Buổi tiếp theo: {{ upcoming.date|date:"d/m/Y" }}
-                      </div>
-                    {% else %}
-                      <div class="small text-muted">
-                        Theo lịch từng buổi.
-                      </div>
-                    {% endif %}
+                    <div class="small text-muted mb-1">Ngày bắt đầu</div>
+                    <div class="fw-semibold">{{ klass.start_date|date:"d/m/Y"|default:"--" }}</div>
                   </div>
                 </div>
-                <div class="col-12 col-sm-6">
+                <div class="col-md-4">
                   <div class="border rounded-4 p-3 h-100">
-                    <div class="small text-muted mb-1">Tình trạng</div>
-                    {% if upcoming %}
-                      <span class="badge rounded-pill bg-primary-subtle text-primary">
-                        Sắp diễn ra
-                      </span>
-                    {% else %}
-                      <span class="badge rounded-pill bg-secondary-subtle text-secondary">
-                        Khóa học đã kết thúc hoặc chưa có lịch tiếp theo
-                      </span>
-                    {% endif %}
+                    <div class="small text-muted mb-1">Ngày kết thúc</div>
+                    <div class="fw-semibold">{{ klass.end_date|date:"d/m/Y"|default:"--" }}</div>
                   </div>
                 </div>
+                <div class="col-md-4">
+                  <div class="border rounded-4 p-3 h-100">
+                    <div class="small text-muted mb-1">Tình trạng lớp</div>
+                    <div class="fw-semibold">{{ klass.get_status_display }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4">
+                {% include "_session_meta.html" with session=upcoming klass=klass dom_id="session-meta-hero" empty_message="Chưa có buổi học tiếp theo cho lớp này." %}
+              </div>
+
+              <div class="d-flex flex-wrap gap-2 mt-3">
+                <a class="btn btn-outline-secondary"
+                   href="{% url 'students:student_products_list' %}">
+                  <i class="bi bi-collection-play me-1"></i>
+                  Kho dự án
+                </a>
+                <button class="btn text-white"
+                        style="background-color: #24B273; border-radius: 999px;"
+                        hx-get="{% url 'students:product_create' 0 %}"
+                        hx-target="#student-product-modal-content"
+                        data-bs-toggle="modal"
+                        data-bs-target="#student-product-modal">
+                  <i class="bi bi-plus-circle me-1"></i>
+                  Đăng sản phẩm trong khóa
+                </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {# ====== CHƯƠNG TRÌNH HỌC + BUỔI HỌC CHI TIẾT ====== #}
-      <div class="row">
-        {# Cột trái: Chương trình học #}
-        <div class="col-12 col-xl-4">
-          <div class="card border-0 shadow-sm mb-4 mb-xl-0">
-            <div class="card-header bg-white border-0">
-              <h5 class="mb-0">Chương trình học</h5>
-            </div>
-            <div class="card-body">
-              {% if modules %}
-                <div class="accordion" id="modules-accordion">
-                  {% for m in modules %}
-                    <div class="accordion-item mb-2 border-0">
-                      <h2 class="accordion-header" id="heading-{{ m.id }}">
-                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapse-{{ m.id }}"
-                                aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
-                                aria-controls="collapse-{{ m.id }}">
-                          <span class="fw-semibold">{{ m.title }}</span>
-                        </button>
-                      </h2>
-                      <div id="collapse-{{ m.id }}"
-                           class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
-                           aria-labelledby="heading-{{ m.id }}"
-                           data-bs-parent="#modules-accordion">
-                        <div class="accordion-body p-0">
-                          <ul class="list-group list-group-flush">
-                            {% for l in m.lessons.all %}
-                              <li class="list-group-item d-flex align-items-center gap-2"
-                                  :class="{
-                                    'bg-primary-subtle border-start border-3 border-primary': selectedLessonId === {{ l.id }},
-                                    'bg-success-subtle border-start border-3 border-success': todayLessonId === {{ l.id }} && selectedLessonId !== {{ l.id }}
-                                  }">
-                                <div class="flex-grow-1 overflow-hidden me-2"
-                                     style="min-width:0; cursor: pointer;"
-                                     role="button"
-                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}?as=inline&class_id={{ klass.id }}"
-                                     hx-target="#pane-knowledge"
-                                     hx-indicator="#pane-knowledge"
-                                     hx-swap="innerHTML"
-                                     @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'">
-                                  <div class="fw-semibold text-truncate text-break">{{ l.title }}</div>
-                                  {% if upcoming and upcoming.lesson and upcoming.date|date:"Y-m-d" == today_str and l.id == upcoming.lesson.id %}
-                                    <span class="badge bg-success-subtle text-success">Hôm nay</span>
-                                  {% endif %}
-                                  {% if l.objectives %}
-                                    <div class="small text-muted text-truncate">
-                                      {{ l.objectives|truncatechars:80 }}
-                                    </div>
-                                  {% endif %}
-                                </div>
-                                <div class="d-flex flex-shrink-0 gap-2">
-                                  <button
-                                     class="btn btn-sm btn-outline-secondary"
-                                     hx-get="{% url 'curriculum:lesson_detail' l.id %}?as=inline&class_id={{ klass.id }}"
-                                     hx-target="#pane-knowledge"
-                                     hx-indicator="#pane-knowledge"
-                                     hx-swap="innerHTML"
-                                     @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'">
-                                     <i class="bi bi-eye"></i>
-                                  </button>
-                                </div>
-                              </li>
-                            {% empty %}
-                              <li class="list-group-item text-muted small">
-                                Chưa có bài học trong module này.
-                              </li>
-                            {% endfor %}
-                          </ul>
+        <div class="row g-4">
+          <div class="col-12 col-xl-4">
+            <div class="card border-0 shadow-sm mb-4 mb-xl-0">
+              <div class="card-header bg-white border-0">
+                <h5 class="mb-0">Chương trình học</h5>
+              </div>
+              <div class="card-body">
+                {% if modules %}
+                  <div class="accordion" id="modules-accordion">
+                    {% for m in modules %}
+                      <div class="accordion-item mb-2 border-0">
+                        <h2 class="accordion-header" id="heading-{{ m.id }}">
+                          <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}"
+                                  type="button"
+                                  data-bs-toggle="collapse"
+                                  data-bs-target="#collapse-{{ m.id }}"
+                                  aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                                  aria-controls="collapse-{{ m.id }}">
+                            <span class="fw-semibold">{{ m.title }}</span>
+                          </button>
+                        </h2>
+                        <div id="collapse-{{ m.id }}"
+                             class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                             aria-labelledby="heading-{{ m.id }}"
+                             data-bs-parent="#modules-accordion">
+                          <div class="accordion-body p-0">
+                            <ul class="list-group list-group-flush">
+                              {% for l in m.lessons.all %}
+                                {% with linked_session=lesson_sessions|get_item:l.id %}
+                                  <li class="list-group-item d-flex align-items-center gap-2"
+                                      :class="{
+                                        'bg-primary-subtle border-start border-3 border-primary': selectedLessonId === {{ l.id }},
+                                        'bg-success-subtle border-start border-3 border-success': todayLessonId === {{ l.id }} && selectedLessonId !== {{ l.id }}
+                                      }">
+                                    <div class="flex-grow-1 overflow-hidden me-2"
+                                         style="min-width:0; cursor: pointer;"
+                                         role="button"
+                                         hx-get="{% url 'curriculum:lesson_detail' l.id %}?as=inline&class_id={{ klass.id }}"
+                                         hx-target="#pane-knowledge"
+                                         hx-indicator="#pane-knowledge"
+                                         hx-swap="innerHTML"
+                                         @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'; {% if linked_session %}loadSessionProducts({{ linked_session.id }});{% endif %}">
+                                    <div class="fw-semibold text-truncate text-break">{{ l.title }}</div>
+                                    {% if upcoming and upcoming.lesson and upcoming.date|date:"Y-m-d" == today_str and l.id == upcoming.lesson.id %}
+                                      <span class="badge bg-success-subtle text-success">Hôm nay</span>
+                                    {% endif %}
+                                    {% if l.objectives %}
+                                      <div class="small text-muted text-truncate">
+                                        {{ l.objectives|truncatechars:80 }}
+                                      </div>
+                                    {% endif %}
+                                  </div>
+                                  <div class="d-flex flex-shrink-0 gap-2">
+                                    <button
+                                       class="btn btn-sm btn-outline-secondary"
+                                       hx-get="{% url 'curriculum:lesson_detail' l.id %}?as=inline&class_id={{ klass.id }}"
+                                       hx-target="#pane-knowledge"
+                                       hx-indicator="#pane-knowledge"
+                                       hx-swap="innerHTML"
+                                       @click="selectedLessonId={{ l.id }}; selectedLessonTitle='{{ l.title|escapejs }}'; {% if linked_session %}loadSessionProducts({{ linked_session.id }});{% endif %}">
+                                       <i class="bi bi-eye"></i>
+                                    </button>
+                                  </div>
+                                  </li>
+                                {% endwith %}
+                              {% empty %}
+                                <li class="list-group-item text-muted small">
+                                  Chưa có bài học trong module này.
+                                </li>
+                              {% endfor %}
+                            </ul>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  {% endfor %}
-                </div>
-              {% else %}
-                <p class="text-muted mb-0">
-                  Chưa có chương trình học được cấu hình cho môn này.
-                </p>
-              {% endif %}
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <p class="text-muted mb-0">
+                    Chưa có chương trình học được cấu hình cho môn này.
+                  </p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mt-4">
+              <div class="card-header bg-white border-0">
+                <h6 class="mb-0">Thông tin lớp</h6>
+              </div>
+              <div class="card-body small">
+                <dl class="row mb-0">
+                  <dt class="col-5 text-muted">Mã lớp</dt>
+                  <dd class="col-7">{{ klass.code }}</dd>
+                  <dt class="col-5 text-muted">Môn học</dt>
+                  <dd class="col-7">{{ subject.name }}</dd>
+                  <dt class="col-5 text-muted">Trung tâm</dt>
+                  <dd class="col-7">{{ klass.center.name }}</dd>
+                  <dt class="col-5 text-muted">Giáo viên</dt>
+                  <dd class="col-7">{{ klass.main_teacher.get_full_name|default:"Chưa phân công" }}</dd>
+                  <dt class="col-5 text-muted">Phòng học</dt>
+                  <dd class="col-7">{{ klass.room.name|default:"Chưa có" }}</dd>
+                </dl>
+              </div>
             </div>
           </div>
-        </div>
 
-        {# Cột phải: Buổi học + Tabs nội dung #}
-        <div class="col-12 col-xl-8">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-              <h5 class="mb-0 d-flex align-items-center gap-2">
-                <span x-show="selectedLessonTitle"
-                      x-text="selectedLessonTitle ? selectedLessonTitle.toUpperCase() : ''"></span>
-                <span x-show="!selectedLessonTitle">
-                  {% if upcoming and lesson %}
-                    {{ lesson.title|upper }}
-                  {% elif upcoming %}
-                    Buổi học tiếp theo
-                  {% else %}
-                    Thông tin buổi học
-                  {% endif %}
-                </span>
-                <span class="badge bg-success-subtle text-success"
-                      x-show="selectedLessonId && todayLessonId && selectedLessonId === todayLessonId">
-                  Hôm nay
-                </span>
-                {% if upcoming and upcoming.date|date:"Y-m-d" == today_str %}
+          <div class="col-12 col-xl-8">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 d-flex align-items-center gap-2">
+                  <span x-show="selectedLessonTitle"
+                        x-text="selectedLessonTitle ? selectedLessonTitle.toUpperCase() : ''"></span>
+                  <span x-show="!selectedLessonTitle">
+                    {% if lesson %}
+                      {{ lesson.title|upper }}
+                    {% elif selected_session %}
+                      Buổi học {{ selected_session.index }}
+                    {% elif upcoming %}
+                      Buổi học tiếp theo
+                    {% else %}
+                      Thông tin buổi học
+                    {% endif %}
+                  </span>
                   <span class="badge bg-success-subtle text-success"
-                        x-show="!selectedLessonTitle">
+                        x-show="selectedLessonId && todayLessonId && selectedLessonId === todayLessonId">
                     Hôm nay
                   </span>
-                {% endif %}
-              </h5>
-              {% if upcoming %}
-                <span class="badge bg-primary-subtle text-primary">
-                  Sắp diễn ra
-                </span>
-              {% endif %}
-            </div>
-            <div class="card-body">
-
-              {# Thông tin buổi học #}
-              {% if upcoming %}
-                <div class="row mb-3">
-                  <div class="col-md-4 small mb-2">
-                    <i class="bi bi-calendar3 me-1"></i>
-                    {{ upcoming.date|date:"d/m/Y" }}
-                  </div>
-                  <div class="col-md-4 small mb-2">
-                    <i class="bi bi-clock me-1"></i>
-                    {{ upcoming.start_time|time:"H:i"|default:"--:--" }}
-                    {% if upcoming.end_time %}
-                      - {{ upcoming.end_time|time:"H:i" }}
+                  {% with reference_session=selected_session|default:upcoming %}
+                    {% if reference_session and reference_session.date and reference_session.date|date:"Y-m-d" == today_str %}
+                    <span class="badge bg-success-subtle text-success"
+                          x-show="!selectedLessonTitle">
+                      Hôm nay
+                    </span>
                     {% endif %}
-                  </div>
-                  <div class="col-md-4 small mb-2">
-                    <i class="bi bi-person-badge me-1"></i>
-                    {% if klass.main_teacher %}
-                      {{ klass.main_teacher.get_full_name }}
-                    {% else %}
-                      Chưa phân công
-                    {% endif %}
-                  </div>
+                  {% endwith %}
+                </h5>
+                {% with reference_session=selected_session|default:upcoming %}
+                  {% if reference_session and reference_session.date and reference_session.date|date:"Y-m-d" >= today_str %}
+                    <span class="badge bg-primary-subtle text-primary">
+                      Sắp diễn ra
+                    </span>
+                  {% endif %}
+                {% endwith %}
+              </div>
+              <div class="card-body">
+                <div class="mb-3" id="session-meta-wrapper">
+                  {% include "_session_meta.html" with session=selected_session klass=klass empty_message="Chưa có buổi học nào được chọn cho lớp này." %}
                 </div>
-              {% else %}
-                <p class="text-muted mb-3 small">
-                  Chưa có buổi học tiếp theo cho lớp này.
-                </p>
-              {% endif %}
 
-              {# Dãy nút hành động #}
-              <div class="d-flex flex-wrap gap-2 mb-3">
-                {% if upcoming and lesson %}
-                  <button class="btn btn-success"
-                          hx-get="{% url 'curriculum:lesson_detail' lesson.id %}?as=inline&class_id={{ klass.id }}"
-                          hx-target="#pane-knowledge"
-                          hx-swap="innerHTML"
-                          @click="selectedLessonId={{ lesson.id }}; selectedLessonTitle='{{ lesson.title|escapejs }}'">
-                    Xem kiến thức
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  {% if upcoming and lesson %}
+                    <button class="btn btn-success"
+                            hx-get="{% url 'curriculum:lesson_detail' lesson.id %}?as=inline&class_id={{ klass.id }}"
+                            hx-target="#pane-knowledge"
+                            hx-swap="innerHTML"
+                            @click="selectedLessonId={{ lesson.id }}; selectedLessonTitle='{{ lesson.title|escapejs }}'">
+                      Xem kiến thức
+                    </button>
+                  {% else %}
+                    <button class="btn btn-success disabled" aria-disabled="true">
+                      Xem kiến thức
+                    </button>
+                  {% endif %}
+
+                  <button class="btn btn-outline-success disabled" aria-disabled="true">
+                    Làm bài tập
                   </button>
-                {% else %}
-                  <button class="btn btn-success disabled" aria-disabled="true">
-                    Xem kiến thức
-                  </button>
-                {% endif %}
 
-                <button class="btn btn-outline-success disabled" aria-disabled="true">
-                  Làm bài tập
-                </button>
-
-                {% if upcoming %}
                   <button class="btn btn-outline-primary"
-                          hx-get="{% url 'students:product_create' upcoming.id %}"
+                          hx-get="{% url 'students:product_create' 0 %}"
                           hx-target="#student-product-modal-content"
                           data-bs-toggle="modal"
                           data-bs-target="#student-product-modal">
                     Đăng dự án
                   </button>
-                {% else %}
-                  <button class="btn btn-primary" disabled aria-disabled="true">
-                    Đăng dự án
-                  </button>
-                {% endif %}
 
-                <button class="btn btn-outline-secondary disabled" aria-disabled="true">
-                  Xem báo cáo
-                </button>
-                <button class="btn btn-outline-warning disabled" aria-disabled="true">
-                  Gửi đánh giá
-                </button>
-              </div>
-
-              {# Tabs: Kiến thức / Bài tập / Sản phẩm / Báo cáo #}
-              <ul class="nav nav-tabs mb-3" role="tablist">
-                <li class="nav-item" role="presentation">
-                  <button class="nav-link active" id="tab-knowledge"
-                          data-bs-toggle="tab"
-                          data-bs-target="#pane-knowledge"
-                          type="button" role="tab">
-                    Kiến thức
+                  <button class="btn btn-outline-secondary disabled" aria-disabled="true">
+                    Xem báo cáo
                   </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="tab-exercise"
-                          data-bs-toggle="tab"
-                          data-bs-target="#pane-exercise"
-                          type="button" role="tab">
-                    Bài tập
+                  <button class="btn btn-outline-warning disabled" aria-disabled="true">
+                    Gửi đánh giá
                   </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="tab-products"
-                          data-bs-toggle="tab"
-                          data-bs-target="#pane-products"
-                          type="button" role="tab">
-                    Sản phẩm buổi học
-                  </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="tab-report"
-                          data-bs-toggle="tab"
-                          data-bs-target="#pane-report"
-                          type="button" role="tab">
-                    Báo cáo buổi học
-                  </button>
-                </li>
-              </ul>
-
-              <div class="tab-content">
-                {# --- Tab 1: Kiến thức --- #}
-                <div class="tab-pane fade show active"
-                     id="pane-knowledge"
-                     role="tabpanel"
-                     {% if lesson %}
-                     hx-get="{% url 'curriculum:lesson_detail' lesson.id %}?as=inline&class_id={{ klass.id }}"
-                     hx-trigger="load"
-                     hx-swap="innerHTML"
-                     hx-indicator="#pane-knowledge"
-                     {% endif %}>
-                  {% include "_lesson_content.html" %}
                 </div>
 
-                {# --- Tab 2: Bài tập --- #}
-                <div class="tab-pane fade" id="pane-exercise" role="tabpanel">
-                  {% if exercise %}
-                    <div class="mb-2">
-                      <span class="fw-semibold">Mức độ:</span>
-                      <span class="badge bg-light text-muted">
-                        {{ exercise.get_difficulty_display }}
-                      </span>
-                    </div>
-                    {% if exercise.description %}
-                      <div class="mb-2 small" style="white-space: pre-line;">
-                        {{ exercise.description }}
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-knowledge"
+                            data-bs-toggle="tab"
+                            data-bs-target="#pane-knowledge"
+                            type="button" role="tab">
+                      Kiến thức
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-exercise"
+                            data-bs-toggle="tab"
+                            data-bs-target="#pane-exercise"
+                            type="button" role="tab">
+                      Bài tập
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-products"
+                            data-bs-toggle="tab"
+                            data-bs-target="#pane-products"
+                            type="button" role="tab">
+                      Sản phẩm buổi học
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-report"
+                            data-bs-toggle="tab"
+                            data-bs-target="#pane-report"
+                            type="button" role="tab">
+                      Báo cáo buổi học
+                    </button>
+                  </li>
+                </ul>
+
+                <div class="tab-content">
+                  <div class="tab-pane fade show active"
+                       id="pane-knowledge"
+                       role="tabpanel"
+                       {% if lesson %}
+                       hx-get="{% url 'curriculum:lesson_detail' lesson.id %}?as=inline&class_id={{ klass.id }}"
+                       hx-trigger="load"
+                       hx-swap="innerHTML"
+                       hx-indicator="#pane-knowledge"
+                       {% endif %}>
+                    {% include "_lesson_content.html" %}
+                  </div>
+
+                  <div class="tab-pane fade" id="pane-exercise" role="tabpanel">
+                    {% if exercise %}
+                      <div class="mb-2">
+                        <span class="fw-semibold">Mức độ:</span>
+                        <span class="badge bg-light text-muted">
+                          {{ exercise.get_difficulty_display }}
+                        </span>
                       </div>
-                    {% endif %}
-                    {% if exercise.file %}
-                      <p class="small mb-1">
-                        <i class="bi bi-paperclip me-1"></i>
-                        <a href="{{ exercise.file.url }}" target="_blank">
-                          Tải file bài tập
-                        </a>
-                      </p>
-                    {% endif %}
-                    {% if exercise.link_url %}
-                      <p class="small mb-0">
-                        <i class="bi bi-link-45deg me-1"></i>
-                        <a href="{{ exercise.link_url }}" target="_blank">
-                          Mở bài tập online
-                        </a>
-                      </p>
-                    {% endif %}
-                    {% if not exercise.description and not exercise.file and not exercise.link_url %}
-                      <p class="text-muted small mb-0">
-                        Bài tập chưa có nội dung chi tiết.
-                      </p>
-                    {% endif %}
-                    <div class="mt-3">
-                        {% if latest_submission %}
-                          {% if latest_submission.session %}
-                            <a class="btn btn-outline-primary btn-sm" href="{% url 'students:submission_update' latest_submission.id %}?session_id={{ latest_submission.session.id }}&class_id={{ klass.id }}">Chỉnh sửa bài tập</a>
+                      {% if exercise.description %}
+                        <div class="mb-2 small" style="white-space: pre-line;">
+                          {{ exercise.description }}
+                        </div>
+                      {% endif %}
+                      {% if exercise.file %}
+                        <p class="small mb-1">
+                          <i class="bi bi-paperclip me-1"></i>
+                          <a href="{{ exercise.file.url }}" target="_blank">
+                            Tải file bài tập
+                          </a>
+                        </p>
+                      {% endif %}
+                      {% if exercise.link_url %}
+                        <p class="small mb-0">
+                          <i class="bi bi-link-45deg me-1"></i>
+                          <a href="{{ exercise.link_url }}" target="_blank">
+                            Mở bài tập online
+                          </a>
+                        </p>
+                      {% endif %}
+                      {% if not exercise.description and not exercise.file and not exercise.link_url %}
+                        <p class="text-muted small mb-0">
+                          Bài tập chưa có nội dung chi tiết.
+                        </p>
+                      {% endif %}
+                      <div class="mt-3">
+                          {% if latest_submission %}
+                            {% if latest_submission.session %}
+                              <a class="btn btn-outline-primary btn-sm" href="{% url 'students:submission_update' latest_submission.id %}?session_id={{ latest_submission.session.id }}&class_id={{ klass.id }}">Chỉnh sửa bài tập</a>
+                            {% else %}
+                              <a class="btn btn-outline-primary btn-sm" href="{% url 'students:submission_update' latest_submission.id %}?class_id={{ klass.id }}">Chỉnh sửa bài tập</a>
+                            {% endif %}
+                          {% elif upcoming %}
+                            <a class="btn btn-primary btn-sm" href="{% url 'students:submission_create' exercise.id %}?session_id={{ upcoming.id }}&class_id={{ klass.id }}">Nộp bài tập</a>
                           {% else %}
-                            <a class="btn btn-outline-primary btn-sm" href="{% url 'students:submission_update' latest_submission.id %}?class_id={{ klass.id }}">Chỉnh sửa bài tập</a>
+                            <a class="btn btn-outline-primary btn-sm disabled" aria-disabled="true" href="#">Nộp bài tập</a>
                           {% endif %}
-                        {% elif upcoming %}
-                          <a class="btn btn-primary btn-sm" href="{% url 'students:submission_create' exercise.id %}?session_id={{ upcoming.id }}&class_id={{ klass.id }}">Nộp bài tập</a>
-                        {% else %}
-                          <a class="btn btn-outline-primary btn-sm disabled" aria-disabled="true" href="#">Nộp bài tập</a>
-                        {% endif %}
-                    </div>
-                    {% include "_exercise_submissions_list.html" %}
-                  {% else %}
-                    <p class="text-muted small mb-0">
-                      Chưa có bài tập cho bài học này.
-                    </p>
-                  {% endif %}
-                </div>
-
-                {# --- Tab 3: Sản phẩm buổi học --- #}
-                <div class="tab-pane fade" id="pane-products" role="tabpanel">
-                {% if upcoming %}
-                  <div class="d-flex justify-content-end mb-3">
-                    {% if latest_product %}
-                      <button class="btn btn-primary btn-sm"
-                              hx-get="{% url 'students:product_update' latest_product.id %}"
-                              hx-target="#student-product-modal-content"
-                              data-bs-toggle="modal"
-                              data-bs-target="#student-product-modal">
-                        <i class="bi bi-pencil me-1"></i>
-                        Chỉnh sửa sản phẩm buổi {{ upcoming.index }}
-                      </button>
+                      </div>
+                      {% include "_exercise_submissions_list.html" %}
                     {% else %}
-                      <button class="btn btn-primary btn-sm"
-                              hx-get="{% url 'students:product_create' upcoming.id %}"
-                              hx-target="#student-product-modal-content"
-                              data-bs-toggle="modal"
-                              data-bs-target="#student-product-modal">
-                        <i class="bi bi-plus-lg me-1"></i>
-                        Đăng sản phẩm cho buổi {{ upcoming.index }}
-                      </button>
+                      <p class="text-muted small mb-0">
+                        Chưa có bài tập cho bài học này.
+                      </p>
                     {% endif %}
                   </div>
-                {% endif %}
 
-                  {% if session_products %}
-                    <h6 class="mb-3">Sản phẩm của bạn trong buổi học này</h6>
-                    <div class="row g-3">
-                      {% for p in session_products %}
-                        <div class="col-12 col-md-6">
-                          <div class="border rounded-3 p-3 h-100">
-                            <div class="fw-semibold mb-1">{{ p.title }}</div>
-                            {% if p.description %}
-                              <div class="small mb-2" style="white-space: pre-line;">
-                                {{ p.description|truncatechars:200 }}
-                              </div>
-                            {% endif %}
+                  <div class="tab-pane fade" id="pane-products" role="tabpanel"
+                       hx-get="{% url 'students:course_products_panel' klass.id %}{% if selected_session %}?session_id={{ selected_session.id }}{% endif %}"
+                       hx-trigger="reload-products from:body"
+                       hx-swap="innerHTML">
+                    {% include "_course_products_panel.html" %}
+                  </div>
 
-                            {% if p.embed_code %}
-                              <div class="mb-2">
-                                <div class="ratio ratio-16x9 rounded-3 overflow-hidden">
-                                  {{ p.embed_code|safe_embed }}
-                                </div>
-                              </div>
-                            {% elif p.video %}
-                              <div class="mb-2 ratio ratio-16x9 rounded-3 overflow-hidden">
-                                <video controls class="w-100 h-100">
-                                  <source src="{{ p.video.url }}">
-                                </video>
-                              </div>
-                            {% elif p.image %}
-                              <div class="mb-2">
-                                <img src="{{ p.image.url }}" alt="{{ p.title }}"
-                                     class="img-fluid rounded-3">
-                              </div>
-                            {% endif %}
-
-                            {% if p.student_id == request.user.id %}
-                              <div class="mt-3 d-flex gap-2">
-                                <a class="btn btn-outline-primary btn-sm"
-                                   href="{% url 'students:product_update' p.id %}">
-                                  Sửa
-                                </a>
-                                <button
-                                  class="btn btn-outline-danger btn-sm"
-                                  hx-post="{% url 'students:product_delete' p.id %}"
-                                  hx-swap="none"
-                                  data-confirm-title="Xác nhận xóa"
-                                  data-confirm-text="Bạn có chắc muốn xóa dự án này? Hành động không thể hoàn tác."
-                                  data-confirm-button="Xóa">
-                                  Xóa
-                                </button>
-                              </div>
-                            {% endif %}
-                          </div>
-                        </div>
-                      {% endfor %}
-                    </div>
-                  {% else %}
-                    <p class="text-muted small mb-2">
-                      Bạn chưa có sản phẩm nào cho buổi học này.
+                  <div class="tab-pane fade" id="pane-report" role="tabpanel">
+                    <p class="text-muted small mb-0">
+                      Khu vực này có thể hiển thị báo cáo buổi học:
+                      điểm danh, nhận xét của giáo viên, mức độ hoàn thành, v.v.
+                      Bạn có thể kết nối với model báo cáo sau này.
                     </p>
-                  {% endif %}
-
-                  {% if my_products and not session_products %}
-                    <hr>
-                    <h6 class="mb-2">Sản phẩm của bạn trong các buổi khác của khóa này</h6>
-                    <ul class="list-group">
-                      {% for p in my_products %}
-                        <li class="list-group-item small">
-                          <div class="fw-semibold">{{ p.title }}</div>
-                          <div class="text-muted">
-                            Buổi {{ p.session.index }} – {{ p.session.date|date:"d/m/Y" }}
-                          </div>
-                        </li>
-                      {% endfor %}
-                    </ul>
-                  {% endif %}
-                </div>
-
-                {# --- Tab 4: Báo cáo buổi học (placeholder) --- #}
-                <div class="tab-pane fade" id="pane-report" role="tabpanel">
-                  <p class="text-muted small mb-0">
-                    Khu vực này có thể hiển thị báo cáo buổi học:
-                    điểm danh, nhận xét của giáo viên, mức độ hoàn thành, v.v.
-                    Bạn có thể kết nối với model báo cáo sau này.
-                  </p>
+                  </div>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
-      </div>
 
-    </section>
+      </section>
+    </div>
   </div>
 
-  {# Modal dùng chung #}
   <div class="modal fade" id="sessions-modal" tabindex="-1"
        aria-labelledby="sessions-modal-label"
        aria-hidden="true"
@@ -526,7 +468,6 @@
     </div>
   </div>
 
-  {# Modal đăng/chỉnh sửa sản phẩm #}
   <div class="modal fade" id="student-product-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">

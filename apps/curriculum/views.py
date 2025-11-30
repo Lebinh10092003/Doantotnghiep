@@ -1,4 +1,6 @@
 import json
+from datetime import date
+
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required, permission_required
@@ -16,6 +18,7 @@ from django import forms
 
 from .models import Subject, Module, Lesson, Lecture, Exercise
 from apps.students.models import StudentExerciseSubmission
+from apps.class_sessions.models import ClassSession
 from .forms import SubjectForm, ModuleForm, LessonForm, LectureForm, ExerciseForm, ImportCurriculumForm
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
@@ -463,20 +466,47 @@ def lesson_edit_view(request, lesson_id: int):
 @permission_required("curriculum.view_lesson", raise_exception=True)
 def lesson_detail_view(request, lesson_id: int):
     lesson = get_object_or_404(Lesson.objects.select_related('module', 'module__subject', 'lecture', 'exercise'), id=lesson_id)
+    exercise = None
+    try:
+        exercise = lesson.exercise
+    except Lesson.exercise.RelatedObjectDoesNotExist:  # One-to-one may not exist yet
+        exercise = None
+
     exercise_submissions = []
-    if lesson.exercise and request.user.is_authenticated:
+    if exercise and request.user.is_authenticated:
         exercise_submissions = (
             StudentExerciseSubmission.objects.filter(
-                student=request.user, exercise=lesson.exercise
+                student=request.user, exercise=exercise
             )
             .select_related("session")
             .order_by("-created_at")
         )
+    class_session = None
     class_id = request.GET.get("class_id")
+    if class_id:
+        try:
+            class_id_int = int(class_id)
+        except (TypeError, ValueError):
+            class_id_int = None
+        if class_id_int:
+            session_qs = (
+                ClassSession.objects.filter(klass_id=class_id_int, lesson=lesson)
+                .select_related("klass", "klass__main_teacher", "teacher_override")
+                .order_by("date", "start_time", "pk")
+            )
+            if session_qs.exists():
+                dated_sessions = session_qs.exclude(date__isnull=True)
+                class_session = (
+                    dated_sessions.filter(date__gte=date.today()).first()
+                    or dated_sessions.order_by("-date", "-start_time", "-pk").first()
+                    or session_qs.first()
+                )
+
     context = {
         "lesson": lesson,
         "exercise_submissions": exercise_submissions,
         "class_id": class_id,
+        "class_session": class_session,
     }
     # Serve different templates depending on caller context
     as_param = request.GET.get("as")

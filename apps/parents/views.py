@@ -25,6 +25,7 @@ def children_overview(request, default_tab="overview"):
 		"active_tab": active_tab,
 		"summary_metrics": snapshot["summary_metrics"],
 		"recent_updates": snapshot["recent_updates"],
+		"child_display_names": snapshot.get("child_display_names", []),
 	}
 	return render(request, "children_overview.html", context)
 

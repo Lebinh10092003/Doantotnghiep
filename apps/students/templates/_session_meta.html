@@ -1,0 +1,39 @@
+{% with dom_id=dom_id|default:"session-meta" %}
+<div id="{{ dom_id }}" {% if swap_oob %}hx-swap-oob="innerHTML"{% endif %}>
+  {% if session %}
+    <div class="row mb-3">
+      <div class="col-md-4 small mb-2">
+        <i class="bi bi-calendar3 me-1"></i>
+        {% if session.date %}
+          {{ session.date|date:"d/m/Y" }}
+        {% else %}
+          Chưa có ngày
+        {% endif %}
+      </div>
+      <div class="col-md-4 small mb-2">
+        <i class="bi bi-clock me-1"></i>
+        {{ session.start_time|time:"H:i"|default:"--:--" }}
+        {% if session.end_time %}
+          - {{ session.end_time|time:"H:i" }}
+        {% endif %}
+      </div>
+      <div class="col-md-4 small mb-2">
+        <i class="bi bi-person-badge me-1"></i>
+        {% if session.teacher_override %}
+          {{ session.teacher_override.get_full_name|default:session.teacher_override.username }}
+        {% elif klass and klass.main_teacher %}
+          {{ klass.main_teacher.get_full_name|default:klass.main_teacher.username }}
+        {% elif session.klass and session.klass.main_teacher %}
+          {{ session.klass.main_teacher.get_full_name|default:session.klass.main_teacher.username }}
+        {% else %}
+          Chưa phân công
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <p class="text-muted mb-3 small">
+      {{ empty_message|default:"Chưa có buổi học tiếp theo cho lớp này." }}
+    </p>
+  {% endif %}
+</div>
+{% endwith %}
