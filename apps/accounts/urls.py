@@ -7,6 +7,22 @@ urlpatterns = [
     #Đăng nhập và đăng xuất
     path("login/", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),
+    path("password-reset/", views.password_reset_request_view, name="password_reset"),
+    path(
+        "password-reset/done/",
+        views.password_reset_done_view,
+        name="password_reset_done",
+    ),
+    path(
+        "password-reset/<uidb64>/<token>/",
+        views.password_reset_confirm_view,
+        name="password_reset_confirm",
+    ),
+    path(
+        "password-reset/complete/",
+        views.password_reset_complete_view,
+        name="password_reset_complete",
+    ),
     # Quản lý hồ sơ cá nhân
     path("profile/", views.profile_view, name="profile"),
     path("profile/edit/", views.profile_edit_view, name="profile_edit"),

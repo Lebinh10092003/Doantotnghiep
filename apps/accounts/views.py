@@ -1,40 +1,116 @@
 import json
 from datetime import timedelta
-from django.utils.dateparse import parse_date
-from django.http import HttpResponse
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.contrib.auth import authenticate, login, logout, get_user_model, REDIRECT_FIELD_NAME
-from django.shortcuts import get_object_or_404, render, redirect, resolve_url
-from django.contrib.auth.decorators import login_required, permission_required
-from django.contrib.auth.models import Group
-from django.http import HttpResponse, JsonResponse
-from django.core.paginator import Paginator, EmptyPage
-from django.template.loader import render_to_string
-from django.db.models import Q, Count, ProtectedError 
-from apps.centers.models import Center
-from apps.rewards.models import PointAccount, RewardTransaction
-from apps.classes.models import Class
-from .models import ParentStudentRelation
-from .forms import AdminUserCreateForm, AdminUserUpdateForm, ImportUserForm,UserProfileUpdateForm,UserPasswordChangeForm
-from .resources import UserResource
-from tablib import Dataset
-from .forms import SimpleGroupForm
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
+
 from collections import defaultdict, OrderedDict
-from django.contrib.auth import update_session_auth_hash 
-from apps.filters.models import SavedFilter
-from apps.filters.utils import (
-    build_filter_badges,
-    determine_active_filter_name,
-)
-from .filters import UserFilter
+
 from django.conf import settings
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.contrib.auth import (
+    REDIRECT_FIELD_NAME,
+    authenticate,
+    get_user_model,
+    login,
+    logout,
+    update_session_auth_hash,
+)
+from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
+from django.core.paginator import Paginator, EmptyPage
+from django.db.models import Count, ProtectedError, Q
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
+from django.template.loader import render_to_string
+from django.utils.dateparse import parse_date
+from django.utils.encoding import force_str
+from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_POST
+
+from tablib import Dataset
+
+from apps.centers.models import Center
+from apps.classes.models import Class
+from apps.filters.models import SavedFilter
+from apps.filters.utils import build_filter_badges, determine_active_filter_name
+from apps.rewards.models import PointAccount, RewardTransaction
+
+from .filters import UserFilter
+from .forms import (
+    AdminUserCreateForm,
+    AdminUserUpdateForm,
+    ForgotPasswordForm,
+    ImportUserForm,
+    SimpleGroupForm,
+    UserPasswordChangeForm,
+    UserProfileUpdateForm,
+    UserSetPasswordForm,
+)
+from .models import ParentStudentRelation
+from .resources import UserResource
+from .services import send_password_reset_email
+
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
 User = get_user_model()
+PASSWORD_RESET_RATE_LIMIT = getattr(settings, "PASSWORD_RESET_RATE_LIMIT", 5)
+PASSWORD_RESET_RATE_WINDOW = getattr(settings, "PASSWORD_RESET_RATE_WINDOW", 300)
+
+
+def _password_reset_rate_key(request) -> str:
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    client_ip = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "unknown")
+    return f"pwd-reset-rate:{client_ip}"
+
+
+def _is_password_reset_rate_limited(request) -> bool:
+    return cache.get(_password_reset_rate_key(request), 0) >= PASSWORD_RESET_RATE_LIMIT
+
+
+def _increment_password_reset_rate(request):
+    key = _password_reset_rate_key(request)
+    attempts = cache.get(key, 0) + 1
+    cache.set(key, attempts, PASSWORD_RESET_RATE_WINDOW)
+
+
+def _rate_limit_response(request):
+    alert = {
+        "icon": "warning",
+        "title": "Thao tác quá nhanh",
+        "text": "Vui lòng thử lại sau ít phút để bảo vệ tài khoản của bạn.",
+    }
+    if is_htmx_request(request):
+        resp = HttpResponse("", status=429)
+        resp["HX-Trigger"] = json.dumps({"show-sweet-alert": alert})
+        return resp
+    return render(
+        request,
+        "resetpassword/password_reset_form.html",
+        {"form": ForgotPasswordForm(), "rate_limited": True, "alert": alert},
+        status=429,
+    )
+
+
+def _password_reset_success_response(request):
+    alert = {
+        "icon": "success",
+        "title": "Nếu email tồn tại chúng tôi đã gửi hướng dẫn",
+        "text": "Vui lòng kiểm tra hộp thư và làm theo hướng dẫn để đặt lại mật khẩu.",
+    }
+    if is_htmx_request(request):
+        resp = HttpResponse("", status=200)
+        resp["HX-Trigger"] = json.dumps({"show-sweet-alert": alert})
+        return resp
+    return redirect("accounts:password_reset_done")
+
+
+def _resolve_user_from_uid(uidb64):
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        return User.objects.get(pk=uid, is_active=True)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return None
 # Định nghĩa các nhóm không được phép xóa
 PROTECTED_GROUPS = [
     'Admin', 
@@ -137,6 +213,71 @@ def login_view(request):
 
     # GET: render form login
     return render(request, "login.html")
+
+
+@ensure_csrf_cookie
+def password_reset_request_view(request):
+    if request.method == "POST":
+        if _is_password_reset_rate_limited(request):
+            return _rate_limit_response(request)
+
+        form = ForgotPasswordForm(request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            if user and (user.preferred_email() or user.email):
+                send_password_reset_email(user, request)
+            _increment_password_reset_rate(request)
+            return _password_reset_success_response(request)
+    else:
+        form = ForgotPasswordForm()
+
+    return render(request, "resetpassword/password_reset_form.html", {"form": form})
+
+
+def password_reset_done_view(request):
+    return render(request, "resetpassword/password_reset_done.html")
+
+
+@ensure_csrf_cookie
+def password_reset_confirm_view(request, uidb64, token):
+    user = _resolve_user_from_uid(uidb64)
+    if not user or not default_token_generator.check_token(user, token):
+        return render(
+            request,
+            "resetpassword/password_reset_confirm.html",
+            {"validlink": False},
+            status=400,
+        )
+
+    if request.method == "POST":
+        form = UserSetPasswordForm(user, request.POST)
+        if form.is_valid():
+            form.save()
+            if is_htmx_request(request):
+                resp = HttpResponse("")
+                resp["HX-Trigger"] = json.dumps(
+                    {
+                        "show-sweet-alert": {
+                            "icon": "success",
+                            "title": "Đặt lại mật khẩu thành công",
+                            "redirect": resolve_url("accounts:password_reset_complete"),
+                        }
+                    }
+                )
+                return resp
+            return redirect("accounts:password_reset_complete")
+    else:
+        form = UserSetPasswordForm(user)
+
+    return render(
+        request,
+        "resetpassword/password_reset_confirm.html",
+        {"form": form, "validlink": True},
+    )
+
+
+def password_reset_complete_view(request):
+    return render(request, "resetpassword/password_reset_complete.html")
 
 
 @require_POST

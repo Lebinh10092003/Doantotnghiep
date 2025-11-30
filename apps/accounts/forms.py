@@ -2,11 +2,15 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
-from django.contrib.auth.forms import PasswordChangeForm as DjangoPasswordChangeForm
+from django.contrib.auth.forms import (
+    PasswordChangeForm as DjangoPasswordChangeForm,
+    SetPasswordForm as DjangoSetPasswordForm,
+)
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.utils.text import slugify
+from django.db.models import Q
 
 from apps.centers.models import Center
 
@@ -337,3 +341,59 @@ class UserPasswordChangeForm(DjangoPasswordChangeForm):
                 validator.message = 'Mật khẩu không được chỉ chứa các chữ số.'
 
         self.fields['new_password2'].help_text = "Nhập lại mật khẩu mới để xác nhận."
+
+
+class UserSetPasswordForm(DjangoSetPasswordForm):
+    """Customized reset form sharing copy with change-password version."""
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(user, *args, **kwargs)
+        self.fields['new_password1'].label = "Mật khẩu mới"
+        self.fields['new_password1'].help_text = (
+            "<ul>"
+            "<li>Không được quá giống với các thông tin cá nhân khác.</li>"
+            "<li>Phải chứa ít nhất 8 ký tự.</li>"
+            "<li>Không thể là một mật khẩu được sử dụng phổ biến.</li>"
+            "<li>Không thể chỉ chứa số.</li>"
+            "</ul>"
+        )
+        self.fields['new_password2'].label = "Xác nhận mật khẩu mới"
+        self.fields['new_password2'].help_text = "Nhập lại mật khẩu mới để xác nhận."
+
+        self.error_messages['password_mismatch'] = "Mật khẩu xác nhận không khớp. Vui lòng nhập lại."
+
+        for validator in self.fields['new_password1'].validators:
+            if isinstance(validator, password_validation.MinimumLengthValidator):
+                validator.message = 'Mật khẩu phải chứa ít nhất %(min_length)d ký tự.'
+            elif isinstance(validator, password_validation.UserAttributeSimilarityValidator):
+                validator.message = 'Mật khẩu quá giống với thông tin cá nhân khác của bạn.'
+            elif isinstance(validator, password_validation.CommonPasswordValidator):
+                validator.message = 'Mật khẩu quá phổ biến. Vui lòng chọn mật khẩu khác.'
+            elif isinstance(validator, password_validation.NumericPasswordValidator):
+                validator.message = 'Mật khẩu không được chỉ chứa các chữ số.'
+
+
+class ForgotPasswordForm(forms.Form):
+    identifier = forms.CharField(
+        label="Email hoặc số điện thoại",
+        widget=forms.TextInput(attrs={"placeholder": "Nhập email hoặc số điện thoại"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user_cache = None
+
+    def clean_identifier(self):
+        identifier = (self.cleaned_data.get("identifier") or "").strip()
+        if not identifier:
+            raise forms.ValidationError("Vui lòng nhập email hoặc số điện thoại đã đăng ký.")
+
+        lookup = Q(email__iexact=identifier) | Q(phone__iexact=identifier)
+        if identifier.isdigit():
+            lookup = lookup | Q(username__iexact=identifier)
+
+        self.user_cache = User.objects.filter(lookup, is_active=True).first()
+        return identifier
+
+    def get_user(self):
+        return self.user_cache
