@@ -131,8 +131,18 @@ class AdminUserCreateForm(forms.ModelForm):
         if commit:
             user.save()
             self.save_m2m()
-            user.role = groups.first().name if groups else None
-            user.save(update_fields=['role'])
+            selected_groups = groups or self.cleaned_data.get('groups')
+            first_group = None
+            if selected_groups:
+                try:
+                    first_group = selected_groups[0]
+                except (TypeError, KeyError, IndexError):
+                    first_group = selected_groups.first()
+
+            new_role = (first_group.name if first_group else None) or user.role or User._meta.get_field('role').default or 'STUDENT'
+            if user.role != new_role:
+                user.role = new_role
+                user.save(update_fields=['role'])
 
         return user
 
@@ -205,8 +215,17 @@ class AdminUserUpdateForm(forms.ModelForm):
             user.save()
             self.save_m2m()
             groups = self.cleaned_data.get('groups')
-            user.role = groups.first().name if groups and groups.exists() else None
-            user.save(update_fields=['role'])
+            first_group = None
+            if groups:
+                try:
+                    first_group = groups[0]
+                except (TypeError, KeyError, IndexError):
+                    first_group = groups.first()
+
+            new_role = (first_group.name if first_group else None) or user.role or User._meta.get_field('role').default or 'STUDENT'
+            if user.role != new_role:
+                user.role = new_role
+                user.save(update_fields=['role'])
         return user
 
 
