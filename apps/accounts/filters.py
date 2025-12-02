@@ -26,39 +26,81 @@ class UserFilter(django_filters.FilterSet):
         ("center", "Nhóm theo trung tâm"),
     )
 
-    q = django_filters.CharFilter(method="filter_search", label="Từ khóa")
+    q = django_filters.CharFilter(
+        method="filter_search",
+        label="Từ khóa",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Tên, email, số điện thoại hoặc mã",
+            }
+        ),
+    )
     status = django_filters.ChoiceFilter(
-        choices=STATUS_CHOICES, method="filter_status", label="Trạng thái"
+        choices=STATUS_CHOICES,
+        method="filter_status",
+        label="Trạng thái",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
     role = django_filters.ChoiceFilter(
-        label="Vai trò", choices=(), field_name="groups__name", lookup_expr="exact"
+        label="Vai trò",
+        choices=(),
+        field_name="groups__name",
+        lookup_expr="exact",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
     group = django_filters.ModelChoiceFilter(
-        queryset=Group.objects.none(), label="Nhóm (Group)", field_name="groups"
+        queryset=Group.objects.none(),
+        label="Nhóm (Group)",
+        field_name="groups",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
     center = django_filters.ModelChoiceFilter(
-        queryset=Center.objects.none(), label="Trung tâm"
+        queryset=Center.objects.none(),
+        label="Trung tâm",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
     is_staff = django_filters.ChoiceFilter(
-        choices=BOOLEAN_CHOICES, method="filter_is_staff", label="Là nhân viên?"
+        choices=BOOLEAN_CHOICES,
+        method="filter_is_staff",
+        label="Là nhân viên?",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
     is_superuser = django_filters.ChoiceFilter(
-        choices=BOOLEAN_CHOICES, method="filter_is_superuser", label="Là superuser?"
+        choices=BOOLEAN_CHOICES,
+        method="filter_is_superuser",
+        label="Là superuser?",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
     date_joined_from = django_filters.DateFilter(
-        field_name="date_joined", lookup_expr="date__gte", label="Ngày tạo từ"
+        field_name="date_joined",
+        lookup_expr="date__gte",
+        label="Ngày tạo từ",
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
     )
     date_joined_to = django_filters.DateFilter(
-        field_name="date_joined", lookup_expr="date__lte", label="Ngày tạo đến"
+        field_name="date_joined",
+        lookup_expr="date__lte",
+        label="Ngày tạo đến",
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
     )
     last_login_from = django_filters.DateFilter(
-        field_name="last_login", lookup_expr="date__gte", label="Đăng nhập cuối từ"
+        field_name="last_login",
+        lookup_expr="date__gte",
+        label="Đăng nhập cuối từ",
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
     )
     last_login_to = django_filters.DateFilter(
-        field_name="last_login", lookup_expr="date__lte", label="Đăng nhập cuối đến"
+        field_name="last_login",
+        lookup_expr="date__lte",
+        label="Đăng nhập cuối đến",
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
     )
     group_by = django_filters.ChoiceFilter(
-        choices=GROUP_BY_CHOICES, method="filter_group_by", label="Nhóm theo"
+        choices=GROUP_BY_CHOICES,
+        method="filter_group_by",
+        label="Nhóm theo",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
 
     class Meta:

@@ -30,7 +30,7 @@
             </span>
             <div>
               <div class="fw-semibold">{{ row.enrollment.student.display_name_with_email }}</div>
-              <div class="text-muted small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.username }}</div>
+              <div class="text-muted small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.display_name_with_email }}</div>
               {% if row.parent_names %}
               <div class="text-muted small">
                 Phụ huynh: {% for fn, ln in row.parent_names %}{{ ln }} {{ fn }}{% if not forloop.last %}, {% endif %}{% endfor %}

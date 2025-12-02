@@ -1,0 +1,136 @@
+{% load humanize %}
+
+<div x-data="{showFilters:false, modalTitle:'Bộ lọc'}">
+  {% include "_filter_ui_controls.html" with filter=filter active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='filterable-content' %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="p-3 border rounded bg-light h-100">
+        <div class="text-muted text-uppercase small">Số học sinh</div>
+        <div class="fs-4 fw-semibold mb-0">{{ summary.total_students|default:0|intcomma }}</div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="p-3 border rounded bg-light h-100">
+        <div class="text-muted text-uppercase small">Tổng lượt đánh giá</div>
+        <div class="fs-4 fw-semibold mb-0">{{ summary.total_assessments|default:0|intcomma }}</div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="p-3 border rounded bg-light h-100">
+        <div class="text-muted text-uppercase small">Đã chấm điểm</div>
+        <div class="fs-4 fw-semibold mb-0 text-success">{{ summary.scored_assessments|default:0|intcomma }}</div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="p-3 border rounded bg-light h-100">
+        <div class="text-muted text-uppercase small">Điểm trung bình chung</div>
+        <div class="fs-4 fw-semibold mb-0">{% if summary.avg_score %}{{ summary.avg_score|floatformat:1 }}{% else %}—{% endif %}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Học sinh</th>
+              <th>Trung tâm</th>
+              <th class="text-center">Lượt đánh giá</th>
+              <th class="text-center">Đã chấm</th>
+              <th class="text-center">Điểm TB</th>
+              <th class="text-center">Cao nhất</th>
+              <th class="text-center">Thấp nhất</th>
+              <th>Buổi gần nhất</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if page_obj and page_obj.object_list %}
+              {% for student in page_obj %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ student.display_name_with_email }}</div>
+                  <small class="text-muted">{{ student.user_code|default:student.preferred_email|default:"Chưa có thông tin" }}</small>
+                </td>
+                <td>{{ student.center.name|default:"—" }}</td>
+                <td class="text-center">{{ student.assessments_count|default:0|intcomma }}</td>
+                <td class="text-center text-success">{{ student.completed_count|default:0|intcomma }}</td>
+                <td class="text-center">{% if student.avg_score %}{{ student.avg_score|floatformat:1 }}{% else %}—{% endif %}</td>
+                <td class="text-center">{% if student.max_score %}{{ student.max_score|floatformat:1 }}{% else %}—{% endif %}</td>
+                <td class="text-center">{% if student.min_score %}{{ student.min_score|floatformat:1 }}{% else %}—{% endif %}</td>
+                <td>{% if student.last_session_date %}{{ student.last_session_date|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">Chưa có dữ liệu phù hợp.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    <div class="card-footer border-0 bg-light">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div class="text-muted small mb-0">
+          Trang {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+        </div>
+        <nav aria-label="Phân trang kết quả học sinh">
+          <ul class="pagination justify-content-end mb-0">
+            <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+              {% if page_obj.has_previous %}
+              <a class="page-link"
+                 hx-get="{{ request.path }}?page={{ page_obj.previous_page_number }}{% if current_query_params %}&{{ current_query_params }}{% endif %}"
+                 hx-target="#filterable-content"
+                 hx-swap="innerHTML"
+                 hx-push-url="true">Trước</a>
+              {% else %}
+              <span class="page-link" aria-disabled="true">Trước</span>
+              {% endif %}
+            </li>
+            <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+              {% if page_obj.has_next %}
+              <a class="page-link"
+                 hx-get="{{ request.path }}?page={{ page_obj.next_page_number }}{% if current_query_params %}&{{ current_query_params }}{% endif %}"
+                 hx-target="#filterable-content"
+                 hx-swap="innerHTML"
+                 hx-push-url="true">Sau</a>
+              {% else %}
+              <span class="page-link" aria-disabled="true">Sau</span>
+              {% endif %}
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="modal fade" id="filter-modal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterModalLabel" x-text="modalTitle">Bộ lọc</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="filter-modal-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.detail && evt.detail.target && evt.detail.target.id === 'filter-modal-content') {
+      const modalEl = document.getElementById('filter-modal');
+      if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+      }
+    }
+  });
+</script>

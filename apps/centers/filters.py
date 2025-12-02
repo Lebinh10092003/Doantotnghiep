@@ -17,12 +17,27 @@ class CenterFilter(django_filters.FilterSet):
         ("inactive", "Không hoạt động"),
     )
 
-    q = django_filters.CharFilter(method="filter_search", label="Tìm kiếm")
+    q = django_filters.CharFilter(
+        method="filter_search",
+        label="Tìm kiếm",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Tên, mã, địa chỉ, email hoặc số điện thoại",
+            }
+        ),
+    )
     status = django_filters.ChoiceFilter(
-        choices=STATUS_CHOICES, method="filter_status", label="Trạng thái"
+        choices=STATUS_CHOICES,
+        method="filter_status",
+        label="Trạng thái",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
     group_by = django_filters.ChoiceFilter(
-        choices=GROUP_BY_CHOICES, method="filter_group_by", label="Nhóm theo"
+        choices=GROUP_BY_CHOICES,
+        method="filter_group_by",
+        label="Nhóm theo",
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),
     )
 
     class Meta:

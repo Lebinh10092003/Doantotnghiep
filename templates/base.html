@@ -343,32 +343,37 @@
                     {% endif %}
 
                     {% if perms.assessments.view_assessment and perms.assessments.add_assessment and perms.assessments.change_assessment and perms.assessments.delete_assessment %}
-                    <li class="sidebar-item has-sub {% if '/assessments/' in request.path %}active{% endif %}">
+                    {% with request.resolver_match.view_name|default:'' as current_assessment_view %}
+                    <li class="sidebar-item has-sub {% if request.resolver_match.app_name|default:'' == 'assessments' %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-clipboard-check"></i>
                             <span>Đánh giá</span>
                         </a>
-                        <ul class="submenu">
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                        {% url 'assessments:assessment_list' as assessments_list_url %}
+                        {% url 'assessments:student_results' as assessments_student_results_url %}
+                        {% url 'assessments:assessment_summary' as assessments_summary_url %}
+                        <ul class="submenu {% if request.resolver_match.app_name|default:'' == 'assessments' %}active{% endif %}">
+                            <li class="submenu-item {% if current_assessment_view == 'assessments:assessment_list' %}active{% endif %}">
+                                <a href="{{ assessments_list_url }}" class="submenu-link">
                                     <i class="bi bi-list-check"></i>
                                     <span>Danh sách bài đánh giá</span>
                                 </a>
                             </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if current_assessment_view == 'assessments:student_results' %}active{% endif %}">
+                                <a href="{{ assessments_student_results_url }}" class="submenu-link">
                                     <i class="bi bi-bar-chart"></i>
                                     <span>Kết quả học sinh</span>
                                 </a>
                             </li>
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if current_assessment_view == 'assessments:assessment_summary' %}active{% endif %}">
+                                <a href="{{ assessments_summary_url }}" class="submenu-link">
                                     <i class="bi bi-file-earmark-bar-graph"></i>
                                     <span>Báo cáo tổng hợp</span>
                                 </a>
                             </li>
                         </ul>
                     </li>
+                    {% endwith %}
                     {% endif %}
                     {% if user.is_authenticated %}
                     <li class="sidebar-item has-sub {% if request.resolver_match.view_name == 'students:student_products_list' or request.resolver_match.view_name == 'students:student_products_my' %}active{% endif %}">

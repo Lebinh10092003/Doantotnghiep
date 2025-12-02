@@ -6,28 +6,45 @@ function hideNativeSelect(el) {
         el.classList.add(NATIVE_SELECT_HIDE_CLASS);
     }
     el.setAttribute('aria-hidden', 'true');
+    el.setAttribute('hidden', 'hidden');
+    try {
+        el.style.setProperty('display', 'none', 'important');
+        el.style.setProperty('visibility', 'hidden', 'important');
+    } catch (_) { /* noop */ }
 }
 
 /**
  * Hàm khởi tạo TomSelect cho các ô input.
  * Hàm này phải được gọi SAU KHI thư viện tom-select.js đã được tải.
  */
-function initializeTomSelect(elements) {
+function initializeTomSelect(elements, retryCount = 0) {
     if (typeof elements.forEach !== 'function') return;
+
+    if (typeof TomSelect === 'undefined') {
+        if (retryCount < 5) {
+            setTimeout(() => initializeTomSelect(elements, retryCount + 1), 100 * (retryCount + 1));
+        }
+        return;
+    }
+
     elements.forEach((el) => {
-        if (!el.classList.contains('tomselected')) {
-            let tom = new TomSelect(el, {
-                create: true, // Đảm bảo có thể tạo giá trị mới nếu cần
-                sortField: { field: "text", direction: "asc" },
-                openOnFocus: true, 
-            });
-            // Đánh dấu là đã khởi tạo
-            el.tomselect = tom;
+        if (el.tomselect && typeof el.tomselect.destroy === 'function') {
+            el.removeAttribute('hidden');
+            try {
+                el.style.removeProperty('display');
+                el.style.removeProperty('visibility');
+            } catch (_) { /* noop */ }
+            el.tomselect.destroy();
         }
 
-        if (el.classList.contains('tomselected') || el.tomselect) {
-            hideNativeSelect(el);
-        }
+        const tom = new TomSelect(el, {
+            create: true, // Cho phép thêm giá trị mới khi cần
+            sortField: { field: "text", direction: "asc" },
+            openOnFocus: true,
+        });
+
+        el.tomselect = tom;
+        hideNativeSelect(el);
     });
 }
 

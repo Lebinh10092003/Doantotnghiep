@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Báo cáo tổng hợp đánh giá{% endblock %}
+
+{% block content %}
+<div id="main">
+  <div class="page-heading">
+    <div class="page-title">
+      <div class="row align-items-center">
+        <div class="col-12 col-md-8 order-md-1 order-last">
+          <h3 class="mb-1">Báo cáo tổng hợp đánh giá</h3>
+          <p class="text-muted mb-0">Tổng quan hiệu suất đánh giá theo trung tâm, lớp học và học sinh.</p>
+        </div>
+        <div class="col-12 col-md-4 order-md-2 order-first text-md-end mt-3 mt-md-0">
+          <a href="{% url 'assessments:assessment_summary' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-clockwise"></i> Làm mới
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-xl-3">
+        <div class="p-3 border rounded bg-light h-100">
+          <div class="text-muted text-uppercase small">Tổng lượt đánh giá</div>
+          <div class="fs-4 fw-semibold mb-1">{{ stats.total_assessments|default:0|intcomma }}</div>
+          <small class="text-muted">{{ stats.distinct_students|default:0|intcomma }} học sinh • {{ stats.distinct_classes|default:0|intcomma }} lớp</small>
+        </div>
+      </div>
+      <div class="col-12 col-xl-3">
+        <div class="p-3 border rounded bg-light h-100">
+          <div class="text-muted text-uppercase small">Đã chấm điểm</div>
+          <div class="fs-4 fw-semibold mb-1 text-success">{{ stats.scored_assessments|default:0|intcomma }}</div>
+          <small class="text-muted">Còn {{ stats.pending_assessments|default:0|intcomma }} nhận xét chờ chấm</small>
+        </div>
+      </div>
+      <div class="col-12 col-xl-3">
+        <div class="p-3 border rounded bg-light h-100">
+          <div class="text-muted text-uppercase small">Điểm trung bình</div>
+          <div class="fs-4 fw-semibold mb-1">{% if stats.avg_score %}{{ stats.avg_score|floatformat:1 }}{% else %}—{% endif %}</div>
+          <small class="text-muted">{{ stats.latest_session|date:"d/m/Y"|default:"Chưa có buổi học" }} cập nhật cuối</small>
+        </div>
+      </div>
+      <div class="col-12 col-xl-3">
+        <div class="p-3 border rounded bg-light h-100">
+          <div class="text-muted text-uppercase small">Phân bổ điểm</div>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="badge bg-success-subtle text-success">>= 9: {{ score_distribution.excellent }}</span>
+            <span class="badge bg-primary-subtle text-primary">8-8.9: {{ score_distribution.good }}</span>
+            <span class="badge bg-info-subtle text-info">6.5-7.9: {{ score_distribution.fair }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <div class="col-12 col-xl-6">
+        <div class="card h-100">
+          <div class="card-header bg-transparent border-0 pb-0">
+            <h6 class="mb-0">Phân bố theo mức điểm</h6>
+            <small class="text-muted">Tỷ trọng lượt đánh giá theo thang điểm.</small>
+          </div>
+          <div class="card-body">
+            {% with total=score_distribution_total %}
+            {% if total %}
+              <div class="d-flex flex-column gap-3">
+                <div>
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span>Xuất sắc (&gt;=9)</span>
+                    <span>{% widthratio score_distribution.excellent total 100 %}% • {{ score_distribution.excellent|intcomma }}</span>
+                  </div>
+                  <div class="progress" style="height:6px;">
+                    <div class="progress-bar bg-success" style="width: {% widthratio score_distribution.excellent total 100 %}%;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span>Tốt (8 - 8.9)</span>
+                    <span>{% widthratio score_distribution.good total 100 %}% • {{ score_distribution.good|intcomma }}</span>
+                  </div>
+                  <div class="progress" style="height:6px;">
+                    <div class="progress-bar bg-primary" style="width: {% widthratio score_distribution.good total 100 %}%;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span>Khá (6.5 - 7.9)</span>
+                    <span>{% widthratio score_distribution.fair total 100 %}% • {{ score_distribution.fair|intcomma }}</span>
+                  </div>
+                  <div class="progress" style="height:6px;">
+                    <div class="progress-bar bg-info" style="width: {% widthratio score_distribution.fair total 100 %}%;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span>Trung bình (5 - 6.4)</span>
+                    <span>{% widthratio score_distribution.average total 100 %}% • {{ score_distribution.average|intcomma }}</span>
+                  </div>
+                  <div class="progress" style="height:6px;">
+                    <div class="progress-bar bg-warning" style="width: {% widthratio score_distribution.average total 100 %}%;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span>Dưới trung bình (&lt;5)</span>
+                    <span>{% widthratio score_distribution.below_average total 100 %}% • {{ score_distribution.below_average|intcomma }}</span>
+                  </div>
+                  <div class="progress" style="height:6px;">
+                    <div class="progress-bar bg-danger" style="width: {% widthratio score_distribution.below_average total 100 %}%;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="d-flex justify-content-between small mb-1">
+                    <span>Chưa có điểm</span>
+                    <span>{% widthratio score_distribution.no_score total 100 %}% • {{ score_distribution.no_score|intcomma }}</span>
+                  </div>
+                  <div class="progress" style="height:6px;">
+                    <div class="progress-bar bg-secondary" style="width: {% widthratio score_distribution.no_score total 100 %}%;"></div>
+                  </div>
+                </div>
+              </div>
+            {% else %}
+              <p class="text-muted mb-0">Chưa có dữ liệu điểm để thống kê.</p>
+            {% endif %}
+            {% endwith %}
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-6">
+        <div class="card h-100">
+          <div class="card-header bg-transparent border-0 pb-0">
+            <h6 class="mb-0">Lớp có kết quả nổi bật</h6>
+            <small class="text-muted">Top 5 lớp có điểm trung bình cao nhất.</small>
+          </div>
+          <div class="card-body">
+            {% if top_classes %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Lớp</th>
+                    <th>Trung tâm</th>
+                    <th class="text-center">Lượt</th>
+                    <th class="text-center">Học sinh</th>
+                    <th class="text-center">Điểm TB</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for klass in top_classes %}
+                  <tr>
+                    <td>
+                      <div class="fw-semibold">{{ klass.session__klass__name }}</div>
+                      <small class="text-muted">{{ klass.session__klass__code }}</small>
+                    </td>
+                    <td>{{ klass.session__klass__center__name }}</td>
+                    <td class="text-center">{{ klass.assessment_count|intcomma }}</td>
+                    <td class="text-center">{{ klass.student_count|intcomma }}</td>
+                    <td class="text-center text-success">{{ klass.avg_score|floatformat:1 }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">Chưa có đủ dữ liệu chấm điểm.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header bg-transparent border-0 pb-0">
+        <h6 class="mb-0">Thống kê theo trung tâm</h6>
+        <small class="text-muted">Chi tiết lượt đánh giá và điểm trung bình tại mỗi trung tâm.</small>
+      </div>
+      <div class="card-body">
+        {% if center_stats %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Trung tâm</th>
+                <th class="text-center">Lượt đánh giá</th>
+                <th class="text-center">Học sinh tham gia</th>
+                <th class="text-center">Điểm trung bình</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for center in center_stats %}
+              <tr>
+                <td>{{ center.session__klass__center__name }}</td>
+                <td class="text-center">{{ center.assessment_count|intcomma }}</td>
+                <td class="text-center">{{ center.student_count|intcomma }}</td>
+                <td class="text-center">{{ center.avg_score|floatformat:1 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Chưa có dữ liệu điểm cho bất kỳ trung tâm nào.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header bg-transparent border-0 pb-0">
+        <h6 class="mb-0">Các lượt đánh giá gần đây</h6>
+        <small class="text-muted">10 bản ghi mới cập nhật nhất.</small>
+      </div>
+      <div class="card-body">
+        {% if recent_assessments %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Ngày</th>
+                <th>Lớp &amp; Buổi</th>
+                <th>Học sinh</th>
+                <th class="text-center">Điểm</th>
+                <th>Nhận xét</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for assessment in recent_assessments %}
+              <tr>
+                <td>{{ assessment.session.date|date:"d/m/Y"|default:"—" }}</td>
+                <td>
+                  <div class="fw-semibold">{{ assessment.session.klass.name }}</div>
+                  <small class="text-muted">Buổi {{ assessment.session.index }}</small>
+                </td>
+                <td>{{ assessment.student.preferred_full_name }}</td>
+                <td class="text-center">{% if assessment.score is not None %}{{ assessment.score|floatformat:1 }}{% else %}—{% endif %}</td>
+                <td>{{ assessment.remark|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Chưa có lượt đánh giá nào.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

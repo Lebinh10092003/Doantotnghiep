@@ -39,7 +39,7 @@
             </div>
             <div class="ms-3 name">
               <h5 id="profile-header-name" class="font-bold">{{ user.display_name_with_email }}</h5>
-              <h6 class="text-muted mb-0">@{{ user.username }} - {{ user.role|default:"Thành viên" }}</h6>
+              <h6 class="text-muted mb-0">{{ user.preferred_email|default:"Chưa có email" }} - {{ user.role|default:"Thành viên" }}</h6>
             </div>
           </div>
         </div>

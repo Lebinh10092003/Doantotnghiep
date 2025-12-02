@@ -52,7 +52,7 @@
                             {% render_field field class+="form-check-input" %}
                         </div>
                     {% elif field.field.widget.input_type == 'select' %}
-                        {% render_field field class+="form-select" %}
+                        {% render_field field class+="form-select tom-select" %}
                     {% elif field.field.widget.input_type == 'file' and user.avatar %}
                          <p class="form-text mb-1">Ảnh hiện tại: <a href="{{ user.avatar.url }}" target="_blank">{{ user.avatar.name }}</a></p>
                          {% render_field field class+="form-control" %}

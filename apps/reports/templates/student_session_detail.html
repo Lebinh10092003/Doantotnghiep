@@ -27,7 +27,7 @@
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
           <div>
             <div class="fw-semibold">Học viên: {{ enrollment.student.display_name_with_email }}</div>
-            <div class="text-muted small">Mã: {{ enrollment.student.user_code|default:enrollment.student.username }}</div>
+            <div class="text-muted small">Mã: {{ enrollment.student.user_code|default:enrollment.student.display_name_with_email }}</div>
           </div>
           <div class="text-end">
             <div class="fw-semibold">{{ enrollment.klass.code }} - {{ enrollment.klass.name }}</div>

@@ -453,6 +453,21 @@ def user_create_view(request):
 def user_delete_view(request):
     # Hỗ trợ cả xóa đơn và xóa hàng loạt
     user_ids = request.POST.getlist('user_ids[]') or request.POST.getlist('user_ids')
+    single_user_id = request.POST.get('single_user_id')
+    if single_user_id:
+        user_ids = list(user_ids) + [single_user_id]
+    else:
+        user_ids = list(user_ids)
+    user_ids = [uid for uid in user_ids if uid]
+    # Preserve order while removing duplicates
+    seen_ids = set()
+    deduped_user_ids = []
+    for uid in user_ids:
+        if uid not in seen_ids:
+            deduped_user_ids.append(uid)
+            seen_ids.add(uid)
+    user_ids = deduped_user_ids
+
     original_count = len(user_ids)
 
     if not user_ids:
@@ -472,7 +487,7 @@ def user_delete_view(request):
             if original_count == 1 and user_ids_to_delete:
                 user_instance = users_to_delete_qs.first()
                 if user_instance:
-                    deleted_users_info.append(user_instance.username)
+                    deleted_users_info.append(user_instance.display_name_with_email())
 
             # users_to_delete_qs.delete()
             users_to_delete_qs.update(is_active=False)
@@ -498,7 +513,7 @@ def user_delete_view(request):
             if original_count == 1 and deleted_users_info:
                 alert = {
                     "icon": "success",
-                    "title": f"Đã vô hiệu hóa người dùng '{deleted_users_info[0]}' thành công."
+                    "title": f"Đã vô hiệu hóa {deleted_users_info[0]} thành công."
                 }
             else:
                 alert = {

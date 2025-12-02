@@ -59,8 +59,8 @@
               {% for e in active_enrollments %}
                 {% if e.student %}
                 <tr>
-                  <td>{{ e.student.display_name_with_email }}</td>
-                  <td class="text-muted">{{ e.student.username }}</td>
+                  <td>{{ e.student.preferred_full_name }}</td>
+                  <td class="text-muted">{{ e.student.display_name_with_email }}</td>
                   <td>{{ e.joined_at|date:"d/m/Y" }}</td>
                   <td><span class="badge bg-success">Đang học</span></td>
                 </tr>

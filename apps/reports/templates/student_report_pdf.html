@@ -41,7 +41,7 @@
         <div class="row">
           <div class="col">
             <div class="title">{{ row.enrollment.student.display_name_with_email }}</div>
-            <div class="small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.username }}</div>
+            <div class="small">Mã: {{ row.enrollment.student.user_code|default:row.enrollment.student.display_name_with_email }}</div>
             {% if row.parent_names %}
             <div class="small">Phụ huynh: {% for fn, ln in row.parent_names %}{{ ln }} {{ fn }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
             {% endif %}

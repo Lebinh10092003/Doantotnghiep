@@ -90,7 +90,7 @@
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.gender.id_for_label }}" class="form-label">{{ form.gender.label }} <span class="text-danger">*</span></label>
-                    {% render_field form.gender class+="form-select" required="required" %}
+                    {% render_field form.gender class+="form-select tom-select" required="required" %}
                     {% for error in form.gender.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>
                     {% endfor %}
@@ -131,7 +131,7 @@
             <div class="col-md-6">
                 <div class="mb-3">
                     <label for="{{ form.center.id_for_label }}" class="form-label">{{ form.center.label }}</label>
-                    {% render_field form.center class+="form-select" %}
+                    {% render_field form.center class+="form-select tom-select" %}
                     <div class="form-text">Bắt buộc nếu chọn nhóm nhân sự EDS.</div>
                     {% for error in form.center.errors %}
                         <div class="invalid-feedback d-block">{{ error }}</div>

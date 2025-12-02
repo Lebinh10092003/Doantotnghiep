@@ -6,12 +6,18 @@ from apps.accounts.models import User
 
 class UserChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
-        return f"{obj.get_full_name() or obj.username} ({obj.email} - {obj.username})"
+        display = obj.display_name_with_email()
+        if display:
+            return display
+        return obj.preferred_full_name() if hasattr(obj, "preferred_full_name") else obj.get_full_name() or (obj.email or obj.username)
 
 
 class UserMultipleChoiceField(forms.ModelMultipleChoiceField):
     def label_from_instance(self, obj):
-        return f"{obj.get_full_name() or obj.username} ({obj.email} - {obj.username})"
+        display = obj.display_name_with_email()
+        if display:
+            return display
+        return obj.preferred_full_name() if hasattr(obj, "preferred_full_name") else obj.get_full_name() or (obj.email or obj.username)
 
 
 class ClassForm(forms.ModelForm):

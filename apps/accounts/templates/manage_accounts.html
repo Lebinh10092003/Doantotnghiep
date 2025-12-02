@@ -71,7 +71,8 @@
             <div id="accounts-filterable-content"
                  hx-get="{% url 'accounts:manage_accounts' %}{% if current_query_params %}?{{ current_query_params }}{% endif %}"
                  hx-trigger="load, reload-accounts-table from:body"
-                 hx-swap="innerHTML">
+                 hx-swap="innerHTML"
+                 hx-params="not csrfmiddlewaretoken, user_ids">
               <div class="text-center p-5">
                 <span class="spinner-border" role="status"></span>
                 Đang tải dữ liệu...

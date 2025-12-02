@@ -38,8 +38,8 @@
                 <img src="{% static 'assets/images/faces/1.jpg' %}" class="rounded-circle me-2" style="width:32px; height:32px;" alt="Avatar">
               {% endif %}
               <div>
-                <div class="fw-semibold">{{ u.display_name_with_email }}</div>
-                <div class="text-muted small">@{{ u.username }}</div>
+                <div class="fw-semibold">{{ u.preferred_full_name }}</div>
+                <div class="text-muted small">{{ u.preferred_email|default:u.display_name_with_email }}</div>
               </div>
             </div>
           </td>
@@ -49,7 +49,7 @@
             <button type="button" class="btn btn-info btn-sm"
                     hx-get="{% url 'accounts:user_detail' u.id %}?from_group=1"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chi tiết người dùng: {{ u.username|escapejs }}'"
+                    @click="modalTitle = 'Chi tiết người dùng: {{ u.display_name_with_email|escapejs }}'"
                     title="Xem chi tiết">
               <i class="bi bi-eye"></i>
             </button>

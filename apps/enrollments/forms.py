@@ -122,7 +122,7 @@ class EnrollmentForm(forms.ModelForm):
         field_student = self.fields["student"]
         field_student.queryset = base_students.order_by("last_name", "first_name").distinct()
         field_student.label_from_instance = (
-            lambda obj: f"{obj.get_full_name() or obj.username} | {obj.email or '-'} | {obj.phone or '-'} | {obj.national_id or '-'}"
+            lambda obj: f"{obj.display_name_with_email()} | {obj.phone or '-'} | {obj.national_id or '-'}"
         )
         field_student.widget.attrs.update(
             {
@@ -135,7 +135,7 @@ class EnrollmentForm(forms.ModelForm):
         parent_qs = User.objects.filter(role="PARENT")
         self.fields["parent_existing"].queryset = parent_qs.order_by("last_name", "first_name").distinct()
         self.fields["parent_existing"].label_from_instance = (
-            lambda obj: f"{obj.get_full_name() or obj.username} | {obj.email or '-'} | {obj.phone or '-'} | {obj.national_id or '-'}"
+            lambda obj: f"{obj.display_name_with_email()} | {obj.phone or '-'} | {obj.national_id or '-'}"
         )
         self.fields["parent_existing"].widget.attrs.update(
             {

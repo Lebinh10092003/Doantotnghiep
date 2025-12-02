@@ -32,7 +32,7 @@
                 <div class="mb-3">
                     <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
                     {% if field.field.widget.input_type == 'select' %}
-                        {% render_field field class+="form-select" %}
+                        {% render_field field class+="form-select tom-select" %}
                     {% else %}
                         {% render_field field class+="form-control" %}
                     {% endif %}

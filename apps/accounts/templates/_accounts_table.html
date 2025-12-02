@@ -24,7 +24,7 @@
       {% for user in role_group.list %}
       <tr>
         <td><input type="checkbox" name="user_ids" value="{{ user.id }}"></td>
-        <td>{{ user.get_full_name }}</td>
+        <td>{{ user.preferred_full_name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
         <td>
@@ -79,7 +79,7 @@
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.display_name_with_email|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
             {% endif %}
@@ -88,21 +88,21 @@
             <button type="button" class="btn btn-sm btn-warning"
                     hx-get="{% url 'accounts:edit_user' user.id %}"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"title="Chỉnh sửa">
+                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.display_name_with_email|escapejs }}'" title="Chỉnh sửa">
                 <i class="bi bi-pencil-square"></i>
             </button>
             {% endif %}
 
             {% if perms.accounts.delete_user %}
-            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
+                <button type="button" class="btn btn-danger btn-sm"
+                  hx-post="{% url 'accounts:delete_users' %}"
+                  hx-vals='{"single_user_id": "{{ user.id }}"}'
+                    hx-params="not user_ids,csrfmiddlewaretoken"
+                  hx-swap="none"
                   data-confirm-title="Xác nhận xóa"
-                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
-                {% csrf_token %}
-                <input type="hidden" name="user_ids" value="{{ user.id }}">
-                <button type="submit" class="btn btn-danger btn-sm">
-                   <i class="bi bi-slash-circle"></i>
-                </button>
-            </form>
+                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.display_name_with_email }}'?">
+              <i class="bi bi-slash-circle"></i>
+            </button>
             {% endif %}
         </td>
       </tr>
@@ -118,7 +118,7 @@
       {% for user in ggroup.list %}
       <tr>
         <td><input type="checkbox" name="user_ids" value="{{ user.id }}"></td>
-        <td>{{ user.get_full_name }}</td>
+        <td>{{ user.preferred_full_name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
         <td>
@@ -173,7 +173,7 @@
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.display_name_with_email|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
             {% endif %}
@@ -182,21 +182,21 @@
             <button type="button" class="btn btn-sm btn-warning"
                     hx-get="{% url 'accounts:edit_user' user.id %}"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"title="Chỉnh sửa">
+                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.display_name_with_email|escapejs }}'" title="Chỉnh sửa">
                 <i class="bi bi-pencil-square"></i>
             </button>
             {% endif %}
 
             {% if perms.accounts.delete_user %}
-            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
+                <button type="button" class="btn btn-danger btn-sm"
+                  hx-post="{% url 'accounts:delete_users' %}"
+                  hx-vals='{"single_user_id": "{{ user.id }}"}'
+                    hx-params="not user_ids,csrfmiddlewaretoken"
+                  hx-swap="none"
                   data-confirm-title="Xác nhận xóa"
-                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
-                {% csrf_token %}
-                <input type="hidden" name="user_ids" value="{{ user.id }}">
-                <button type="submit" class="btn btn-danger btn-sm">
-                   <i class="bi bi-slash-circle"></i>
-                </button>
-            </form>
+                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.display_name_with_email }}'?">
+              <i class="bi bi-slash-circle"></i>
+            </button>
             {% endif %}
         </td>
       </tr>
@@ -211,7 +211,7 @@
       {% for user in cgroup.list %}
       <tr>
         <td><input type="checkbox" name="user_ids" value="{{ user.id }}"></td>
-        <td>{{ user.get_full_name }}</td>
+        <td>{{ user.preferred_full_name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
         <td>
@@ -267,7 +267,7 @@
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.display_name_with_email|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
             {% endif %}
@@ -276,21 +276,21 @@
             <button type="button" class="btn btn-sm btn-warning"
                     hx-get="{% url 'accounts:edit_user' user.id %}"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"title="Chỉnh sửa">
+                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.display_name_with_email|escapejs }}'" title="Chỉnh sửa">
                 <i class="bi bi-pencil-square"></i>
             </button>
             {% endif %}
 
             {% if perms.accounts.delete_user %}
-            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
+                <button type="button" class="btn btn-danger btn-sm"
+                  hx-post="{% url 'accounts:delete_users' %}"
+                  hx-vals='{"single_user_id": "{{ user.id }}"}'
+                    hx-params="not user_ids,csrfmiddlewaretoken"
+                  hx-swap="none"
                   data-confirm-title="Xác nhận xóa"
-                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
-                {% csrf_token %}
-                <input type="hidden" name="user_ids" value="{{ user.id }}">
-                <button type="submit" class="btn btn-danger btn-sm">
-                   <i class="bi bi-slash-circle"></i>
-                </button>
-            </form>
+                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.display_name_with_email }}'?">
+              <i class="bi bi-slash-circle"></i>
+            </button>
             {% endif %}
         </td>
       </tr>
@@ -300,7 +300,7 @@
       {% for user in page_obj.object_list %}
       <tr>
         <td><input type="checkbox" name="user_ids" value="{{ user.id }}"></td>
-        <td>{{ user.get_full_name }}</td>
+        <td>{{ user.preferred_full_name }}</td>
         <td>{{ user.email }}</td>
         <td>{{ user.phone }}</td>
         <td>
@@ -355,7 +355,7 @@
             <button type="button" class="btn btn-sm btn-info"
                     hx-get="{% url 'accounts:user_detail' user.id %}"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chi tiết người dùng: {{ user.username|escapejs }}'">
+                    @click="modalTitle = 'Chi tiết người dùng: {{ user.display_name_with_email|escapejs }}'">
                 <i class="bi bi-eye"></i>
             </button>
             {% endif %}
@@ -364,21 +364,21 @@
             <button type="button" class="btn btn-sm btn-warning"
                     hx-get="{% url 'accounts:edit_user' user.id %}"
                     hx-target="#user-modal-content"
-                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.username|escapejs }}'"title="Chỉnh sửa">
+                    @click="modalTitle = 'Chỉnh sửa người dùng: {{ user.display_name_with_email|escapejs }}'" title="Chỉnh sửa">
                 <i class="bi bi-pencil-square"></i>
             </button>
             {% endif %}
 
             {% if perms.accounts.delete_user %}
-            <form hx-post="{% url 'accounts:delete_users' %}" hx-swap="none" class="d-inline"
+                <button type="button" class="btn btn-danger btn-sm"
+                  hx-post="{% url 'accounts:delete_users' %}"
+                  hx-vals='{"single_user_id": "{{ user.id }}"}'
+                    hx-params="not user_ids,csrfmiddlewaretoken"
+                  hx-swap="none"
                   data-confirm-title="Xác nhận xóa"
-                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.username }}'?">
-                {% csrf_token %}
-                <input type="hidden" name="user_ids" value="{{ user.id }}">
-                <button type="submit" class="btn btn-danger btn-sm">
-                   <i class="bi bi-slash-circle"></i>
-                </button>
-            </form>
+                  data-confirm-text="Bạn có chắc chắn muốn xóa người dùng '{{ user.display_name_with_email }}'?">
+              <i class="bi bi-slash-circle"></i>
+            </button>
             {% endif %}
         </td>
       </tr>

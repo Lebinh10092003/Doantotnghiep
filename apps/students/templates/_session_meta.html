@@ -20,11 +20,11 @@
       <div class="col-md-4 small mb-2">
         <i class="bi bi-person-badge me-1"></i>
         {% if session.teacher_override %}
-          {{ session.teacher_override.get_full_name|default:session.teacher_override.username }}
+          {{ session.teacher_override.display_name_with_email|default:session.teacher_override.preferred_full_name|default:session.teacher_override.preferred_email }}
         {% elif klass and klass.main_teacher %}
-          {{ klass.main_teacher.get_full_name|default:klass.main_teacher.username }}
+          {{ klass.main_teacher.display_name_with_email|default:klass.main_teacher.preferred_full_name|default:klass.main_teacher.preferred_email }}
         {% elif session.klass and session.klass.main_teacher %}
-          {{ session.klass.main_teacher.get_full_name|default:session.klass.main_teacher.username }}
+          {{ session.klass.main_teacher.display_name_with_email|default:session.klass.main_teacher.preferred_full_name|default:session.klass.main_teacher.preferred_email }}
         {% else %}
           Chưa phân công
         {% endif %}
