@@ -6,10 +6,10 @@ from apps.curriculum.models import Lesson
 from steam_center.storages import MediaStorage
 
 SESSION_STATUS = [
-    ("PLANNED", "Planned"),
-    ("DONE", "Done"),
-    ("MISSED", "Missed"),
-    ("CANCELLED", "Cancelled"),
+    ("PLANNED", "Đã lên lịch"),
+    ("DONE", "Đã diễn ra"),
+    ("MISSED", "Bị bỏ lỡ"),
+    ("CANCELLED", "Đã hủy"),
 ]
 
 

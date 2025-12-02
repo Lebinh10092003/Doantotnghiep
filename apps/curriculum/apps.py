@@ -6,9 +6,9 @@ class CurriculumConfig(AppConfig):
     name = "apps.curriculum"
 
     def ready(self):
-        # Import signals to handle media file cleanup on delete/clear
+        # Import signals để dọn file media khi xóa/clear
         try:
             from . import signals  # noqa: F401
         except Exception:
-            # Avoid crashing if migrations not applied yet
+            # Tránh lỗi khi migration chưa được áp dụng
             pass

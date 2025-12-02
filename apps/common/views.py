@@ -1,29 +1,16 @@
-from datetime import date, timedelta
+from collections import defaultdict
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
 from django.db.models import Count, Q
-from django.db.models.functions import TruncMonth
+from django.urls import reverse
+from django.utils import timezone
 
 # Domain models
 try:
-    from apps.centers.models import Center, Room
-except Exception:
-    Center = None
-    Room = None
-try:
-    from apps.classes.models import Class, CLASS_STATUS
-except Exception:
-    Class = None
-    CLASS_STATUS = []
-# Thêm import cho ClassSession
-try:
-    from apps.class_sessions.models import ClassSession, SESSION_STATUS
+    from apps.class_sessions.models import ClassSession
 except Exception:
     ClassSession = None
-    SESSION_STATUS = []
 try:
     from apps.students.models import StudentProduct
 except Exception:
@@ -33,15 +20,13 @@ try:
 except Exception:
     build_parent_children_snapshot = None
 try:
-    from apps.enrollments.models import Enrollment, EnrollmentStatus
+    from apps.enrollments.models import Enrollment
 except Exception:
     Enrollment = None
-    EnrollmentStatus = None
 try:
-    from apps.attendance.models import Attendance, ATTEND_CHOICES
+    from apps.attendance.models import Attendance
 except Exception:
     Attendance = None
-    ATTEND_CHOICES = []
 
 
 def _choices_to_dict(choices):
@@ -50,14 +35,91 @@ def _choices_to_dict(choices):
     return {value: label for value, label in choices}
 
 
-def _month_start(base_date: date, months_back: int) -> date:
-    year = base_date.year
-    month = base_date.month - months_back
-    while month <= 0:
-        month += 12
-        year -= 1
-    return date(year, month, 1)
-   
+def _user_display(user):
+    if not user:
+        return ""
+    full_name = getattr(user, "get_full_name", None)
+    if callable(full_name):
+        name = full_name()
+        if name:
+            return name
+    return getattr(user, "username", "")
+
+
+def _session_state_label(session, current_time):
+    start = getattr(session, "start_time", None)
+    end = getattr(session, "end_time", None)
+    if start and end:
+        if end < current_time:
+            return ("Đã kết thúc", "success")
+        if start <= current_time <= end:
+            return ("Đang diễn ra", "info")
+        if start > current_time:
+            return ("Chưa bắt đầu", "secondary")
+    if start and not end:
+        if start <= current_time:
+            return ("Đang diễn ra", "info")
+        return ("Chưa bắt đầu", "secondary")
+    return ("Chưa xếp giờ", "light")
+
+
+def _format_time_range(start, end):
+    if start and end:
+        return f"{start.strftime('%H:%M')} - {end.strftime('%H:%M')}"
+    if start:
+        return start.strftime("%H:%M")
+    return "Chưa xếp giờ"
+
+
+def _attendance_state(summary, session, current_time):
+    if summary and summary.get("total"):
+        return ("Đã điểm danh", "success")
+    state_label, state_badge = _session_state_label(session, current_time)
+    if state_label == "Đã kết thúc":
+        return ("Chưa điểm danh", "warning")
+    return (state_label, state_badge)
+
+
+def _ratio_text(current_value, total_value):
+    if total_value:
+        percent = round((current_value / total_value) * 100)
+        percent = max(0, min(percent, 100))
+        return f"{current_value}/{total_value}", percent
+    return (f"{current_value}/—", None)
+
+
+def _attendance_totals_by_session(session_ids):
+    if not Attendance or not session_ids:
+        return {}
+    summary = defaultdict(lambda: {"present": 0, "absent": 0, "late": 0, "total": 0})
+    rows = (
+        Attendance.objects.filter(session_id__in=session_ids)
+        .values("session_id", "status")
+        .annotate(count=Count("id"))
+    )
+    for row in rows:
+        entry = summary[row["session_id"]]
+        entry["total"] += row["count"]
+        status = row["status"]
+        if status == "P":
+            entry["present"] += row["count"]
+        elif status == "A":
+            entry["absent"] += row["count"]
+        elif status == "L":
+            entry["late"] += row["count"]
+    return summary
+
+
+def _attendance_map_for_students(student_ids, date_value):
+    if not Attendance or not student_ids:
+        return {}
+    result = {}
+    qs = Attendance.objects.filter(session__date=date_value, student_id__in=student_ids).select_related("session")
+    for attendance in qs:
+        result[(attendance.session_id, attendance.student_id)] = attendance
+    return result
+
+
 def home(request):
     home_products = []
     home_page_obj = None
@@ -91,12 +153,8 @@ def home(request):
     )
 
 
-
-
 @login_required
 def dashboard(request):
-    User = get_user_model()
-
     user = request.user
     role = getattr(user, "role", "").upper()
     in_group = lambda name: user.groups.filter(name=name).exists()
@@ -106,283 +164,424 @@ def dashboard(request):
     is_teacher = role == "TEACHER" or in_group("Teacher") or in_group("TEACHER")
     is_assistant = role == "ASSISTANT" or in_group("Assistant") or in_group("ASSISTANT")
     is_parent = role == "PARENT" or in_group("Parent") or in_group("PARENT")
+    is_student = role == "STUDENT" or in_group("Student") or in_group("STUDENT")
 
+    context = {
+        "dashboard_role": "user",
+        "today": timezone.localdate(),
+    }
+    today = context["today"]
+    now = timezone.localtime()
+    now_time = now.time()
 
-    context = {"dashboard_role": "user"}
-    today = date.today()
+    if not ClassSession:
+        context.update(
+            {
+                "dashboard_role": "generic",
+                "generic_message": "Chức năng dashboard chưa khả dụng.",
+            }
+        )
+        return render(request, "dashboard/index.html", context)
 
-    if is_admin:
-        admin_center_chart = []
-        admin_chart_centers_has_data = False
-        admin_enrollment_trend_chart = []
-        admin_chart_enrollment_trend_has_data = False
-        admin_enrollment_status_chart = []
-        if Center and Class:
-            centers_qs = list(
-                Center.objects.annotate(
-                    ongoing_classes=Count("classes", filter=Q(classes__status="ONGOING")),
-                    active_students=Count(
-                        "classes__enrollments",
-                        filter=Q(classes__enrollments__active=True),
+    if is_admin and ClassSession:
+        sessions_today = ClassSession.objects.filter(date=today)
+        total_sessions_today = sessions_today.count()
+        centers_activity = []
+        active_centers_count = 0
+        total_expected_students = 0
+        active_classes_today = sessions_today.values("klass_id").distinct().count()
+        if total_sessions_today:
+            center_rows = list(
+                sessions_today
+                .values("klass__center__name")
+                .annotate(
+                    total_sessions=Count("id", distinct=True),
+                    expected_students=Count(
+                        "klass__enrollments__student",
+                        filter=Q(klass__enrollments__active=True),
                         distinct=True,
                     ),
+                    active_classes=Count("klass", distinct=True),
                 )
-                .order_by("name")
+                .order_by("klass__center__name")
             )
-            admin_chart_centers_has_data = bool(centers_qs)
-            admin_center_chart = [
-                {
-                    "center": center.name,
-                    "classes": center.ongoing_classes,
-                    "students": center.active_students,
-                }
-                for center in centers_qs
-            ]
-        if Enrollment:
-            six_months_ago = today - timedelta(days=180)
-            enrollment_trend_qs = list(
-                Enrollment.objects.filter(joined_at__gte=six_months_ago)
-                .annotate(month=TruncMonth("joined_at"))
-                .values("month")
-                .annotate(count=Count("id"))
-                .order_by("month")
-            )
-            admin_chart_enrollment_trend_has_data = bool(enrollment_trend_qs)
-            trend_map = {}
-            for row in enrollment_trend_qs:
-                month_value = row.get("month")
-                if month_value:
-                    trend_map[month_value.strftime("%m/%Y")] = row["count"]
-            for offset in range(5, -1, -1):
-                month_label = _month_start(today, offset).strftime("%m/%Y")
-                admin_enrollment_trend_chart.append(
+            active_centers_count = len(center_rows)
+            total_expected_students = sum(row.get("expected_students", 0) or 0 for row in center_rows)
+            for row in center_rows:
+                centers_activity.append(
                     {
-                        "label": month_label,
-                        "value": trend_map.get(month_label, 0),
+                        "center": row["klass__center__name"] or "Chưa phân bổ",
+                        "sessions": row["total_sessions"],
+                        "classes": row["active_classes"],
+                        "students": row["expected_students"],
                     }
                 )
-            status_label_map = _choices_to_dict(getattr(EnrollmentStatus, "choices", []))
-            enrollment_status_qs = (
-                Enrollment.objects.values("status").annotate(count=Count("id")).order_by("status")
-            )
-            status_count_map = {row["status"]: row["count"] for row in enrollment_status_qs}
-            if status_label_map:
-                admin_enrollment_status_chart = [
-                    {
-                        "label": label,
-                        "value": status_count_map.get(value, 0),
-                    }
-                    for value, label in status_label_map.items()
-                ]
-            else:
-                admin_enrollment_status_chart = [
-                    {
-                        "label": row["status"],
-                        "value": row["count"],
-                    }
-                    for row in enrollment_status_qs
-                ]
-            if not admin_enrollment_status_chart:
-                admin_enrollment_status_chart = [
-                    {"label": "Chưa có dữ liệu", "value": 0}
-                ]
-        else:
-            for offset in range(5, -1, -1):
-                month_label = _month_start(today, offset).strftime("%m/%Y")
-                admin_enrollment_trend_chart.append(
-                    {
-                        "label": month_label,
-                        "value": 0,
-                    }
-                )
-            admin_enrollment_status_chart = [
-                {"label": "Chưa có dữ liệu", "value": 0}
-            ]
+
+        admin_cards = [
+            {
+                "label": "Học sinh tham gia",
+                "value": total_expected_students,
+                "icon": "bi-people",
+                "accent": "primary",
+                "subtitle": "Theo lịch hôm nay",
+            },
+            {
+                "label": "Trung tâm hoạt động",
+                "value": active_centers_count,
+                "icon": "bi-building",
+                "accent": "info",
+                "subtitle": "Có lớp diễn ra",
+            },
+            {
+                "label": "Lớp hoạt động",
+                "value": active_classes_today,
+                "icon": "bi-collection",
+                "accent": "success",
+                "subtitle": "Trong ngày",
+            },
+            {
+                "label": "Buổi diễn ra",
+                "value": total_sessions_today,
+                "icon": "bi-calendar-week",
+                "accent": "warning",
+                "subtitle": "Toàn hệ thống",
+            },
+        ]
+
         context.update(
             {
                 "dashboard_role": "admin",
-                "centers_count": Center.objects.count() if Center else None,
-                "rooms_count": Room.objects.count() if Room else None,
-                "users_count": User.objects.count(),
-                "groups_count": Group.objects.count(),
-                "classes_count": Class.objects.count() if Class else None,
-                "admin_chart_centers": admin_center_chart,
-                "admin_chart_centers_has_data": admin_chart_centers_has_data,
-                "admin_chart_enrollment_trend": admin_enrollment_trend_chart,
-                "admin_chart_enrollment_trend_has_data": admin_chart_enrollment_trend_has_data,
-                "admin_chart_enrollment_status": admin_enrollment_status_chart,
+                "admin_cards": admin_cards,
+                "admin_centers_activity": centers_activity,
             }
         )
-    elif is_center_manager:
+
+    elif is_center_manager and ClassSession:
         center = getattr(user, "center", None)
-        # Counts scoped to manager's center (if linked)
-        if center and Center and Room:
-            teachers_q = Q(role="TEACHER") | Q(groups__name__in=["Teacher", "TEACHER"])
-            students_q = Q(role="STUDENT") | Q(groups__name__in=["Student", "STUDENT"]) 
-            class_status_chart = []
-            enrollment_status_chart = []
-            attendance_status_chart = []
-            if Class:
-                status_label_map = _choices_to_dict(CLASS_STATUS)
-                class_status_counts = (
-                    Class.objects.filter(center=center)
-                    .values("status")
-                    .annotate(count=Count("id"))
-                    .order_by("status")
+        if center:
+            sessions_today = (
+                ClassSession.objects.filter(date=today, klass__center=center)
+                .select_related(
+                    "klass",
+                    "klass__main_teacher",
+                    "klass__room",
+                    "room_override",
                 )
-                class_status_chart = [
-                    {
-                        "label": status_label_map.get(row["status"], row["status"]),
-                        "value": row["count"],
-                    }
-                    for row in class_status_counts
-                ]
-            if Enrollment:
-                status_label_map = _choices_to_dict(getattr(EnrollmentStatus, "choices", []))
-                enrollment_status_counts = (
-                    Enrollment.objects.filter(klass__center=center)
-                    .values("status")
-                    .annotate(count=Count("id"))
-                    .order_by("status")
-                )
-                enrollment_status_chart = [
-                    {
-                        "label": status_label_map.get(row["status"], row["status"]),
-                        "value": row["count"],
-                    }
-                    for row in enrollment_status_counts
-                ]
-            if Attendance:
-                attendance_label_map = _choices_to_dict(ATTEND_CHOICES)
-                thirty_days_ago = today - timedelta(days=30)
-                attendance_counts = (
-                    Attendance.objects.filter(
-                        session__klass__center=center, session__date__gte=thirty_days_ago
+                .annotate(
+                    expected_students=Count(
+                        "klass__enrollments__student",
+                        filter=Q(klass__enrollments__active=True),
+                        distinct=True,
                     )
-                    .values("status")
-                    .annotate(count=Count("id"))
-                    .order_by("status")
                 )
-                attendance_status_chart = [
+                .order_by("start_time", "klass__name")
+            )
+            sessions_today = list(sessions_today)
+            session_ids = [session.id for session in sessions_today]
+            attendance_summary = _attendance_totals_by_session(session_ids)
+            students_present = sum(item.get("present", 0) for item in attendance_summary.values())
+            sessions_without_attendance = sum(
+                1
+                for session in sessions_today
+                if not attendance_summary.get(session.id, {}).get("total")
+            )
+
+            cm_cards = [
+                {
+                    "label": "Buổi học hôm nay",
+                    "value": len(sessions_today),
+                    "icon": "bi-mortarboard",
+                    "accent": "primary",
+                    "subtitle": center.name or "Trung tâm",
+                },
+                {
+                    "label": "Học viên có mặt",
+                    "value": students_present,
+                    "icon": "bi-people",
+                    "accent": "success",
+                    "subtitle": "Đã check-in",
+                },
+                {
+                    "label": "Buổi chưa điểm danh",
+                    "value": sessions_without_attendance,
+                    "icon": "bi-exclamation-triangle",
+                    "accent": "danger",
+                    "subtitle": "Cần xử lý",
+                },
+            ]
+
+            schedule_rows = []
+            for session in sessions_today:
+                summary = attendance_summary.get(session.id, {})
+                present = summary.get("present", 0)
+                expected = session.expected_students or 0
+                ratio_text, ratio_percent = _ratio_text(present, expected)
+                teacher = session.teacher_override or getattr(session.klass, "main_teacher", None)
+                room = session.room_override or getattr(session.klass, "room", None)
+                attendance_label, attendance_badge = _attendance_state(summary, session, now_time)
+                schedule_rows.append(
                     {
-                        "label": attendance_label_map.get(row["status"], row["status"]),
-                        "value": row["count"],
+                        "time_label": _format_time_range(session.start_time, session.end_time),
+                        "class_name": session.klass.name if session.klass else "—",
+                        "room_name": room.name if room else "Chưa xếp phòng",
+                        "teacher_name": _user_display(teacher) or "Chưa phân công",
+                        "attendance_label": attendance_label,
+                        "attendance_badge": attendance_badge,
+                        "attendance_ratio_text": ratio_text,
+                        "attendance_ratio_percent": ratio_percent,
                     }
-                    for row in attendance_counts
-                ]
+                )
 
             context.update(
                 {
                     "dashboard_role": "center_manager",
-                    "center": center,
-                    "cm_users_count": User.objects.filter(center=center).distinct().count(),
-                    "cm_rooms_count": Room.objects.filter(center=center).count(),
-                    "cm_classes_count": (Class.objects.filter(center=center).count() if Class else None),
-                    "cm_teachers_count": User.objects.filter(center=center).filter(teachers_q).distinct().count(),
-                    "cm_students_count": User.objects.filter(center=center).filter(students_q).distinct().count(),
-                    "center_class_status_chart": class_status_chart,
-                    "center_enrollment_status_chart": enrollment_status_chart,
-                    "center_attendance_status_chart": attendance_status_chart,
+                    "cm_center": center,
+                    "cm_cards": cm_cards,
+                    "cm_schedule": schedule_rows,
                 }
             )
         else:
-            context.update({"dashboard_role": "center_manager"})
-    
-    elif is_parent and build_parent_children_snapshot:
-        snapshot = build_parent_children_snapshot(user)
-        children_list = snapshot["children_data"]
-        selected_child = children_list[0] if children_list else None
-        selected_child_id = None
-        child_param = request.GET.get("child")
-        if child_param and children_list:
-            try:
-                child_param_id = int(child_param)
-                for child in children_list:
-                    student_obj = child.get("student")
-                    if student_obj and student_obj.id == child_param_id:
-                        selected_child = child
-                        selected_child_id = child_param_id
-                        break
-            except (TypeError, ValueError):
-                pass
-        if selected_child and selected_child_id is None:
-            student_obj = selected_child.get("student")
-            if student_obj:
-                selected_child_id = student_obj.id
-        context.update(
-            {
-                "dashboard_role": "parent",
-                "parent_summary_metrics": snapshot["summary_metrics"],
-                "parent_recent_updates": snapshot["recent_updates"],
-                "parent_children_cards": children_list[:4],
-                "parent_children_all": children_list,
-                "parent_has_children": snapshot["has_children"],
-                "parent_child_names": snapshot.get("child_display_names", []),
-                "parent_photo_feed": snapshot.get("recent_photo_feed", []),
-                "parent_selected_child": selected_child,
-                "parent_selected_child_id": selected_child_id,
-            }
-        )
-    elif (is_teacher or is_assistant) and Class and ClassSession:
-        teaching_scope_filter = (
-            Q(klass__main_teacher=user)
-            | Q(klass__assistants=user)
-            | Q(teacher_override=user)
-            | Q(assistants=user)
-        )
-        # Lấy các buổi dạy sắp tới (planned, từ hôm nay)
-        upcoming_sessions_qs = ClassSession.objects.filter(
-            teaching_scope_filter,
-            date__gte=today,
-            status="PLANNED"
-        ).select_related('klass', 'lesson').order_by('date', 'start_time')
-        
-        # Lấy các lớp đang dạy (ongoing)
-        teaching_classes_qs = Class.objects.filter(
-            Q(main_teacher=user) | Q(assistants=user),
-            status="ONGOING"
-        ).distinct()
-
-        week_end = today + timedelta(days=6)
-        weekly_sessions_chart = []
-        sessions_by_day = (
-            ClassSession.objects.filter(teaching_scope_filter, date__gte=today, date__lte=week_end)
-            .values("date")
-            .annotate(count=Count("id"))
-        )
-        sessions_by_day_map = {row["date"]: row["count"] for row in sessions_by_day}
-        for offset in range(7):
-            day = today + timedelta(days=offset)
-            weekly_sessions_chart.append(
+            context.update(
                 {
-                    "label": day.strftime("%d/%m"),
-                    "value": sessions_by_day_map.get(day, 0),
+                    "dashboard_role": "generic",
+                    "generic_message": "Tài khoản chưa được gán trung tâm.",
                 }
             )
 
-        session_status_chart = []
-        status_label_map = _choices_to_dict(SESSION_STATUS)
-        status_counts = (
-            ClassSession.objects.filter(teaching_scope_filter, date__gte=today - timedelta(days=30))
-            .values("status")
-            .annotate(count=Count("id"))
+    elif (is_teacher or is_assistant) and ClassSession:
+        teaching_filter = (
+            Q(klass__main_teacher=user)
+            | Q(assistants=user)
+            | Q(teacher_override=user)
         )
-        session_status_chart = [
+        sessions_queryset = (
+            ClassSession.objects.filter(date=today)
+            .filter(teaching_filter)
+            .select_related(
+                "klass",
+                "klass__center",
+                "klass__room",
+                "room_override",
+            )
+            .annotate(
+                expected_students=Count(
+                    "klass__enrollments__student",
+                    filter=Q(klass__enrollments__active=True),
+                    distinct=True,
+                )
+            )
+            .order_by("start_time", "klass__name")
+            .distinct()
+        )
+        sessions_today = list(sessions_queryset)
+        session_ids = [session.id for session in sessions_today]
+        attendance_summary = _attendance_totals_by_session(session_ids)
+        total_sessions = len(session_ids)
+        attended_sessions = sum(
+            1 for session_id in session_ids if attendance_summary.get(session_id, {}).get("total")
+        )
+        pending_sessions = max(total_sessions - attended_sessions, 0)
+
+        teacher_cards = [
             {
-                "label": status_label_map.get(row["status"], row["status"]),
-                "value": row["count"],
-            }
-            for row in status_counts
+                "label": "Buổi dạy hôm nay",
+                "value": total_sessions,
+                "icon": "bi-calendar-day",
+                "accent": "primary",
+                "subtitle": "Lịch trong ngày",
+            },
+            {
+                "label": "Đã điểm danh",
+                "value": attended_sessions,
+                "icon": "bi-clipboard-check",
+                "accent": "success",
+                "subtitle": "Hoàn tất",
+            },
+            {
+                "label": "Chưa điểm danh",
+                "value": pending_sessions,
+                "icon": "bi-hourglass-split",
+                "accent": "warning",
+                "subtitle": "Cần xử lý",
+            },
         ]
 
-        context.update({
-            "dashboard_role": "teacher_assistant",
-            "teaching_classes_count": teaching_classes_qs.count(),
-            "upcoming_sessions_count": upcoming_sessions_qs.count(),
-            "upcoming_sessions_list": upcoming_sessions_qs[:5], # Chỉ lấy 5 buổi gần nhất
-            "teacher_weekly_sessions_chart": weekly_sessions_chart,
-            "teacher_session_status_chart": session_status_chart,
-        })
+        schedule_rows = []
+        for session in sessions_today:
+            summary = attendance_summary.get(session.id, {})
+            room = session.room_override or getattr(session.klass, "room", None)
+            attendance_label, attendance_badge = _attendance_state(summary, session, now_time)
+            present = summary.get("present", 0)
+            expected = session.expected_students or 0
+            ratio_text, ratio_percent = _ratio_text(present, expected)
+            schedule_rows.append(
+                {
+                    "time_label": _format_time_range(session.start_time, session.end_time),
+                    "class_name": session.klass.name if session.klass else "—",
+                    "expected": session.expected_students,
+                    "status_label": attendance_label,
+                    "status_badge": attendance_badge,
+                    "room_name": room.name if room else "Chưa xếp phòng",
+                    "action_url": reverse("class_sessions:session_detail", args=[session.id]),
+                    "attendance_ratio_text": ratio_text,
+                    "attendance_ratio_percent": ratio_percent,
+                    "center_name": session.klass.center.name if session.klass and session.klass.center else "—",
+                }
+            )
 
+        context.update(
+            {
+                "dashboard_role": "teacher_assistant",
+                "teacher_cards": teacher_cards,
+                "teacher_schedule": schedule_rows,
+            }
+        )
+
+    elif is_parent and build_parent_children_snapshot and ClassSession:
+        snapshot = build_parent_children_snapshot(user)
+        children_entries = []
+        child_ids = []
+        for child in snapshot.get("children_data", []):
+            student = child.get("student")
+            if not student:
+                continue
+            label = child.get("student_label") or _user_display(student)
+            children_entries.append({"student": student, "label": label})
+            child_ids.append(student.id)
+
+        attendance_map = _attendance_map_for_students(child_ids, today) if child_ids else {}
+
+        total_sessions = 0
+        children_with_schedule = 0
+        parent_schedule_rows = []
+
+        for entry in children_entries:
+            student = entry["student"]
+            sessions = (
+                ClassSession.objects.filter(
+                    date=today,
+                    klass__enrollments__student=student,
+                    klass__enrollments__active=True,
+                )
+                .select_related("klass", "klass__center", "klass__room", "room_override")
+                .order_by("start_time", "klass__name")
+                .distinct()
+            )
+            sessions = list(sessions)
+            if sessions:
+                children_with_schedule += 1
+            total_sessions += len(sessions)
+            for session in sessions:
+                attendance = attendance_map.get((session.id, student.id))
+                if attendance:
+                    status_label = attendance.get_status_display()
+                    status_badge = "success" if attendance.status == "P" else "danger"
+                else:
+                    status_label, status_badge = _attendance_state({}, session, now_time)
+                room = session.room_override or getattr(session.klass, "room", None)
+                parent_schedule_rows.append(
+                    {
+                        "child_label": entry["label"],
+                        "time_label": _format_time_range(session.start_time, session.end_time),
+                        "class_name": session.klass.name if session.klass else "—",
+                        "center_name": session.klass.center.name if session.klass and session.klass.center else "—",
+                        "room_name": room.name if room else "Chưa xếp phòng",
+                        "status_label": status_label,
+                        "status_badge": status_badge,
+                    }
+                )
+
+        parent_cards = [
+            {
+                "label": "Số con có lịch hôm nay",
+                "value": children_with_schedule,
+                "icon": "bi-people",
+                "accent": "info",
+                "subtitle": "Có lịch học",
+            },
+            {
+                "label": "Số buổi học hôm nay",
+                "value": total_sessions,
+                "icon": "bi-calendar-event",
+                "accent": "primary",
+                "subtitle": "Tất cả các con",
+            },
+        ]
+
+        context.update(
+            {
+                "dashboard_role": "parent",
+                "parent_cards": parent_cards,
+                "parent_schedule": parent_schedule_rows,
+            }
+        )
+
+    elif is_student and ClassSession:
+        sessions_today = (
+            ClassSession.objects.filter(
+                date=today,
+                klass__enrollments__student=user,
+                klass__enrollments__active=True,
+            )
+            .select_related("klass", "klass__center", "klass__room", "room_override")
+            .order_by("start_time", "klass__name")
+            .distinct()
+        )
+        session_ids = list(sessions_today.values_list("id", flat=True))
+        attendance_map = _attendance_map_for_students([user.id], today)
+        assignments_due_today = 0
+
+        student_cards = [
+            {
+                "label": "Số buổi học hôm nay",
+                "value": len(session_ids),
+                "icon": "bi-journal-bookmark",
+                "accent": "primary",
+                "subtitle": "Theo lịch",
+            },
+            {
+                "label": "Bài tập đến hạn",
+                "value": assignments_due_today,
+                "icon": "bi-check2-square",
+                "accent": "warning",
+                "subtitle": "Trong ngày",
+            },
+        ]
+
+        student_schedule = []
+        for session in sessions_today:
+            attendance = attendance_map.get((session.id, user.id))
+            if attendance:
+                status_label = attendance.get_status_display()
+                status_badge = "success" if attendance.status == "P" else "danger"
+            else:
+                status_label, status_badge = _attendance_state({}, session, now_time)
+            room = session.room_override or getattr(session.klass, "room", None)
+            student_schedule.append(
+                {
+                    "time_label": _format_time_range(session.start_time, session.end_time),
+                    "class_name": session.klass.name if session.klass else "—",
+                    "room_name": room.name if room else "Chưa xếp phòng",
+                    "center_name": session.klass.center.name if session.klass and session.klass.center else "—",
+                    "status_label": status_label,
+                    "status_badge": status_badge,
+                }
+            )
+
+        context.update(
+            {
+                "dashboard_role": "student",
+                "student_cards": student_cards,
+                "student_schedule": student_schedule,
+            }
+        )
+
+    else:
+        context.update(
+            {
+                "dashboard_role": "generic",
+                "generic_message": "Hiện chưa có dashboard cho vai trò này.",
+            }
+        )
 
     return render(request, "dashboard/index.html", context)

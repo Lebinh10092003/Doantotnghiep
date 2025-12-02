@@ -23,9 +23,9 @@ from apps.enrollments.filters import EnrollmentFilter
 from django.http import HttpResponse, JsonResponse
 from apps.filters.models import SavedFilter
 from apps.filters.utils import (
+    build_filter_badges,
     determine_active_filter_name,
 )
-from django import forms
 from django.utils.dateparse import parse_date
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
@@ -177,33 +177,7 @@ def enrollment_list(request):
         page_obj = paginator.page(1)
     paginated_enrollments = page_obj.object_list
 
-    active_filter_badges = []
-    if enrollment_filter.form.is_bound:
-        for name, value in enrollment_filter.form.cleaned_data.items():
-            if value and name in enrollment_filter.form.fields:
-                field_label = enrollment_filter.form.fields[name].label or name
-                display_value = ""
-                field = enrollment_filter.form.fields[name]
-
-                if isinstance(value, (Center, Class, User)):
-                    display_value = str(value)
-                elif isinstance(field, forms.ChoiceField):
-                    display_value = dict(field.choices).get(value) if value else None
-                elif isinstance(value, slice):
-                    start_v, end_v = value.start, value.stop
-                    if start_v and end_v:
-                        display_value = f"từ {start_v.strftime('%d/%m/%Y')} đến {end_v.strftime('%d/%m/%Y')}"
-                    elif start_v:
-                        display_value = f"từ {start_v.strftime('%d/%m/%Y')}"
-                    elif end_v:
-                        display_value = f"đến {end_v.strftime('%d/%m/%Y')}"
-                elif isinstance(value, str):
-                    display_value = value
-
-                if display_value:
-                    active_filter_badges.append(
-                        {"label": field_label, "value": display_value, "key": name}
-                    )
+    active_filter_badges = build_filter_badges(enrollment_filter)
 
     saved_filters = SavedFilter.objects.filter(model_name="Enrollment").filter(
         Q(user=request.user) | Q(is_public=True)

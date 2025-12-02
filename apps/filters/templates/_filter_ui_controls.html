@@ -72,16 +72,36 @@
     {% for field in filter.form %}
       <div class="col-md-4 col-sm-6">
         <label for="{{ field.id_for_label }}" class="form-label small">{{ field.label }}</label>
-        {% if field.field.widget_type == 'select' %}
-          {% render_field field class+="form-select" %}
-        {% elif field.field.widget_type == 'rangewidget' %}
-           <div class="input-group">
-              {% render_field field.field.widget.widgets.0 class="form-control" placeholder="Từ ngày" %}
-              {% render_field field.field.widget.widgets.1 class="form-control" placeholder="Đến ngày" %}
-           </div>
-        {% else %}
-          {% render_field field class="form-control" %}
-        {% endif %}
+        {% with widget_type=field.field.widget_type existing_classes=field.field.widget.attrs.class %}
+          {% if widget_type == 'rangewidget' %}
+            <div class="input-group">
+              {% with start_placeholder=field.field.widget.widgets.0.attrs.placeholder end_placeholder=field.field.widget.widgets.1.attrs.placeholder %}
+                {% if start_placeholder %}
+                  {% render_field field.field.widget.widgets.0 class+="form-control" placeholder=start_placeholder %}
+                {% else %}
+                  {% render_field field.field.widget.widgets.0 class+="form-control" placeholder="Từ ngày" %}
+                {% endif %}
+                {% if end_placeholder %}
+                  {% render_field field.field.widget.widgets.1 class+="form-control" placeholder=end_placeholder %}
+                {% else %}
+                  {% render_field field.field.widget.widgets.1 class+="form-control" placeholder="Đến ngày" %}
+                {% endif %}
+              {% endwith %}
+            </div>
+          {% elif widget_type == 'select' or widget_type == 'selectmultiple' %}
+            {% if existing_classes %}
+              {% render_field field %}
+            {% else %}
+              {% render_field field class+="form-select" %}
+            {% endif %}
+          {% else %}
+            {% if existing_classes %}
+              {% render_field field %}
+            {% else %}
+              {% render_field field class+="form-control" %}
+            {% endif %}
+          {% endif %}
+        {% endwith %}
       </div>
     {% endfor %}
     <div class="col-12 d-flex justify-content-end gap-2">

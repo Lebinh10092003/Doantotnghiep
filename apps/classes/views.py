@@ -1,33 +1,30 @@
 import json
 from collections import deque
-from datetime import date, timedelta
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from datetime import timedelta
+
 from django.contrib.auth.decorators import login_required, permission_required
-from django.views.decorators.http import require_POST
-from django_filters.views import FilterView
+from django.core.exceptions import PermissionDenied
+from django.core.paginator import EmptyPage, Paginator
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
-from django.core.exceptions import PermissionDenied
-from django import forms
-from apps.centers.models import Center
+from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
-from apps.curriculum.models import Subject
+from django.views.decorators.http import require_POST
+
 from apps.accounts.models import User
-from .models import Class
-from .filters import ClassFilter
-from .forms import ClassForm, ClassScheduleFormSet
-from apps.filters.models import SavedFilter
-from apps.filters.utils import (
-    determine_active_filter_name,
-)
-from django.core.paginator import Paginator, EmptyPage
+from apps.centers.models import Center
 from apps.class_sessions.models import ClassSession
 from apps.class_sessions.utils import recalculate_session_indices
-from django.db import transaction
-from apps.curriculum.models import Lesson
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
+from apps.curriculum.models import Lesson, Subject
+from apps.filters.models import SavedFilter
+from apps.filters.utils import build_filter_badges, determine_active_filter_name
+
+from .filters import ClassFilter
+from .forms import ClassForm, ClassScheduleFormSet
+from .models import Class
 
 
 def _class_timeslot_label(klass):
@@ -94,43 +91,7 @@ def manage_classes(request):
     else:
         qs = qs.order_by("-start_date", "name")
 
-    # +++ THÊM LOGIC TẠO BADGE LỌC +++
-    active_filter_badges = []
-    # Kiểm tra xem form có dữ liệu không (ví dụ: có request.GET)
-    if class_filter.form.is_bound:
-        # Lặp qua dữ liệu đã được làm sạch và xác thực
-        for name, value in class_filter.form.cleaned_data.items():
-            # Chỉ xử lý nếu trường có giá trị VÀ trường đó có trong form
-            if value and name in class_filter.form.fields: 
-                field_label = class_filter.form.fields[name].label or name
-                display_value = ""
-
-                # Xử lý giá trị là model instance (FK, ModelChoice)
-                if isinstance(value, (Center, Subject, User)):
-                    display_value = str(value)
-                # Xử lý giá trị là ChoiceField (lấy tên hiển thị)
-                elif isinstance(class_filter.form.fields[name], forms.ChoiceField):
-                    display_value = dict(class_filter.form.fields[name].choices).get(value) if value else None
-                # Xử lý giá trị là DateFromToRangeFilter (kiểu slice)
-                elif isinstance(value, slice): 
-                    start, end = value.start, value.stop
-                    if start and end:
-                        display_value = f"từ {start.strftime('%d/%m/%Y')} đến {end.strftime('%d/%m/%Y')}"
-                    elif start:
-                        display_value = f"từ {start.strftime('%d/%m/%Y')}"
-                    elif end:
-                        display_value = f"đến {end.strftime('%d/%m/%Y')}"
-                # Xử lý giá trị là chuỗi (CharFilter)
-                elif isinstance(value, str) and value:
-                    display_value = value
-                
-                # Nếu có giá trị hiển thị, thêm vào danh sách
-                if display_value:
-                    active_filter_badges.append({
-                        "label": field_label,
-                        "value": display_value,
-                        "key": name, 
-                    })
+    active_filter_badges = build_filter_badges(class_filter, exclude={"group_by"})
     # 3. Phân trang
     try:
         per_page = int(request.GET.get("per_page", 10)) 
@@ -160,9 +121,7 @@ def manage_classes(request):
 
     # Xử lý query params cho phân trang / đổi số dòng
     query_params_no_page = request.GET.copy()
-    for key in ["page", "per_page"]:
-        if key in query_params_no_page:
-            del query_params_no_page[key]
+    query_params_no_page.pop("page", None)
 
     # 4. Xây dựng Context
     context = {
@@ -370,8 +329,8 @@ def generate_sessions(request, pk):
 
         if not schedules:
             return _hx_error("Lớp chưa có lịch học hàng tuần, không thể tạo buổi học.")
-        # 1. TRUY VẤN VÀ LẬP BẢN ĐỒ LESSONS
-        # Lấy tất cả Lesson của môn học, sắp xếp theo thứ tự Module và Lesson
+        # 1. Truy vấn và lập danh sách bài học
+        # Lấy tất cả bài học của môn, sắp xếp theo thứ tự học phần (module) và bài học
         all_lessons = []
         if klass.subject:
              all_lessons = list(
@@ -399,11 +358,11 @@ def generate_sessions(request, pk):
         sessions_to_create = []
         sessions_to_update = []
         
-        # Xác định index LOGIC bắt đầu để biết Lesson nào cần được gán tiếp theo
+        # Xác định index logic ban đầu để biết bài học sẽ gán tiếp theo
         last_session = ClassSession.objects.filter(klass=klass).order_by('index').last()
         current_session_index = last_session.index if last_session and last_session.index else 0
         
-        # 3. Lặp qua các ngày để gen sessions
+        # 3. Lặp qua các ngày để tạo buổi học
         current_date = start_date_for_generation
         
         while current_date <= klass.end_date:
@@ -414,7 +373,7 @@ def generate_sessions(request, pk):
                     current_session_index += 1
                     
                     lesson_to_assign = None
-                    # Gán Lesson nếu có sẵn
+                    # Gán bài học nếu còn trong danh sách
                     if lessons_count > 0 and current_session_index <= lessons_count:
                         lesson_to_assign = all_lessons[current_session_index - 1] 
                     
@@ -444,7 +403,7 @@ def generate_sessions(request, pk):
                         
             current_date += timedelta(days=1)
 
-        # 4. Thực hiện Bulk Operations
+        # 4. Thực hiện thao tác hàng loạt
         leftover_session_ids = [session.id for session in existing_sessions_queue]
         deleted_count = 0
         if leftover_session_ids:
@@ -454,7 +413,7 @@ def generate_sessions(request, pk):
             ClassSession.objects.bulk_create(sessions_to_create) 
         
         if sessions_to_update:
-            # Cập nhật tất cả các trường có thể thay đổi (ngày + thời gian + Lesson)
+            # Cập nhật toàn bộ trường có thể thay đổi (ngày, thời gian, bài học)
             ClassSession.objects.bulk_update(sessions_to_update, ['date', 'start_time', 'end_time', 'lesson'])
 
         # 5. Đánh số lại index cho toàn bộ các buổi học (sửa chữa index tạm thời)

@@ -87,9 +87,10 @@
                   <div class="dataTable-dropdown d-flex align-items-center gap-2">
                     <select name="per_page" class="dataTable-selector form-select form-select-sm w-auto"
                             hx-get="{% url 'centers:rooms_manage' %}" hx-target="#rooms-table" hx-include="#filters-form" hx-trigger="change">
-                      <option value="5" {% if request.GET.per_page == '5' %}selected{% endif %}>5</option>
                       <option value="10" {% if request.GET.per_page == '10' or not request.GET.per_page %}selected{% endif %}>10</option>
                       <option value="25" {% if request.GET.per_page == '25' %}selected{% endif %}>25</option>
+                      <option value="50" {% if request.GET.per_page == '50' %}selected{% endif %}>50</option>
+                      <option value="100" {% if request.GET.per_page == '100' %}selected{% endif %}>100</option>
                     </select>
                     <label class="mb-0">mục/trang</label>
                   </div>

@@ -6,7 +6,6 @@ from django.contrib.auth.forms import (
     PasswordChangeForm as DjangoPasswordChangeForm,
     SetPasswordForm as DjangoSetPasswordForm,
 )
-from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.utils.text import slugify
@@ -318,29 +317,20 @@ class UserPasswordChangeForm(DjangoPasswordChangeForm):
         self.fields['new_password2'].error_messages = {
             'required': 'Vui lòng xác nhận mật khẩu mới.',
         }
-
-        self.fields['new_password1'].help_text = (
-            "<ul>"
-            "<li>Không được quá giống với các thông tin cá nhân khác.</li>"
-            "<li>Phải chứa ít nhất 8 ký tự.</li>"
-            "<li>Không thể là một mật khẩu được sử dụng phổ biến.</li>"
-            "<li>Không thể chỉ chứa số.</li>"
-            "</ul>"
-        )
-
         self.error_messages['password_mismatch'] = "Mật khẩu xác nhận không khớp. Vui lòng nhập lại."
-
-        for validator in self.fields['new_password1'].validators:
-            if isinstance(validator, password_validation.MinimumLengthValidator):
-                validator.message = 'Mật khẩu phải chứa ít nhất %(min_length)d ký tự.'
-            elif isinstance(validator, password_validation.UserAttributeSimilarityValidator):
-                validator.message = 'Mật khẩu quá giống với thông tin cá nhân khác của bạn.'
-            elif isinstance(validator, password_validation.CommonPasswordValidator):
-                validator.message = 'Mật khẩu quá phổ biến. Vui lòng chọn mật khẩu khác.'
-            elif isinstance(validator, password_validation.NumericPasswordValidator):
-                validator.message = 'Mật khẩu không được chỉ chứa các chữ số.'
-
+        self.fields['new_password1'].validators = []
+        self.fields['new_password2'].validators = []
+        self.fields['new_password1'].help_text = "Gợi ý: kết hợp chữ và số để mật khẩu khó đoán hơn, nhưng chúng tôi không bắt buộc định dạng cụ thể."
         self.fields['new_password2'].help_text = "Nhập lại mật khẩu mới để xác nhận."
+
+    def clean_new_password2(self):
+        password1 = self.cleaned_data.get('new_password1')
+        password2 = self.cleaned_data.get('new_password2')
+        if not password1 or not password2:
+            raise ValidationError('Vui lòng nhập đầy đủ mật khẩu mới.')
+        if password1 != password2:
+            raise ValidationError(self.error_messages['password_mismatch'], code='password_mismatch')
+        return password2
 
 
 class UserSetPasswordForm(DjangoSetPasswordForm):
@@ -349,28 +339,22 @@ class UserSetPasswordForm(DjangoSetPasswordForm):
     def __init__(self, user, *args, **kwargs):
         super().__init__(user, *args, **kwargs)
         self.fields['new_password1'].label = "Mật khẩu mới"
-        self.fields['new_password1'].help_text = (
-            "<ul>"
-            "<li>Không được quá giống với các thông tin cá nhân khác.</li>"
-            "<li>Phải chứa ít nhất 8 ký tự.</li>"
-            "<li>Không thể là một mật khẩu được sử dụng phổ biến.</li>"
-            "<li>Không thể chỉ chứa số.</li>"
-            "</ul>"
-        )
+        self.fields['new_password1'].validators = []
+        self.fields['new_password2'].validators = []
+        self.fields['new_password1'].help_text = "Chọn mật khẩu mà bạn dễ nhớ. Không có yêu cầu định dạng đặc biệt."
         self.fields['new_password2'].label = "Xác nhận mật khẩu mới"
         self.fields['new_password2'].help_text = "Nhập lại mật khẩu mới để xác nhận."
 
         self.error_messages['password_mismatch'] = "Mật khẩu xác nhận không khớp. Vui lòng nhập lại."
 
-        for validator in self.fields['new_password1'].validators:
-            if isinstance(validator, password_validation.MinimumLengthValidator):
-                validator.message = 'Mật khẩu phải chứa ít nhất %(min_length)d ký tự.'
-            elif isinstance(validator, password_validation.UserAttributeSimilarityValidator):
-                validator.message = 'Mật khẩu quá giống với thông tin cá nhân khác của bạn.'
-            elif isinstance(validator, password_validation.CommonPasswordValidator):
-                validator.message = 'Mật khẩu quá phổ biến. Vui lòng chọn mật khẩu khác.'
-            elif isinstance(validator, password_validation.NumericPasswordValidator):
-                validator.message = 'Mật khẩu không được chỉ chứa các chữ số.'
+    def clean_new_password2(self):
+        password1 = self.cleaned_data.get('new_password1')
+        password2 = self.cleaned_data.get('new_password2')
+        if not password1 or not password2:
+            raise ValidationError('Vui lòng nhập đầy đủ mật khẩu mới.')
+        if password1 != password2:
+            raise ValidationError(self.error_messages['password_mismatch'], code='password_mismatch')
+        return password2
 
 
 class ForgotPasswordForm(forms.Form):

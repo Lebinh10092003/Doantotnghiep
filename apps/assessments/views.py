@@ -1,12 +1,14 @@
-# apps/assessments/views.py
-from django.shortcuts import render, get_object_or_404
+# View cho app assessments
 from django.contrib.auth.decorators import login_required, permission_required
-from django.views.decorators.http import require_POST
 from django.http import HttpResponseBadRequest
-from .models import Assessment
-from .forms import AssessmentForm
-from apps.class_sessions.models import ClassSession
+from django.shortcuts import get_object_or_404, render
+from django.views.decorators.http import require_POST
+
 from apps.accounts.models import User
+from apps.class_sessions.models import ClassSession
+
+from .forms import AssessmentForm
+from .models import Assessment
 
 @require_POST
 @login_required

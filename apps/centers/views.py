@@ -80,9 +80,8 @@ def centers_manage(request):
     active_filter_badges = build_filter_badges(center_filter)
 
     query_params = request.GET.copy()
-    for key in ["page", "per_page"]:
-        if key in query_params:
-            del query_params[key]
+    query_params._mutable = True
+    query_params.pop("page", None)
 
     context = {
         "page_obj": page_obj,

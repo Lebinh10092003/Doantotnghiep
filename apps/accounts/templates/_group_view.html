@@ -81,8 +81,8 @@
     </div>
 
     <div class="tab-pane fade" id="users-pane" role="tabpanel" aria-labelledby="users-tab">
-      <div id="group-users-tab-content"
-           hx-get="{% url 'accounts:group_users' group.id %}?per_page_group=5"
+       <div id="group-users-tab-content"
+         hx-get="{% url 'accounts:group_users' group.id %}?per_page_group=10"
            hx-trigger="load"
            hx-target="this"
            hx-swap="innerHTML">

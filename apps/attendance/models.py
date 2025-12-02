@@ -1,7 +1,7 @@
 from django.db import models
 from apps.class_sessions.models import ClassSession
 
-ATTEND_CHOICES = [("P", "Present"), ("A", "Absent"), ("L", "Late")]
+ATTEND_CHOICES = [("P", "Có mặt"), ("A", "Vắng mặt"), ("L", "Đi muộn")]
 
 
 class Attendance(models.Model):

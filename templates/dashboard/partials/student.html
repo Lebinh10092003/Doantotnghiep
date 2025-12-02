@@ -1,0 +1,69 @@
+<div class="row match-height g-3 mb-4">
+    {% if student_cards %}
+        {% for card in student_cards %}
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body px-4 py-4-5 d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-uppercase text-muted small d-block mb-2">{{ card.label }}</span>
+                            <h4 class="mb-1">{{ card.value|default:0 }}</h4>
+                            {% if card.subtitle %}
+                                <small class="text-muted">{{ card.subtitle }}</small>
+                            {% endif %}
+                        </div>
+                        {% if card.icon %}
+                            <div class="stats-icon bg-{{ card.accent|default:'primary' }} text-white">
+                                <i class="{{ card.icon }}"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-light border shadow-sm mb-0">Không có buổi học nào được ghi nhận.</div>
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header border-0 bg-transparent d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Lịch học hôm nay</h6>
+        {% if student_schedule %}
+            <span class="badge bg-light text-dark">{{ student_schedule|length }} buổi</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if student_schedule %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Giờ</th>
+                            <th>Lớp</th>
+                            <th>Trung tâm</th>
+                            <th>Phòng</th>
+                            <th class="text-center">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in student_schedule %}
+                            <tr>
+                                <td class="fw-semibold">{{ row.time_label }}</td>
+                                <td>{{ row.class_name }}</td>
+                                <td>{{ row.center_name }}</td>
+                                <td>{{ row.room_name }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ row.status_badge }}">{{ row.status_label }}</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">Không có lịch học trong ngày.</p>
+        {% endif %}
+    </div>
+</div>

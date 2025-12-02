@@ -60,10 +60,11 @@
       </div>
       <div class="dataTable-dropdown d-flex align-items-center gap-2">
         <select name="per_page" class="dataTable-selector form-select form-select-sm w-auto"
-                hx-get="{% url 'centers:center_detail' center.id %}?fragment=rooms_table" hx-target="#center-rooms-table" hx-include="#center-rooms-table-form" hx-trigger="change">
-          <option value="5" {% if per_page == 5 %}selected{% endif %}>5</option>
+          hx-get="{% url 'centers:center_detail' center.id %}?fragment=rooms_table" hx-target="#center-rooms-table" hx-include="#center-rooms-table-form" hx-trigger="change">
           <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
           <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+          <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+          <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
         </select>
         <label class="mb-0">mục/trang</label>
       </div>

@@ -7,6 +7,9 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
+from apps.rewards import services
 from apps.rewards.forms import AwardPointsForm, RedemptionRequestForm, RewardItemForm
 from apps.rewards.models import (
     PointAccount,
@@ -16,9 +19,6 @@ from apps.rewards.models import (
     RewardTransaction,
     SessionPointEventType,
 )
-from apps.rewards import services
-from apps.common.utils.forms import form_errors_as_text
-from apps.common.utils.http import is_htmx_request
 
 
 def _role_flags(user):

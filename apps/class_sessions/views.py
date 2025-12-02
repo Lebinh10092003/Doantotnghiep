@@ -1,35 +1,33 @@
 import json
+from collections import defaultdict
 from datetime import date, timedelta
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+
 from django.contrib.auth.decorators import login_required, permission_required
-from apps.filters.utils import (
-    determine_active_filter_name,
-)
-from django.views.decorators.http import require_POST
-from django_filters.views import FilterView
+from django.core.exceptions import PermissionDenied
+from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseBadRequest
-from django.urls import reverse
-from django import forms 
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
-from collections import defaultdict 
-from django.core.exceptions import PermissionDenied
-from apps.accounts.models import User, ParentStudentRelation
-from apps.enrollments.models import Enrollment
-from apps.attendance.models import Attendance
+from django.urls import reverse
+from django.views.decorators.http import require_POST
+
+from apps.accounts.models import ParentStudentRelation, User
+from apps.assessments.forms import AssessmentForm
 from apps.assessments.models import Assessment
 from apps.attendance.forms import AttendanceForm
-from apps.assessments.forms import AssessmentForm
-from .models import ClassSession , ClassSessionPhoto
-from .filters import ClassSessionFilter
-from .forms import ClassSessionForm 
-from apps.filters.models import SavedFilter
-from django.core.paginator import Paginator, EmptyPage
+from apps.attendance.models import Attendance
 from apps.centers.models import Center
-from apps.curriculum.models import Subject, Lesson
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
+from apps.curriculum.models import Lesson, Subject
+from apps.enrollments.models import Enrollment
+from apps.filters.models import SavedFilter
+from apps.filters.utils import build_filter_badges, determine_active_filter_name
+
+from .filters import ClassSessionFilter
+from .forms import ClassSessionForm
+from .models import ClassSession, ClassSessionPhoto
 
 
 def _session_teacher_label(session):
@@ -112,41 +110,13 @@ def manage_class_sessions(request):
     else:
         qs = qs.order_by("-date", "-start_time", "klass__name")
 
-    # Logic tạo Badge lọc
-    active_filter_badges = []
-    if session_filter.form.is_bound:
-        for name, value in session_filter.form.cleaned_data.items():
-            if value and name in session_filter.form.fields:
-                field_label = session_filter.form.fields[name].label or name
-                display_value = ""
-
-                if isinstance(value, (User, Center, Subject, Lesson)):
-                    display_value = str(value)
-                elif isinstance(session_filter.form.fields[name], forms.ChoiceField):
-                    display_value = dict(session_filter.form.fields[name].choices).get(value) if value else None
-                elif isinstance(value, slice): 
-                    start, end = value.start, value.stop
-                    if start and end:
-                        display_value = f"từ {start.strftime('%d/%m/%Y')} đến {end.strftime('%d/%m/%Y')}"
-                    elif start:
-                        display_value = f"từ {start.strftime('%d/%m/%Y')}"
-                    elif end:
-                        display_value = f"đến {end.strftime('%d/%m/%Y')}"
-                elif isinstance(value, str) and value:
-                    display_value = value
-                
-                if display_value:
-                    active_filter_badges.append({
-                        "label": field_label,
-                        "value": display_value,
-                        "key": name,
-                    })
+    active_filter_badges = build_filter_badges(session_filter, exclude={"group_by"})
 
     # 3. Phân trang
     try:
-        per_page = int(request.GET.get("per_page", 25))
+        per_page = int(request.GET.get("per_page", 10))
     except (TypeError, ValueError):
-        per_page = 25
+        per_page = 10
     try:
         page_number = int(request.GET.get("page", 1))
     except (TypeError, ValueError):
@@ -163,9 +133,8 @@ def manage_class_sessions(request):
 
     # Tạo query params cho phân trang, loại bỏ 'page' để tránh lặp lại
     query_params_for_pagination = request.GET.copy()
-    for key in ["page", "per_page"]:
-        if key in query_params_for_pagination:
-            del query_params_for_pagination[key]
+    query_params_for_pagination._mutable = True
+    query_params_for_pagination.pop("page", None)
 
     # 4. Xây dựng Context
     model_name = "ClassSession"

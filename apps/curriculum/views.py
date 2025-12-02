@@ -1,20 +1,20 @@
 import json
+import os
 from datetime import date
-
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required, permission_required
-from django.core.paginator import Paginator, EmptyPage
-from django.db.models import Q
-from django.db import transaction
-from django.core.files.base import ContentFile
-from django.utils.text import slugify
 from io import BytesIO
 from urllib.parse import urlparse
-import os
+
 import pandas as pd
 import requests
 from django import forms
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.files.base import ContentFile
+from django.core.paginator import EmptyPage, Paginator
+from django.db import transaction
+from django.db.models import Q
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, render
+from django.utils.text import slugify
 
 from .models import Subject, Module, Lesson, Lecture, Exercise
 from apps.students.models import StudentExerciseSubmission
@@ -27,7 +27,7 @@ from apps.filters.utils import build_filter_badges, determine_active_filter_name
 from .filters import SubjectFilter, ModuleFilter, LessonFilter
 
 
-# Subjects
+# Môn học
 @login_required
 @permission_required("curriculum.view_subject", raise_exception=True)
 def subjects_manage(request):
@@ -56,9 +56,8 @@ def subjects_manage(request):
     active_filter_badges = build_filter_badges(subject_filter)
 
     query_params = request.GET.copy()
-    for key in ["page", "per_page"]:
-        if key in query_params:
-            del query_params[key]
+    query_params._mutable = True
+    query_params.pop("page", None)
 
     context = {
         "page_obj": page_obj,
@@ -189,10 +188,10 @@ def subject_delete_single_view(request, subject_id: int):
         resp = HttpResponse(status=200)
         resp["HX-Trigger"] = json.dumps({"reload-subjects-table": True, "show-sweet-alert": alert})
         return resp
-    return HttpResponse(status=405) # Method Not Allowed
+    return HttpResponse(status=405) # Phương thức không được phép
 
 
-# Modules
+# Học phần
 @login_required
 @permission_required("curriculum.view_module", raise_exception=True)
 def modules_manage(request):
@@ -221,9 +220,8 @@ def modules_manage(request):
     active_filter_badges = build_filter_badges(module_filter)
 
     query_params = request.GET.copy()
-    for key in ["page", "per_page"]:
-        if key in query_params:
-            del query_params[key]
+    query_params._mutable = True
+    query_params.pop("page", None)
 
     context = {
         "page_obj": page_obj,
@@ -344,7 +342,7 @@ def module_delete_view(request):
     return resp
 
 
-# Lessons
+# Bài học
 @login_required
 @permission_required("curriculum.view_lesson", raise_exception=True)
 def lessons_manage(request):
@@ -376,9 +374,8 @@ def lessons_manage(request):
     active_filter_badges = build_filter_badges(lesson_filter)
 
     query_params = request.GET.copy()
-    for key in ["page", "per_page"]:
-        if key in query_params:
-            del query_params[key]
+    query_params._mutable = True
+    query_params.pop("page", None)
 
     context = {
         "page_obj": page_obj,
@@ -469,7 +466,7 @@ def lesson_detail_view(request, lesson_id: int):
     exercise = None
     try:
         exercise = lesson.exercise
-    except Lesson.exercise.RelatedObjectDoesNotExist:  # One-to-one may not exist yet
+    except Lesson.exercise.RelatedObjectDoesNotExist:  # Quan hệ một-một có thể chưa tồn tại
         exercise = None
 
     exercise_submissions = []
@@ -508,15 +505,15 @@ def lesson_detail_view(request, lesson_id: int):
         "class_id": class_id,
         "class_session": class_session,
     }
-    # Serve different templates depending on caller context
+    # Phục vụ template phù hợp với ngữ cảnh lời gọi
     as_param = request.GET.get("as")
     if is_htmx_request(request):
         if as_param == "inline":
             return render(request, "lesson_detail.html", context)
         else:
-            # default for HTMX callers expecting modal markup
+            # Mặc định cho lời gọi HTMX mong chờ đánh dấu modal
             return render(request, "_lesson_detail.html", context)
-    # Non-HTMX: render the full page variant
+    # Không phải HTMX: render biến thể toàn trang
     return render(request, "lesson_detail.html", context)
 
 
@@ -565,18 +562,18 @@ def lesson_delete_single_view(request, lesson_id: int):
         resp = HttpResponse(status=200)
         resp["HX-Trigger"] = json.dumps({"reload-lessons-table": True, "show-sweet-alert": alert})
         return resp
-    return HttpResponse(status=405) # Method Not Allowed
+    return HttpResponse(status=405) # Phương thức không được phép
 
 
 @login_required
-@permission_required("curriculum.change_lesson", raise_exception=True) # Uses change_lesson perm
+@permission_required("curriculum.change_lesson", raise_exception=True) # Dùng quyền change_lesson
 def lesson_content_edit_view(request, lesson_id: int):
     lesson = get_object_or_404(Lesson, id=lesson_id)
     lecture = getattr(lesson, "lecture", None)
     exercise = getattr(lesson, "exercise", None)
 
     if request.method == "POST":
-        # 'form_type' is a hidden input in the template to know which form was submitted
+        # 'form_type' là input ẩn trong template để xác định form nào gửi lên
         form_type = request.POST.get("form_type")
 
         lecture_form = LectureForm(request.POST, request.FILES, instance=lecture, prefix="lecture")
@@ -603,10 +600,10 @@ def lesson_content_edit_view(request, lesson_id: int):
             })
             return resp
 
-    # GET request or invalid POST
+    # Dùng cho GET hoặc POST không hợp lệ
     lecture_form = LectureForm(instance=lecture, prefix="lecture")
     exercise_form = ExerciseForm(instance=exercise, prefix="exercise", initial={'lesson': lesson})
-    # Hide the lesson field in the form as it's already known
+    # Ẩn trường lesson vì đã xác định sẵn
     exercise_form.fields['lesson'].widget = forms.HiddenInput()
 
     context = {
@@ -659,11 +656,11 @@ def exercise_delete_view(request, lesson_id: int):
     return HttpResponse(status=405)
 
 
-# -------- Import/Export Curriculum --------
+# -------- Nhập/Xuất Chương trình --------
 @login_required
 @permission_required("curriculum.view_subject", raise_exception=True)
 def export_curriculum_view(request):
-    # Build DataFrames for each entity
+    # Dựng DataFrame cho từng thực thể
     subjects_qs = Subject.objects.all().order_by("code")
     modules_qs = Module.objects.select_related("subject").all().order_by("subject__code", "order")
     lessons_qs = Lesson.objects.select_related("module", "module__subject").all().order_by("module__subject__code", "module__order", "order")
@@ -709,7 +706,7 @@ def export_curriculum_view(request):
             "lesson_order": lec.lesson.order,
             "content": lec.content or "",
             "video_url": lec.video_url or "",
-            # Files are exported as stored paths for reference
+            # File được xuất theo đường dẫn lưu trữ để tham chiếu
             "file": lec.file.name if lec.file else "",
             "file_url": request.build_absolute_uri(lec.file.url) if lec.file else "",
         }
@@ -729,10 +726,10 @@ def export_curriculum_view(request):
         for ex in exercises_qs
     ])
 
-    # Write to an Excel workbook with multiple sheets
+    # Ghi ra file Excel nhiều sheet
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        # Ensure each DF exists with headers even if empty
+        # Đảm bảo mỗi DataFrame có header kể cả khi trống
         (subjects_df if not subjects_df.empty else pd.DataFrame(columns=["code", "name", "description", "avatar_url"])) \
             .to_excel(writer, sheet_name="Subjects", index=False)
         (modules_df if not modules_df.empty else pd.DataFrame(columns=["subject_code", "order", "title", "description", "image_url"])) \
@@ -771,9 +768,9 @@ def import_curriculum_view(request):
                 status=422,
             )
 
-        # Read all sheets
+        # Đọc toàn bộ sheet
         try:
-            # Reset pointer in case of re-reads
+            # Reset con trỏ phòng trường hợp đọc lại
             upload.seek(0)
             sheets = pd.read_excel(upload, sheet_name=None)
         except Exception as e:
@@ -786,12 +783,12 @@ def import_curriculum_view(request):
             try:
                 r = requests.get(url, timeout=10, stream=True)
                 r.raise_for_status()
-                # Try derive filename from URL
+                # Thử suy ra tên file từ URL
                 parsed = urlparse(url)
                 base = os.path.basename(parsed.path) or prefix
                 name, ext = os.path.splitext(base)
                 if not ext:
-                    # Guess from content-type
+                    # Đoán phần mở rộng theo content-type
                     ct = r.headers.get('Content-Type', '').lower()
                     if 'pdf' in ct:
                         ext = '.pdf'
@@ -814,7 +811,7 @@ def import_curriculum_view(request):
             with transaction.atomic():
                 savepoint = transaction.savepoint()
 
-                # 1) Subjects
+                # 1) Môn học
                 df = sheets.get("Subjects")
                 if df is not None and not df.empty:
                     for idx, row in df.iterrows():
@@ -826,7 +823,7 @@ def import_curriculum_view(request):
                             errors.append(f"Subjects!Dòng {idx+2}: Thiếu 'code'.")
                             continue
                         subj, _ = Subject.objects.get_or_create(code=code, defaults={"name": name, "description": description})
-                        # Update if existing
+                        # Cập nhật nếu bản ghi đã tồn tại
                         if (name and subj.name != name) or (description and subj.description != description) or (avatar_url and subj.avatar_url != avatar_url):
                             if name:
                                 subj.name = name
@@ -834,7 +831,7 @@ def import_curriculum_view(request):
                             subj.avatar_url = avatar_url or None
                             subj.save()
 
-                # 2) Modules
+                # 2) Học phần
                 df = sheets.get("Modules")
                 if df is not None and not df.empty:
                     for idx, row in df.iterrows():
@@ -862,7 +859,7 @@ def import_curriculum_view(request):
                             module.image_url = image_url or None
                             module.save()
 
-                # 3) Lessons
+                # 3) Bài học
                 df = sheets.get("Lessons")
                 if df is not None and not df.empty:
                     for idx, row in df.iterrows():
@@ -893,7 +890,7 @@ def import_curriculum_view(request):
                             lesson.objectives = objectives
                             lesson.save()
 
-                # 4) Lectures
+                # 4) Bài giảng
                 df = sheets.get("Lectures")
                 if df is not None and not df.empty:
                     for idx, row in df.iterrows():
@@ -920,7 +917,7 @@ def import_curriculum_view(request):
                         lecture, _ = Lecture.objects.get_or_create(lesson=lesson)
                         if content:
                             lecture.content = content
-                        # Try download file if file_url provided
+                        # Thử tải file nếu có file_url
                         if file_url:
                             dl = _download_file_to_content(file_url, prefix=f"lecture-{lesson.id}")
                             if dl:
@@ -928,17 +925,17 @@ def import_curriculum_view(request):
                                 try:
                                     lecture.file.save(fname, cfile, save=False)
                                 except Exception:
-                                    # Fall back to storing URL
+                                    # Rớt về lưu lại URL nếu lỗi
                                     if not video_url:
                                         video_url = file_url
                             else:
-                                # Store URL for display fallback
+                                # Lưu URL để hiển thị dự phòng
                                 if not video_url:
                                     video_url = file_url
                         lecture.video_url = video_url
                         lecture.save()
 
-                # 5) Exercises
+                # 5) Bài tập
                 df = sheets.get("Exercises")
                 if df is not None and not df.empty:
                     for idx, row in df.iterrows():
@@ -978,7 +975,7 @@ def import_curriculum_view(request):
                         if description:
                             exercise.description = description if pd.notna(description) else ""
                         exercise.difficulty = difficulty
-                        # Try download file
+                        # Thử tải file đính kèm
                         if file_url:
                             dl = _download_file_to_content(file_url, prefix=f"exercise-{lesson.id}")
                             if dl:
@@ -992,7 +989,7 @@ def import_curriculum_view(request):
                                 exercise.link_url = file_url
                         exercise.save()
 
-                # If any errors, rollback
+                # Nếu có lỗi thì rollback
                 if errors:
                     transaction.savepoint_rollback(savepoint)
                 else:
@@ -1015,7 +1012,7 @@ def import_curriculum_view(request):
         })
         return resp
 
-    # GET
+    # Xử lý GET
     form = ImportCurriculumForm()
     return render(request, "_import_curriculum_form.html", {"form": form})
 
@@ -1023,7 +1020,7 @@ def import_curriculum_view(request):
 @login_required
 @permission_required("curriculum.view_subject", raise_exception=True)
 def import_curriculum_template_view(request):
-    # Empty headers template workbook
+    # File template chỉ gồm header trống
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         pd.DataFrame(columns=["code", "name", "description", "avatar_url"]).to_excel(writer, sheet_name="Subjects", index=False)

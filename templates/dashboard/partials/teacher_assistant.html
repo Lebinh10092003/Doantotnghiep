@@ -1,0 +1,87 @@
+<div class="row match-height g-3 mb-4">
+    {% if teacher_cards %}
+        {% for card in teacher_cards %}
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body px-4 py-4-5 d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-uppercase text-muted small d-block mb-2">{{ card.label }}</span>
+                            <h4 class="mb-1">{{ card.value|default:0 }}</h4>
+                            {% if card.subtitle %}
+                                <small class="text-muted">{{ card.subtitle }}</small>
+                            {% endif %}
+                        </div>
+                        {% if card.icon %}
+                            <div class="stats-icon bg-{{ card.accent|default:'primary' }} text-white">
+                                <i class="{{ card.icon }}"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-light border shadow-sm mb-0">Bạn không có buổi dạy hôm nay.</div>
+        </div>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header border-0 bg-transparent d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Lịch dạy hôm nay</h6>
+        {% if teacher_schedule %}
+            <span class="badge bg-light text-dark">{{ teacher_schedule|length }} buổi</span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if teacher_schedule %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Giờ</th>
+                            <th>Lớp</th>
+                            <th class="text-center">Số HV</th>
+                            <th style="width: 220px;">Điểm danh</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th class="text-end">&nbsp;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in teacher_schedule %}
+                            <tr>
+                                <td class="fw-semibold">{{ row.time_label }}</td>
+                                <td>
+                                    <div class="fw-semibold">{{ row.class_name }}</div>
+                                    <small class="text-muted">{{ row.center_name }} • {{ row.room_name }}</small>
+                                </td>
+                                <td class="text-center">{{ row.expected|default:0 }}</td>
+                                <td>
+                                    {% if row.attendance_ratio_percent is not None %}
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="progress progress-sm flex-grow-1" style="height:6px;">
+                                                <div class="progress-bar bg-success" style="width: {{ row.attendance_ratio_percent }}%;"></div>
+                                            </div>
+                                            <small class="text-muted">{{ row.attendance_ratio_text }}</small>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">{{ row.attendance_ratio_text }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ row.status_badge }}">{{ row.status_label }}</span>
+                                </td>
+                                <td class="text-end">
+                                    <a href="{{ row.action_url }}" class="btn btn-sm btn-outline-primary">Điểm danh</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">Không có lịch dạy trong ngày.</p>
+        {% endif %}
+    </div>
+</div>

@@ -1,7 +1,6 @@
 import json
+from collections import OrderedDict, defaultdict
 from datetime import timedelta
-
-from collections import defaultdict, OrderedDict
 
 from django.conf import settings
 from django.contrib.auth import (
@@ -17,7 +16,7 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
-from django.core.paginator import Paginator, EmptyPage
+from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Count, ProtectedError, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
@@ -32,6 +31,8 @@ from tablib import Dataset
 
 from apps.centers.models import Center
 from apps.classes.models import Class
+from apps.common.utils.forms import form_errors_as_text
+from apps.common.utils.http import is_htmx_request
 from apps.filters.models import SavedFilter
 from apps.filters.utils import build_filter_badges, determine_active_filter_name
 from apps.rewards.models import PointAccount, RewardTransaction
@@ -50,14 +51,12 @@ from .forms import (
 from .models import ParentStudentRelation
 from .resources import UserResource
 from .services import send_password_reset_email
-
-from apps.common.utils.forms import form_errors_as_text
-from apps.common.utils.http import is_htmx_request
 User = get_user_model()
 PASSWORD_RESET_RATE_LIMIT = getattr(settings, "PASSWORD_RESET_RATE_LIMIT", 5)
 PASSWORD_RESET_RATE_WINDOW = getattr(settings, "PASSWORD_RESET_RATE_WINDOW", 300)
 
 
+# === Tiện ích giới hạn tần suất đặt lại mật khẩu ===
 def _password_reset_rate_key(request) -> str:
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
     client_ip = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "unknown")
@@ -211,10 +210,11 @@ def login_view(request):
         # Nếu request thường: redirect về home
         return redirect(final_redirect)
 
-    # GET: render form login
+    # Với GET: hiển thị trang đăng nhập
     return render(request, "login.html")
 
 
+# Quy trình đặt lại mật khẩu qua email
 @ensure_csrf_cookie
 def password_reset_request_view(request):
     if request.method == "POST":
@@ -266,6 +266,23 @@ def password_reset_confirm_view(request, uidb64, token):
                 )
                 return resp
             return redirect("accounts:password_reset_complete")
+        if is_htmx_request(request):
+            html = render_to_string(
+                "resetpassword/_password_reset_confirm_form.html",
+                {"form": form},
+                request=request,
+            )
+            resp = HttpResponse(html, status=422)
+            resp["HX-Trigger"] = json.dumps(
+                {
+                    "show-sweet-alert": {
+                        "icon": "error",
+                        "title": "Không thể cập nhật mật khẩu",
+                        "text": form_errors_as_text(form),
+                    }
+                }
+            )
+            return resp
     else:
         form = UserSetPasswordForm(user)
 
@@ -300,7 +317,7 @@ def is_admin(user):
     return user.is_superuser or getattr(user, "role", None) == "ADMIN"
 # Lọc queryset người dùng dựa trên tham số request
 def _base_users_queryset(current_user):
-    """Return the base queryset that respects the viewer's role."""
+    """Trả về queryset cơ bản phù hợp với quyền xem của người dùng."""
     is_parent = current_user.groups.filter(name="PARENT").exists()
     is_student = current_user.groups.filter(name="STUDENT").exists()
 
@@ -332,7 +349,7 @@ def _filter_users_queryset(request, with_filter=False):
 def manage_accounts(request):
     qs, user_filter = _filter_users_queryset(request, with_filter=True)
 
-    # Determine grouping mode from filter data
+    # Xác định chế độ nhóm dựa vào dữ liệu bộ lọc
     if user_filter.form.is_bound:
         user_filter.form.is_valid()
         group_by = user_filter.form.cleaned_data.get("group_by", "") or ""
@@ -369,9 +386,8 @@ def manage_accounts(request):
     active_filter_badges = build_filter_badges(user_filter)
 
     query_params = request.GET.copy()
-    for key in ["page", "per_page"]:
-        if key in query_params:
-            del query_params[key]
+    query_params._mutable = True
+    query_params.pop("page", None)
 
     context = {
         "page_obj": page_obj,
@@ -558,7 +574,7 @@ def user_detail_view(request, user_id):
         'assisting_classes': assisting_classes,
     }
     response = render(request, '_user_detail.html', context)
-    # If opened from the group modal, trigger closing it before showing user modal
+    # Nếu đang mở từ modal nhóm thì đóng modal đó trước khi hiển thị modal người dùng
     if is_htmx_request(request) and request.GET.get('from_group'):
         try:
             triggers = {
@@ -735,7 +751,7 @@ PERMISSION_ACTIONS = [
 
 def _group_permissions_by_functionality(permissions_qs):
     """
-    Group permissions by feature and model so the UI can render a four-action grid.
+    Nhóm quyền theo tính năng và model để giao diện hiển thị dạng lưới 4 hành động.
     """
     grouped: OrderedDict[str, list] = OrderedDict()
     model_lookup = {}
@@ -890,7 +906,7 @@ def group_create_view(request):
                 }
             })
             return response
-    else: # GET
+    else:  # Yêu cầu GET
         form = SimpleGroupForm()
         all_permissions = Permission.objects.all()
         functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
@@ -938,7 +954,7 @@ def group_edit_view(request, group_id):
                 }
             })
             return response
-    else: # GET
+    else:  # Yêu cầu GET
         form = SimpleGroupForm(instance=group)
         all_permissions = Permission.objects.all()
         functional_grouped_permissions = _group_permissions_by_functionality(all_permissions)
@@ -1052,9 +1068,9 @@ def group_users_view(request, group_id):
     
     # Phân trang
     try:
-        per_page = int(request.GET.get("per_page_group", 5)) # Dùng 1 param khác
+        per_page = int(request.GET.get("per_page_group", 10)) # Dùng 1 param khác
     except (TypeError, ValueError):
-        per_page = 5
+        per_page = 10
     try:
         page = int(request.GET.get("page_group", 1)) # Dùng 1 param khác
     except (TypeError, ValueError):
@@ -1082,7 +1098,7 @@ def group_users_view(request, group_id):
 @permission_required("auth.view_group", raise_exception=True)
 def group_view(request, group_id):
     group = get_object_or_404(Group, id=group_id)
-    # Build grouped, readable permission list for this group
+    # Gom và trình bày danh sách quyền theo từng nhóm để dễ đọc
     group_permissions = group.permissions.select_related('content_type').all()
     functional_grouped_permissions = _group_permissions_by_functionality(group_permissions)
 
@@ -1093,6 +1109,8 @@ def group_view(request, group_id):
     }
     return render(request, '_group_view.html', context)
 
+
+# Hồ sơ và mật khẩu cá nhân
 @login_required
 def profile_view(request):
     user = request.user

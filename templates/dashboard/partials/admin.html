@@ -1,0 +1,301 @@
+{% load humanize %}
+
+<style>
+    .chart-surface {
+        min-height: 300px;
+    }
+
+    .insight-list li + li {
+        margin-top: 0.75rem;
+    }
+</style>
+
+<section class="row g-3 mb-4 align-items-stretch">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm text-white h-100 overflow-hidden" style="background: linear-gradient(120deg, #4e73df 0%, #1cc88a 100%);">
+            <div class="card-body p-4 p-lg-5">
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
+                    <div>
+                        <p class="text-uppercase small mb-2 text-white-50">Bảng điều khiển quản trị</p>
+                        <h3 class="mb-1">Tổng quan toàn hệ thống</h3>
+                        <p class="mb-0 text-white-75">Theo dõi vận hành, lớp học và điểm danh theo thời gian thực.</p>
+                    </div>
+                    <div class="d-flex flex-column flex-sm-row flex-lg-column align-items-sm-center align-items-lg-end gap-3 text-lg-end">
+                        {% if admin_cards and admin_cards|length >= 3 %}
+                            {% with first=admin_cards.0 second=admin_cards.1 third=admin_cards.2 %}
+                                <div>
+                                    <span class="text-uppercase small d-block text-white-50">{{ first.label }}</span>
+                                    <span class="fs-3 fw-semibold">{{ first.value|default:0|intcomma }}</span>
+                                </div>
+                                <div class="d-flex flex-row flex-sm-column flex-lg-row gap-4">
+                                    <div>
+                                        <span class="text-uppercase small d-block text-white-50">{{ second.label }}</span>
+                                        <span class="fs-5">{{ second.value|default:0|intcomma }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-uppercase small d-block text-white-50">{{ third.label }}</span>
+                                        <span class="fs-5">{{ third.value|default:0|intcomma }}</span>
+                                    </div>
+                                </div>
+                            {% endwith %}
+                        {% elif admin_cards %}
+                            {% for card in admin_cards %}
+                                <div>
+                                    <span class="text-uppercase small d-block text-white-50">{{ card.label }}</span>
+                                    <span class="fs-4">{{ card.value|default:0|intcomma }}</span>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div>
+                                <span class="text-uppercase small d-block text-white-50">Chưa có dữ liệu</span>
+                                <span class="fs-3 fw-semibold">&mdash;</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    {% if admin_cards %}
+        {% for card in admin_cards %}
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body px-4 py-4-5 d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-uppercase small text-muted d-block mb-2">{{ card.label }}</span>
+                            <h4 class="mb-1">{{ card.value|default:0|intcomma }}</h4>
+                            {% if card.subtitle %}
+                                <small class="text-muted">{{ card.subtitle }}</small>
+                            {% endif %}
+                        </div>
+                        {% if card.icon %}
+                            <div class="stats-icon bg-{{ card.accent|default:'primary' }} text-white">
+                                <i class="{{ card.icon }}"></i>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-light border shadow-sm mb-0">Chưa có dữ liệu thống kê cho hôm nay.</div>
+        </div>
+    {% endif %}
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-xxl-8">
+        <div class="card shadow-sm h-100">
+            <div class="card-header border-0 bg-transparent d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0">Phân bổ học sinh theo trung tâm</h6>
+                    <small class="text-muted">Số học sinh dự kiến tham gia theo lịch hôm nay</small>
+                </div>
+                {% if admin_centers_activity %}
+                    <span class="badge bg-light text-dark">{{ admin_centers_activity|length }} trung tâm</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div id="admin-centers-students"
+                     class="chart-surface"
+                     data-centers="{% if admin_centers_activity %}{% for row in admin_centers_activity %}{{ row.center }}{% if not forloop.last %}|{% endif %}{% endfor %}{% endif %}"
+                     data-students="{% if admin_centers_activity %}{% for row in admin_centers_activity %}{{ row.students|default:0 }}{% if not forloop.last %}|{% endif %}{% endfor %}{% endif %}"
+                     data-sessions="{% if admin_centers_activity %}{% for row in admin_centers_activity %}{{ row.sessions|default:0 }}{% if not forloop.last %}|{% endif %}{% endfor %}{% endif %}"
+                     data-classes="{% if admin_centers_activity %}{% for row in admin_centers_activity %}{{ row.classes|default:0 }}{% if not forloop.last %}|{% endif %}{% endfor %}{% endif %}"
+                     data-empty="Chưa có trung tâm nào có dữ liệu hôm nay.">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-xxl-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header border-0 bg-transparent">
+                <h6 class="mb-0">Điểm nhấn hôm nay</h6>
+                <small class="text-muted">Ba trung tâm có tỷ lệ điểm danh cao nhất</small>
+            </div>
+            <div class="card-body">
+                {% if admin_centers_activity %}
+                    {% with sorted_centers=admin_centers_activity|dictsortreversed:"students" %}
+                        <ul class="list-unstyled insight-list mb-0">
+                            {% for center in sorted_centers|slice:":3" %}
+                                <li>
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-semibold">{{ center.center }}</div>
+                                            <small class="text-muted">{{ center.sessions|default:0 }} buổi &bull; {{ center.classes|default:0 }} lớp</small>
+                                        </div>
+                                        <span class="badge bg-light text-primary">{{ center.students|default:0|intcomma }} HV</span>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endwith %}
+                {% else %}
+                    <p class="text-muted mb-0">Chưa có dữ liệu hoạt động.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header border-0 bg-transparent d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="mb-0">Chi tiết hoạt động theo trung tâm</h6>
+            <small class="text-muted">Số buổi, sĩ số dự kiến và tỷ lệ điểm danh</small>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if admin_centers_activity %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Trung tâm</th>
+                            <th class="text-center">Buổi</th>
+                            <th class="text-center">Lớp hoạt động</th>
+                            <th class="text-center">Học sinh dự kiến</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in admin_centers_activity %}
+                            <tr>
+                                <td class="fw-semibold">{{ row.center }}</td>
+                                <td class="text-center">{{ row.sessions|default:0 }}</td>
+                                <td class="text-center">{{ row.classes|default:0 }}</td>
+                                <td class="text-center">{{ row.students|default:0|intcomma }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-muted mb-0">Chưa ghi nhận buổi học nào trong ngày.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    (function () {
+        if (window.__adminCentersChartInitialized) {
+            return;
+        }
+        window.__adminCentersChartInitialized = true;
+
+        function parseList(value) {
+            if (!value) {
+                return [];
+            }
+            return value.split('|').map(function (item) {
+                return item.trim();
+            }).filter(function (item) {
+                return item.length > 0;
+            });
+        }
+
+        function parseNumbers(value) {
+            return parseList(value).map(function (item) {
+                var number = Number(item.replace(',', '.'));
+                return isNaN(number) ? 0 : number;
+            });
+        }
+
+        function formatNumber(value) {
+            return Number(value || 0).toLocaleString('vi-VN');
+        }
+
+        function ensureApex(callback) {
+            if (window.ApexCharts) {
+                callback();
+                return;
+            }
+
+            if (!window.__apexQueue) {
+                window.__apexQueue = [];
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/apexcharts';
+                script.onload = function () {
+                    var queue = window.__apexQueue || [];
+                    window.__apexQueue = null;
+                    queue.forEach(function (fn) {
+                        try {
+                            fn();
+                        } catch (error) {
+                            console.error('ApexCharts callback error', error);
+                        }
+                    });
+                };
+                script.onerror = function () {
+                    console.error('Không thể tải ApexCharts.');
+                };
+                document.head.appendChild(script);
+            }
+
+            if (Array.isArray(window.__apexQueue)) {
+                window.__apexQueue.push(callback);
+            } else {
+                callback();
+            }
+        }
+
+        function renderCharts() {
+            var studentsEl = document.getElementById('admin-centers-students');
+            if (!studentsEl) {
+                return;
+            }
+
+            var centers = parseList(studentsEl.dataset.centers);
+            var students = parseNumbers(studentsEl.dataset.students);
+            if (!centers.length || !students.length) {
+                studentsEl.innerHTML = '<p class="text-muted text-center mb-0">' + (studentsEl.dataset.empty || 'Không có dữ liệu') + '</p>';
+                return;
+            }
+
+            var sessionsData = parseNumbers(studentsEl.dataset.sessions);
+            var classesData = parseNumbers(studentsEl.dataset.classes);
+
+            new ApexCharts(studentsEl, {
+                chart: { type: 'bar', height: 320, toolbar: { show: false } },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        barHeight: '60%',
+                        borderRadius: 6,
+                    },
+                },
+                dataLabels: {
+                    enabled: true,
+                    formatter: function (value) {
+                        return formatNumber(value);
+                    },
+                },
+                colors: ['#4e73df'],
+                series: [{ name: 'Học sinh', data: students }],
+                xaxis: {
+                    categories: centers,
+                    labels: {
+                        formatter: function (value) {
+                            return formatNumber(value);
+                        },
+                    },
+                },
+                tooltip: {
+                    y: {
+                        formatter: function (value, opts) {
+                            var index = opts.dataPointIndex;
+                            var sessions = sessionsData[index] || 0;
+                            var classes = classesData[index] || 0;
+                            return formatNumber(value) + ' học sinh\n' + sessions + ' buổi • ' + classes + ' lớp';
+                        },
+                    },
+                },
+            }).render();
+        }
+
+        ensureApex(renderCharts);
+    })();
+</script>

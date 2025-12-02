@@ -23,16 +23,19 @@ RANGE_START_HINTS = ("_after", "_gte", "_start", "_from", "_min", "_lower")
 RANGE_END_HINTS = ("_before", "_lte", "_end", "_to", "_max", "_upper")
 
 
-def build_filter_badges(filterset):
-    """Return a list of badge metadata for the active fields in a FilterSet."""
+def build_filter_badges(filterset, *, exclude=None):
+    """Return badge metadata for the active fields in a FilterSet."""
     form = getattr(filterset, "form", None)
     if form is None or not form.is_bound:
         return []
 
     # Ensure validation so cleaned_data is available
     form.is_valid()
+    excluded = set(exclude or [])
     badges = []
     for name, field in form.fields.items():
+        if name in excluded:
+            continue
         value = form.cleaned_data.get(name)
         if value in (None, "", [], (), {}):
             continue
@@ -47,9 +50,13 @@ def build_filter_badges(filterset):
     return badges
 
 
-def determine_active_filter_name(request, saved_filters):
+def determine_active_filter_name(request, saved_filters, query_params=None):
     """Return the saved-filter name that matches the current query (if any)."""
-    current_signature = _normalize_querydict(request.GET)
+    params_source = query_params if query_params is not None else request.GET
+    if isinstance(params_source, QueryDict):
+        current_signature = _normalize_querydict(params_source)
+    else:
+        current_signature = _normalize_mapping(_ensure_mapping(params_source))
     if not current_signature:
         return None
 
@@ -118,14 +125,26 @@ def resolve_dynamic_params(params, today=None):
 
 def _format_field_value(field, value):
     """Convert a filter value into a short human-readable string."""
+    if isinstance(value, slice):
+        return _format_range_value(value.start, value.stop)
+
+    if _looks_like_range_tuple(value):
+        start, end = value
+        return _format_range_value(start, end)
+
     if isinstance(value, (list, tuple)):
         if isinstance(field, forms.MultipleChoiceField):
             choices = dict(field.choices)
             labels = [choices.get(val, str(val)) for val in value if str(val)]
         else:
-            labels = [str(val) for val in value if str(val)]
+            labels = [_format_single_value(field, val) for val in value if str(val)]
+        labels = [label for label in labels if label]
         return ", ".join(labels)
 
+    return _format_single_value(field, value)
+
+
+def _format_single_value(field, value):
     if isinstance(value, (date, datetime)):
         return value.strftime("%d/%m/%Y")
 
@@ -133,12 +152,35 @@ def _format_field_value(field, value):
         return str(value)
 
     if isinstance(field, forms.ChoiceField):
+        # MultipleChoiceField inherits ChoiceField, so keep order: only run when not list/tuple
         return dict(field.choices).get(value, value)
 
     if isinstance(value, bool):
         return "Có" if value else "Không"
 
+    if value in (None, ""):
+        return ""
+
     return str(value)
+
+
+def _format_range_value(start, end):
+    start_label = _format_single_value(None, start)
+    end_label = _format_single_value(None, end)
+    if start_label and end_label:
+        return f"Từ {start_label} đến {end_label}"
+    if start_label:
+        return f"Từ {start_label}"
+    if end_label:
+        return f"Đến {end_label}"
+    return ""
+
+
+def _looks_like_range_tuple(value):
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return False
+    start, end = value
+    return any(item not in (None, "") for item in (start, end))
 
 
 def _ensure_mapping(params):

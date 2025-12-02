@@ -26,6 +26,7 @@ from apps.enrollments.models import Enrollment, EnrollmentStatus
 from apps.students.models import StudentProduct, StudentExerciseSubmission
 from apps.billing.models import BillingEntry
 from apps.filters.models import SavedFilter
+from apps.filters.utils import build_filter_badges, determine_active_filter_name
 from apps.reports.filters import (
     ClassActivityReportFilter,
     EnrollmentSummaryFilter,
@@ -126,7 +127,7 @@ def _build_student_report_context(request, *, paginate=False) -> dict:
             "klass__main_teacher",
         ).order_by("student__last_name", "student__first_name", "student__username")
 
-    per_page_default = 25
+    per_page_default = 10
     try:
         per_page = int(request.GET.get("per_page", per_page_default))
     except (TypeError, ValueError):
@@ -446,41 +447,6 @@ def enrollment_summary(request):
     return render(request, "enrollment_summary.html", context)
 
 
-def _canonicalize_params(query_data, *, exclude=None):
-    exclude = set(exclude or [])
-    normalized = {}
-    for key in query_data:
-        if key in exclude:
-            continue
-        values = [v for v in query_data.getlist(key) if v not in (None, "")]
-        if values:
-            normalized[key] = sorted(values)
-    return normalized
-
-
-def _saved_filter_match_name(request, *, model_name, current_params):
-    if not current_params:
-        return None
-    saved_filters = SavedFilter.objects.filter(model_name=model_name).filter(
-        Q(user=request.user) | Q(is_public=True)
-    )
-    for saved in saved_filters:
-        params = saved.query_params or {}
-        sf_dict = {}
-        for key, value in params.items():
-            if value in (None, ""):
-                continue
-            if isinstance(value, list):
-                values = [str(item) for item in value if item not in (None, "")]
-            else:
-                values = [str(value)]
-            if values:
-                sf_dict[key] = sorted(values)
-        if sf_dict == current_params:
-            return saved.name
-    return None
-
-
 def _build_filter_ui_context(
     request,
     filterset,
@@ -490,34 +456,17 @@ def _build_filter_ui_context(
     data=None,
 ):
     params_source = data if data is not None else request.GET
-    cleaned_data = {}
-    if filterset.form.is_bound and filterset.form.is_valid():
-        cleaned_data = filterset.form.cleaned_data
+    active_filter_badges = build_filter_badges(filterset)
 
-    active_filter_badges = []
-    for name, value in (cleaned_data or {}).items():
-        if not value:
-            continue
-        field = filterset.form.fields.get(name)
-        label = field.label if field else name
-        if hasattr(value, "strftime"):
-            display = value.strftime("%d/%m/%Y")
-        elif hasattr(value, "get_full_name"):
-            display = value.get_full_name() or str(value)
-        else:
-            display = str(value)
-        active_filter_badges.append({"label": label, "value": display, "key": name})
-
-    exclude_keys = {"page", "per_page"}
-    current_query = params_source.copy()
-    for key in list(current_query.keys()):
-        if key in exclude_keys:
-            current_query.pop(key, None)
+    current_query = _ensure_mutable_querydict(params_source)
+    current_query.pop("page", None)
     current_query_params = current_query.urlencode()
 
-    current_params_dict = _canonicalize_params(params_source, exclude=exclude_keys)
-    active_filter_name = _saved_filter_match_name(
-        request, model_name=model_name, current_params=current_params_dict
+    saved_filters = SavedFilter.objects.filter(model_name=model_name).filter(
+        Q(user=request.user) | Q(is_public=True)
+    ).distinct()
+    active_filter_name = determine_active_filter_name(
+        request, saved_filters, query_params=current_query
     )
 
     return {
@@ -528,6 +477,26 @@ def _build_filter_ui_context(
         "model_name": model_name,
         "target_id": target_id,
     }
+
+
+def _ensure_mutable_querydict(params_source):
+    if isinstance(params_source, QueryDict):
+        cloned = params_source.copy()
+        cloned._mutable = True
+        return cloned
+
+    qd = QueryDict("", mutable=True)
+    if not params_source:
+        return qd
+
+    items = params_source.items() if hasattr(params_source, "items") else params_source
+    for key, value in items:
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                qd.appendlist(key, item)
+        else:
+            qd.appendlist(key, value)
+    return qd
 
 
 @login_required
@@ -777,8 +746,32 @@ def teaching_hours_report(request):
 
     rows = sorted(person_stats.values(), key=lambda x: (-x["hours_total"], -x["sessions_total"]))
 
+    per_page_default = 10
+    try:
+        per_page = int(request.GET.get("per_page", per_page_default))
+    except (TypeError, ValueError):
+        per_page = per_page_default
+
+    page_number = request.GET.get("page") or 1
+    paginator = None
+    page_obj = None
+    display_rows = []
+
+    if rows:
+        paginator = Paginator(rows, per_page)
+        try:
+            page_obj = paginator.page(page_number)
+        except EmptyPage:
+            page_obj = paginator.page(1)
+        display_rows = list(page_obj.object_list)
+    else:
+        display_rows = []
+
     context = {
-        "rows": rows,
+        "rows": display_rows,
+        "paginator": paginator,
+        "page_obj": page_obj,
+        "per_page": per_page,
     }
     context.update(
         _build_filter_ui_context(
@@ -826,13 +819,39 @@ def class_activity_report(request):
 
     classes = filterset.qs.distinct()
 
+    per_page_default = 10
+    try:
+        per_page = int(request.GET.get("per_page", per_page_default))
+    except (TypeError, ValueError):
+        per_page = per_page_default
+
+    page_number = request.GET.get("page") or 1
+    paginator = None
+    page_obj = None
+    classes_page = []
+
+    if classes.exists():
+        paginator = Paginator(classes, per_page)
+        try:
+            page_obj = paginator.page(page_number)
+        except EmptyPage:
+            page_obj = paginator.page(1)
+        classes_page = list(page_obj.object_list)
+    else:
+        classes_page = []
+
     start_date = None
     end_date = None
     if filterset.form.is_bound and filterset.form.is_valid():
         start_date = filterset.form.cleaned_data.get("start_date")
         end_date = filterset.form.cleaned_data.get("end_date")
 
-    sessions = ClassSession.objects.filter(klass__in=classes).select_related("klass")
+    class_ids = [klass.id for klass in classes_page]
+    sessions = (
+        ClassSession.objects.filter(klass_id__in=class_ids).select_related("klass")
+        if class_ids
+        else ClassSession.objects.none()
+    )
     if start_date:
         sessions = sessions.filter(date__gte=start_date)
     if end_date:
@@ -875,7 +894,7 @@ def class_activity_report(request):
             product_counts[row["session__klass_id"]] = row["total"]
 
     rows = []
-    for klass in classes:
+    for klass in classes_page:
         klass_sessions = sessions_by_class.get(klass.id, [])
         total_sessions = len(klass_sessions)
         done_sessions = len([s for s in klass_sessions if s.status == "DONE"])
@@ -902,6 +921,9 @@ def class_activity_report(request):
 
     context = {
         "rows": rows,
+        "paginator": paginator,
+        "page_obj": page_obj,
+        "per_page": per_page,
     }
     context.update(
         _build_filter_ui_context(

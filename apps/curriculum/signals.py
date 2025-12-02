@@ -7,10 +7,10 @@ from .models import Lecture, Exercise
 def _delete_field_file(file_field):
     try:
         if file_field and getattr(file_field, "name", None):
-            # This deletes the file from storage without touching the model again
+            # Xóa file khỏi storage mà không tác động lại tới model
             file_field.delete(save=False)
     except Exception:
-        # Swallow errors to avoid blocking model ops
+        # Nuốt lỗi để không chặn các thao tác model
         pass
 
 
@@ -30,7 +30,7 @@ def lecture_file_delete_on_change(sender, instance: Lecture, **kwargs):
 
     old_file = getattr(old, "file", None)
     new_file = getattr(instance, "file", None)
-    # If file cleared or replaced
+    # Khi file bị xóa hoặc thay thế
     if (old_file and getattr(old_file, "name", None)) and (
         not new_file or getattr(new_file, "name", None) != getattr(old_file, "name", None)
     ):

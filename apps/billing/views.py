@@ -1,5 +1,4 @@
 import json
-from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, Paginator
@@ -16,6 +15,7 @@ from apps.enrollments.models import Enrollment
 from apps.enrollments.services import sessions_remaining
 from apps.filters.models import SavedFilter
 from apps.filters.utils import (
+    build_filter_badges,
     determine_active_filter_name,
 )
 from apps.common.utils.forms import form_errors_as_text
@@ -31,25 +31,7 @@ def billing_home(request):
     qs = enrollment_filter.qs
     total = qs.count()
 
-    active_filter_badges = []
-    if enrollment_filter.form.is_bound:
-        for name, value in enrollment_filter.form.cleaned_data.items():
-            if value and name in enrollment_filter.form.fields:
-                field = enrollment_filter.form.fields[name]
-                field_label = field.label or name
-                display_value = ""
-
-                if isinstance(value, Center):
-                    display_value = str(value)
-                elif isinstance(field, forms.ChoiceField):
-                    display_value = dict(field.choices).get(value) if value else None
-                elif isinstance(value, str):
-                    display_value = value
-
-                if display_value:
-                    active_filter_badges.append(
-                        {"label": field_label, "value": display_value, "key": name}
-                    )
+    active_filter_badges = build_filter_badges(enrollment_filter)
 
     saved_filters = SavedFilter.objects.filter(model_name="BillingEnrollment").filter(
         Q(user=request.user) | Q(is_public=True)
@@ -75,8 +57,7 @@ def billing_home(request):
 
     query_params_no_page = request.GET.copy()
     query_params_no_page._mutable = True
-    for key in ["page", "per_page"]:
-        query_params_no_page.pop(key, None)
+    query_params_no_page.pop("page", None)
 
     context = {
         "page_obj": page_obj,

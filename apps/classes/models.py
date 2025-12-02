@@ -5,10 +5,10 @@ from apps.curriculum.models import Subject
 from apps.common.models import TimeStampedModel
 
 CLASS_STATUS = [
-    ("PLANNED", "Planned"),
-    ("ONGOING", "Ongoing"),
-    ("COMPLETED", "Completed"),
-    ("CANCELLED", "Cancelled"),
+    ("PLANNED", "Kế hoạch"),
+    ("ONGOING", "Đang diễn ra"),
+    ("COMPLETED", "Đã hoàn thành"),
+    ("CANCELLED", "Đã hủy"),
 ]
 
 

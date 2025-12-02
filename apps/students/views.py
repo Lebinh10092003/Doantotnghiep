@@ -9,6 +9,7 @@ from apps.classes.models import Class
 from apps.class_sessions.models import ClassSession
 from apps.enrollments.models import Enrollment
 from apps.accounts.models import ParentStudentRelation
+from apps.filters.utils import build_filter_badges
 from .filters import StudentProductFilter
 from .models import StudentProduct, StudentExerciseSubmission
 from .forms import StudentProductForm, StudentExerciseSubmissionForm
@@ -131,30 +132,14 @@ def _render_products_page(request, products, flags, page_title, page_description
     sort_field = "created_at" if order == "asc" else "-created_at"
     products = products.order_by(sort_field)
 
-    active_filter_badges = []
-    if product_filter.form.is_bound:
-        for name, value in product_filter.form.cleaned_data.items():
-            if value and name in product_filter.form.fields:
-                field_label = product_filter.form.fields[name].label or name
-                display_value = ""
-                field = product_filter.form.fields[name]
-                if hasattr(value, "name"):
-                    display_value = str(value)
-                elif isinstance(value, str):
-                    display_value = value
-                elif hasattr(value, "strftime"):
-                    display_value = value.strftime("%d/%m/%Y")
-                if display_value:
-                    active_filter_badges.append(
-                        {"label": field_label, "value": display_value, "key": name}
-                    )
+    active_filter_badges = build_filter_badges(product_filter)
 
     try:
-        per_page = int(request.GET.get("per_page", 9))
+        per_page = int(request.GET.get("per_page", 10))
         if per_page <= 0:
-            per_page = 9
+            per_page = 10
     except (TypeError, ValueError):
-        per_page = 9
+        per_page = 10
 
     try:
         page_number = int(request.GET.get("page", 1))
