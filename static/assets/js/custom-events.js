@@ -215,6 +215,17 @@ function handleHtmxTriggerEvents(evt) {
             }
         });
 
+        if (triggers.triggerUserExport) {
+            try {
+                const exportData = triggers.triggerUserExport;
+                if (exportData?.url) {
+                    setTimeout(() => {
+                        window.location.href = exportData.url;
+                    }, 120);
+                }
+            } catch (_) { /* noop */ }
+        }
+
     } catch (e) {
         // console.error('Lỗi xử lý HX-Trigger:', e, 'Header:', header);
     }

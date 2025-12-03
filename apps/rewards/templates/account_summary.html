@@ -69,6 +69,22 @@
           <h6 class="mb-0">Lịch sử điểm</h6>
         </div>
         <div class="card-body">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <form method="get" class="d-flex align-items-center gap-2">
+              {% for param in preserved_query_params %}
+                <input type="hidden" name="{{ param.name }}" value="{{ param.value }}">
+              {% endfor %}
+              <input type="hidden" name="page" value="1">
+              <label class="mb-0 small text-muted">Hiển thị</label>
+              <select name="per_page" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+              </select>
+              <span class="small text-muted">mục/trang</span>
+            </form>
+            <div class="small text-muted ms-auto">Tổng {{ transactions_total }} giao dịch</div>
+          </div>
           <div class="table-responsive">
             <table class="table table-sm align-middle">
               <thead>
@@ -95,6 +111,42 @@
               </tbody>
             </table>
           </div>
+          {% if page_obj %}
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+            <div class="small text-muted mb-0">
+              Hiển thị {{ page_obj.start_index }}&ndash;{{ page_obj.end_index }} / {{ paginator.count }}
+            </div>
+            {% if page_obj.has_other_pages %}
+            <nav>
+              <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?{{ page_query_prefix }}page=1">Đầu</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?{{ page_query_prefix }}page={{ page_obj.previous_page_number }}">«</a>
+                </li>
+                {% endif %}
+                {% for i in paginator.page_range %}
+                  {% if i >= page_obj.number|add:'-2' and i <= page_obj.number|add:'2' %}
+                  <li class="page-item {% if page_obj.number == i %}active{% endif %}">
+                    <a class="page-link" href="?{{ page_query_prefix }}page={{ i }}">{{ i }}</a>
+                  </li>
+                  {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?{{ page_query_prefix }}page={{ page_obj.next_page_number }}">»</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?{{ page_query_prefix }}page={{ paginator.num_pages }}">Cuối</a>
+                </li>
+                {% endif %}
+              </ul>
+            </nav>
+            {% endif %}
+          </div>
+          {% endif %}
         </div>
       </div>
     </section>

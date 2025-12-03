@@ -1,0 +1,38 @@
+<form class="needs-validation" novalidate>
+    <div class="modal-body">
+        <div class="alert alert-light-info" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-info-circle"></i> Chọn định dạng xuất</h5>
+            <p class="mb-1">Tải xuống danh sách người dùng theo định dạng mong muốn.</p>
+            {% if has_active_filters %}
+                <p class="mb-0">File export sẽ áp dụng các bộ lọc hiện tại.</p>
+            {% else %}
+                <p class="mb-0">Tất cả người dùng sẽ được bao gồm trong file export.</p>
+            {% endif %}
+        </div>
+
+        <div class="row g-3">
+            {% for option in format_links %}
+            <div class="col-12 col-md-4">
+                <button type="button"
+                   class="btn btn-outline-primary w-100 text-start"
+                   hx-get="{{ option.trigger_url }}"
+                   hx-target="this"
+                   hx-swap="none">
+                    <div class="d-flex align-items-start">
+                        <i class="{{ option.icon }} fs-4 me-3"></i>
+                        <div>
+                            <span class="fw-semibold">{{ option.label }}</span>
+                            {% if option.description %}
+                                <div class="small text-body-secondary">{{ option.description }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal"><i class="bi bi-x-lg"></i> Đóng</button>
+    </div>
+</form>

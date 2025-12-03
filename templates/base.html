@@ -212,6 +212,10 @@
                     {% endif %}
 
                     {% if user.is_authenticated %}
+                    {% with request.resolver_match.app_name|default:'' as current_app %}
+                    {% with request.resolver_match.view_name|default:'' as current_view %}
+                    {% with 'students:student_products_list students:student_products_my students:student_product_detail students:student_product_detail_public students:product_create students:product_update students:product_delete students:course_products_panel' as student_product_views %}
+                    {% with 'students:learning_results students:learning_result_detail students:learning_session_detail' as student_learning_views %}
                     {% url 'class_sessions:teaching_classes' as teaching_classes_admin_url %}
                     {% url 'class_sessions:teaching_classes_my' as teaching_classes_my_url %}
                     {% url 'class_sessions:teaching_schedule' as teaching_schedule_admin_url %}
@@ -219,12 +223,12 @@
                     {% url 'parents:children_overview' as parents_children_overview_url %}
                     {% url 'parents:children_overview_photos' as parents_children_photos_url %}
                     {% url 'parents:children_report' as parents_children_report_url %}
-                    <li class="sidebar-item has-sub {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' or request.resolver_match.app_name == 'parents' %}active{% endif %}">
+                    <li class="sidebar-item has-sub {% if current_app in 'classes class_sessions parents' or current_app == 'students' and current_view not in student_product_views %}active{% endif %}">
                         <a href="#" class="sidebar-link">
                             <i class="bi bi-journal-bookmark-fill"></i>
                             <span>Lớp & Lịch học</span>
                         </a>
-                        <ul class="submenu {% if request.resolver_match.app_name == 'classes' or request.resolver_match.app_name == 'class_sessions' or request.resolver_match.app_name == 'students' or request.resolver_match.app_name == 'parents' %}active{% endif %}">
+                        <ul class="submenu {% if current_app in 'classes class_sessions parents' or current_app == 'students' and current_view not in student_product_views %}active{% endif %}">
 
                             {% if perms.classes.view_class and perms.classes.add_class and perms.classes.change_class and perms.classes.delete_class %}
                             <li class="submenu-item {% if request.resolver_match.view_name == 'classes:manage_classes' %}active{% endif %}">
@@ -269,6 +273,7 @@
                             {% endif %}
 
                             {% if user|in_group:'parent' %}
+                            {% with 'parents:children_report parents:children_report_detail parents:children_session_detail' as parent_report_views %}
                             <li class="submenu-item {% if request.resolver_match.view_name == 'parents:children_overview' %}active{% endif %}">
                                 <a href="{{ parents_children_overview_url }}" class="submenu-link">
                                     <i class="bi bi-people"></i>
@@ -281,12 +286,13 @@
                                     <span>Ảnh &amp; Đánh giá</span>
                                 </a>
                             </li>
-                            <li class="submenu-item {% if request.resolver_match.view_name == 'parents:children_report' %}active{% endif %}">
+                            <li class="submenu-item {% if request.resolver_match.view_name in parent_report_views %}active{% endif %}">
                                 <a href="{{ parents_children_report_url }}" class="submenu-link">
                                     <i class="bi bi-graph-up"></i>
                                     <span>Báo cáo học tập</span>
                                 </a>
                             </li>
+                            {% endwith %}
                             {% endif %}
 
                             {% if user|in_group:'student' %}
@@ -298,8 +304,8 @@
                                 </a>
                             </li>
 
-                            <li class="submenu-item">
-                                <a href="#" class="submenu-link">
+                            <li class="submenu-item {% if current_view in student_learning_views %}active{% endif %}">
+                                <a href="{% url 'students:learning_results' %}" class="submenu-link">
                                     <i class="bi bi-bar-chart-line"></i>
                                     <span>Kết quả học tập</span>
                                 </a>
@@ -307,6 +313,36 @@
                             {% endif %}
                         </ul>
                     </li>
+                    {% with user.role|default:''|upper as user_role %}
+                    {% with user|in_group:'student' as in_student_group %}
+                    <li class="sidebar-item has-sub {% if current_view in student_product_views %}active{% endif %}">
+                        <a href="#" class="sidebar-link">
+                            <i class="bi bi-images"></i>
+                            <span>Sản phẩm học sinh</span>
+                        </a>
+                        <ul class="submenu {% if current_view in student_product_views %}active{% endif %}">
+                            {% if user_role != 'STUDENT' and not in_student_group %}
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'students:student_products_list' %}active{% endif %}">
+                                <a href="{% url 'students:student_products_list' %}" class="submenu-link">
+                                    <i class="bi bi-card-image"></i>
+                                    <span>Danh sách sản phẩm</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            <li class="submenu-item {% if request.resolver_match.view_name == 'students:student_products_my' %}active{% endif %}">
+                                <a href="{% url 'students:student_products_my' %}" class="submenu-link">
+                                    <i class="bi bi-person-badge"></i>
+                                    <span>Dự án của tôi</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
                     {% endif %}
 
                     {% if user.is_authenticated %}
@@ -375,29 +411,6 @@
                     </li>
                     {% endwith %}
                     {% endif %}
-                    {% if user.is_authenticated %}
-                    <li class="sidebar-item has-sub {% if request.resolver_match.view_name == 'students:student_products_list' or request.resolver_match.view_name == 'students:student_products_my' %}active{% endif %}">
-                        <a href="#" class="sidebar-link">
-                            <i class="bi bi-images"></i>
-                            <span>Sản phẩm học sinh</span>
-                        </a>
-                        <ul class="submenu">
-                            <li class="submenu-item {% if request.resolver_match.view_name == 'students:student_products_list' %}active{% endif %}">
-                                <a href="{% url 'students:student_products_list' %}" class="submenu-link">
-                                    <i class="bi bi-card-image"></i>
-                                    <span>Danh sách sản phẩm</span>
-                                </a>
-                            </li>
-                            <li class="submenu-item {% if request.resolver_match.view_name == 'students:student_products_my' %}active{% endif %}">
-                                <a href="{% url 'students:student_products_my' %}" class="submenu-link">
-                                    <i class="bi bi-person-badge"></i>
-                                    <span>Dự án của tôi</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    {% endif %}
-
                     {% if user.is_authenticated %}
                     {% with request.resolver_match.app_name|default:'' as current_app %}
                     {% with request.resolver_match.view_name|default:'' as current_view %}

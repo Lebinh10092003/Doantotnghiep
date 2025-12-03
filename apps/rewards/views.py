@@ -3,6 +3,7 @@ import json
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import EmptyPage, Paginator
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -46,12 +47,66 @@ def account_summary(request):
             account = PointAccount.objects.create(student=request.user, balance=0)
     except Exception:
         account = PointAccount.get_or_create_for_student(request.user)
-    transactions = RewardTransaction.objects.filter(student=request.user).select_related("item")[:20]
-    requests = RedemptionRequest.objects.filter(student=request.user).select_related("item")[:10]
+    try:
+        per_page = int(request.GET.get("per_page", 10))
+        if per_page <= 0:
+            per_page = 10
+    except (TypeError, ValueError):
+        per_page = 10
+
+    transactions_qs = (
+        RewardTransaction.objects.filter(student=request.user)
+        .select_related("item")
+        .order_by("-created_at", "-id")
+    )
+    paginator = Paginator(transactions_qs, per_page)
+
+    try:
+        page_number = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page_number = 1
+
+    if paginator.count:
+        try:
+            page_obj = paginator.page(page_number)
+        except EmptyPage:
+            page_obj = paginator.page(paginator.num_pages)
+        transactions = page_obj.object_list
+    else:
+        page_obj = None
+        transactions = []
+
+    requests = (
+        RedemptionRequest.objects.filter(student=request.user)
+        .select_related("item")
+        .order_by("-created_at")[:10]
+    )
+
+    query_params_no_page = request.GET.copy()
+    query_params_no_page.pop("page", None)
+    query_params_no_page_str = query_params_no_page.urlencode()
+    page_query_prefix = f"{query_params_no_page_str}&" if query_params_no_page_str else ""
+    preserved_query_params = [
+        {"name": key, "value": value}
+        for key, value in request.GET.items()
+        if key not in {"page", "per_page"}
+    ]
+
     return render(
         request,
         "account_summary.html",
-        {"account": account, "transactions": transactions, "requests": requests},
+        {
+            "account": account,
+            "transactions": transactions,
+            "requests": requests,
+            "paginator": paginator,
+            "page_obj": page_obj,
+            "per_page": per_page,
+            "query_params_no_page": query_params_no_page_str,
+            "page_query_prefix": page_query_prefix,
+            "preserved_query_params": preserved_query_params,
+            "transactions_total": paginator.count,
+        },
     )
 
 

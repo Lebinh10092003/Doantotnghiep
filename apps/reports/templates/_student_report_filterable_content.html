@@ -60,8 +60,9 @@
                     <div class="text-muted small">{{ row.progress_percent }}%</div>
                   </td>
                   <td class="text-end">
+                    {% url detail_url_name row.enrollment.id as detail_url %}
                     <a class="btn btn-sm btn-outline-primary rounded-pill"
-                       href="{% url 'reports:student_report_detail' row.enrollment.id %}{% if current_query_params %}?{{ current_query_params }}{% endif %}">
+                       href="{{ detail_url }}{% if current_query_params %}?{{ current_query_params }}{% endif %}">
                       <i class="bi bi-eye"></i> Xem chi tiết
                     </a>
                   </td>

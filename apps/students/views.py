@@ -6,9 +6,12 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden
 
 from apps.classes.models import Class
-from apps.class_sessions.models import ClassSession
+from apps.class_sessions.models import ClassSession, ClassSessionPhoto
+from apps.class_sessions.forms import ClassSessionPhotoForm
 from apps.enrollments.models import Enrollment
 from apps.accounts.models import ParentStudentRelation
+from apps.attendance.models import Attendance
+from apps.assessments.models import Assessment
 from apps.filters.utils import build_filter_badges
 from .filters import StudentProductFilter
 from .models import StudentProduct, StudentExerciseSubmission
@@ -19,6 +22,13 @@ import json
 from django.http import HttpResponse
 from django.urls import reverse
 from apps.common.utils.http import is_htmx_request
+from apps.reports.views import (
+    _build_student_report_context,
+    _student_report_accessible_enrollments,
+    _student_report_rows,
+    _parse_date_safe,
+    _role_flags,
+)
 
 def _week_range(center_date: date | None = None):
     """
@@ -438,6 +448,101 @@ def portal_course_products_panel(request, class_id: int):
         "swap_session_meta": True,
     }
     return render(request, "_course_products_panel.html", context)
+
+
+@login_required
+def learning_results(request):
+    context = _build_student_report_context(request, paginate=True)
+    context.update(
+        {
+            "page_title": "Kết quả học tập",
+            "page_description": "Theo dõi tiến độ, đánh giá và sản phẩm của bạn theo từng lớp.",
+        }
+    )
+    context["detail_url_name"] = "students:learning_result_detail"
+    if is_htmx_request(request):
+        return render(request, "_student_report_filterable_content.html", context)
+    return render(request, "student_learning_results.html", context)
+
+
+@login_required
+def learning_result_detail(request, pk: int):
+    base_enrollments = _student_report_accessible_enrollments(request.user)
+    enrollment = get_object_or_404(base_enrollments, pk=pk)
+
+    start_date = _parse_date_safe(request.GET.get("start_date"))
+    end_date = _parse_date_safe(request.GET.get("end_date"))
+    row = _student_report_rows([enrollment], start_date=start_date, end_date=end_date)[0]
+
+    back_params = request.GET.urlencode()
+    back_url = reverse("students:learning_results")
+    if back_params:
+        back_url = f"{back_url}?{back_params}"
+
+    return render(
+        request,
+        "student_report_detail.html",
+        {
+            "row": row,
+            "back_url": back_url,
+            "start_date": start_date,
+            "end_date": end_date,
+            "session_detail_url_name": "students:learning_session_detail",
+        },
+    )
+
+
+@login_required
+def learning_session_detail(request, enrollment_id: int, session_id: int):
+    base_enrollments = _student_report_accessible_enrollments(request.user)
+    enrollment = get_object_or_404(base_enrollments, pk=enrollment_id)
+    session = get_object_or_404(ClassSession, pk=session_id, klass_id=enrollment.klass_id)
+
+    attendance = Attendance.objects.filter(student=enrollment.student, session=session).first()
+    assessment = Assessment.objects.filter(student=enrollment.student, session=session).first()
+    products = StudentProduct.objects.filter(student=enrollment.student, session=session).order_by("-created_at")
+
+    flags = _role_flags(request.user)
+    can_upload_session_photo = flags["is_admin"] or flags["is_center_manager"] or flags["is_teacher"]
+    if request.method == "POST":
+        if not can_upload_session_photo:
+            raise PermissionDenied
+        form = ClassSessionPhotoForm(request.POST, request.FILES)
+        if form.is_valid():
+            photo = form.save(commit=False)
+            photo.session = session
+            photo.uploaded_by = request.user
+            photo.save()
+            redirect_url = request.path
+            if request.GET:
+                redirect_url = f"{redirect_url}?{request.GET.urlencode()}"
+            return redirect(redirect_url)
+        session_photo_form = form
+    else:
+        session_photo_form = ClassSessionPhotoForm()
+
+    session_photos = ClassSessionPhoto.objects.filter(session=session).select_related("uploaded_by").order_by("-created_at")
+
+    back_params = request.GET.urlencode()
+    back_url = reverse("students:learning_result_detail", args=[enrollment_id])
+    if back_params:
+        back_url = f"{back_url}?{back_params}"
+
+    return render(
+        request,
+        "student_session_detail.html",
+        {
+            "enrollment": enrollment,
+            "session": session,
+            "attendance": attendance,
+            "assessment": assessment,
+            "products": products,
+            "session_photos": session_photos,
+            "session_photo_form": session_photo_form,
+            "can_upload_session_photo": can_upload_session_photo,
+            "back_url": back_url,
+        },
+    )
 
 
 @login_required

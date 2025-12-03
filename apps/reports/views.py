@@ -230,6 +230,7 @@ def _build_student_report_context(request, *, paginate=False) -> dict:
             model_name="StudentReport",
         )
     )
+    context.setdefault("detail_url_name", "reports:student_report_detail")
     return context
 
 
@@ -529,6 +530,7 @@ def student_report_detail(request, pk):
             "back_url": back_url,
             "start_date": start_date,
             "end_date": end_date,
+            "session_detail_url_name": "reports:student_session_detail",
         },
     )
 

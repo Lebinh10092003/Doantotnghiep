@@ -2,10 +2,11 @@
 {% load group_tags %} 
 
 <form hx-post="{% if group %}{% url 'accounts:group_edit' group.id %}{% else %}{% url 'accounts:group_create' %}{% endif %}"
-      hx-target="this"
-      hx-swap="outerHTML">
+    hx-target="this"
+    hx-swap="outerHTML"
+    hx-on="htmx:afterSwap: this.querySelector('.modal-body')?.scrollTo({top: 0, behavior: 'instant'});">
     {% csrf_token %}
-    <div class="modal-body">
+    <div class="modal-body p-0" style="max-height: none; overflow: visible;">
         {# Hiển thị lỗi non-field errors nếu có #}
         {% if form.non_field_errors %}
         <div class="alert alert-danger">
@@ -21,7 +22,7 @@
             File forms.py đã tự động thêm 'readonly' vào widget 
             nếu đó là nhóm hệ thống đang chỉnh sửa.
         {% endcomment %}
-        <div class="mb-3">
+        <div class="mb-3 px-3 pt-3">
             <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
             {% render_field form.name class="form-control" %}
             {% if form.name.field.widget.attrs.readonly %}
@@ -33,7 +34,7 @@
         </div>
 
         {# Trường Quyền hạn - Hiển thị theo nhóm chức năng #}
-        <div class="mb-3">
+        <div class="mb-3 px-3 pb-3">
             <label class="form-label">{{ form.permissions.label }}</label>
             <p class="text-muted small">Chọn các quyền cho nhóm này.</p>
             <div class="border rounded p-2" style="max-height: 40vh; overflow-y: auto;">

@@ -82,6 +82,16 @@ class AdminUserCreateForm(forms.ModelForm):
         self.fields['address'].label = "Địa chỉ"
         self.fields['avatar'].label = "Ảnh đại diện"
 
+        for field_name in [
+            'first_name', 'last_name', 'email',
+            'dob', 'gender', 'national_id', 'address'
+        ]:
+            if field_name in self.fields:
+                self.fields[field_name].required = True
+
+        if 'groups' in self.fields:
+            self.fields['groups'].required = True
+
     # --- validators ---
     def clean_national_id(self):
         nid = (self.cleaned_data.get("national_id") or "").strip()
@@ -104,6 +114,8 @@ class AdminUserCreateForm(forms.ModelForm):
         is_student_role = any(getattr(g, "name", "").upper() == "STUDENT" for g in groups)
         if not is_student_role and not phone:
             self.add_error("phone", "Số điện thoại là bắt buộc cho vai trò này.")
+        if not groups:
+            self.add_error("groups", "Vui lòng chọn ít nhất một nhóm.")
         cleaned["phone"] = phone
         return cleaned
 
@@ -166,7 +178,7 @@ class AdminUserUpdateForm(forms.ModelForm):
         model = User
         fields = [
             'avatar', 'email', 'phone',
-            'first_name', 'last_name',
+            'first_name', 'last_name', 'dob', 'gender',
             'is_active', 'center', 'is_staff', 'groups',
             'national_id', 'address'
         ]
@@ -183,6 +195,18 @@ class AdminUserUpdateForm(forms.ModelForm):
         self.fields['avatar'].label = "Ảnh đại diện"
         self.fields['national_id'].label = "Số CCCD/CMND"
         self.fields['address'].label = "Địa chỉ"
+        if 'dob' in self.fields:
+            self.fields['dob'].label = "Ngày sinh"
+            self.fields['dob'].widget = forms.DateInput(attrs={'type': 'date'})
+        if 'gender' in self.fields:
+            self.fields['gender'].label = "Giới tính"
+
+        for field_name in ['first_name', 'last_name', 'email', 'dob', 'gender', 'national_id', 'address']:
+            if field_name in self.fields:
+                self.fields[field_name].required = True
+
+        if 'groups' in self.fields:
+            self.fields['groups'].required = True
 
     def clean_national_id(self):
         nid = (self.cleaned_data.get("national_id") or "").strip()
@@ -202,6 +226,8 @@ class AdminUserUpdateForm(forms.ModelForm):
         is_student_role = any(getattr(g, "name", "").upper() == "STUDENT" for g in effective_groups)
         if not is_student_role and not phone:
             self.add_error("phone", "Số điện thoại là bắt buộc cho vai trò này.")
+        if not effective_groups:
+            self.add_error("groups", "Vui lòng chọn ít nhất một nhóm.")
         cleaned["phone"] = phone
         return cleaned
 

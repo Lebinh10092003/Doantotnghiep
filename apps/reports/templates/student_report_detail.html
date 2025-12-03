@@ -237,8 +237,9 @@
                         {% endif %}
                       </td>
                       <td class="text-end">
+                        {% url session_detail_url_name row.enrollment.id s.id as session_detail_url %}
                         <a class="btn btn-sm btn-primary rounded-pill"
-                           href="{% url 'reports:student_session_detail' row.enrollment.id s.id %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+                           href="{{ session_detail_url }}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
                           Xem chi tiết
                         </a>
                       </td>

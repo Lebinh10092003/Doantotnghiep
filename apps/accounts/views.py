@@ -20,6 +20,7 @@ from django.core.paginator import EmptyPage, Paginator
 from django.db.models import Count, ProtectedError, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
+from django.urls import reverse
 from django.template.loader import render_to_string
 from django.utils.dateparse import parse_date
 from django.utils.encoding import force_str
@@ -28,6 +29,12 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 from tablib import Dataset
+from tablib.exceptions import TablibException
+
+try:
+    from openpyxl.utils.exceptions import InvalidFileException  
+except ImportError:  
+    InvalidFileException = Exception  
 
 from apps.centers.models import Center
 from apps.classes.models import Class
@@ -610,7 +617,7 @@ def user_edit_view(request, user_id):
 
     form = AdminUserUpdateForm(request.POST, request.FILES, instance=u)
     if form.is_valid():
-        form.save()
+        updated_user = form.save()
         resp = HttpResponse(status=200)
         resp["HX-Trigger"] = json.dumps({
             "reload-accounts-table": True,
@@ -618,7 +625,7 @@ def user_edit_view(request, user_id):
             "show-sweet-alert": {
                 "icon": "success",
                 "title": "Thành công",
-                "text": f"Đã cập nhật: {u.username}",
+                "text": f"Đã cập nhật thông tin người dùng: {updated_user.preferred_full_name()}",
                 "timer": 1500,
                 "showConfirmButton": False
             }
@@ -630,7 +637,7 @@ def user_edit_view(request, user_id):
     resp["HX-Trigger"] = json.dumps({
         "show-sweet-alert": {
             "icon": "error",
-            "title": "Không thể cập nhật",
+            "title": "Không thể cập nhật thông tin người dùng",
             "text": form_errors_as_text(form),
             "showConfirmButton": True
         }
@@ -660,6 +667,84 @@ def export_users_view(request):
         
     return response
 
+
+@login_required
+@permission_required("accounts.view_user", raise_exception=True)
+def export_users_modal_view(request):
+    if not is_htmx_request(request):
+        return redirect("accounts:manage_accounts")
+
+    query_params = request.GET.copy()
+    for key in ["format"]:
+        query_params.pop(key, None)
+
+    query_string = query_params.urlencode()
+    export_url = reverse("accounts:export_users")
+    query_suffix = f"&{query_string}" if query_string else ""
+    trigger_base = reverse("accounts:initiate_export_users")
+
+    format_links = []
+    options = [
+        (
+            "xlsx",
+            "Excel (.xlsx)",
+            "bi bi-file-earmark-spreadsheet",
+            "Đầy đủ định dạng, phù hợp nhất cho Excel hiện đại.",
+        ),
+        (
+            "csv",
+            "CSV (.csv)",
+            "bi bi-filetype-csv",
+            "Dữ liệu dạng bảng, dễ import vào hệ thống khác.",
+        ),
+        (
+            "xls",
+            "Excel cũ (.xls)",
+            "bi bi-file-earmark-excel",
+            "Tương thích với các phiên bản Excel cũ.",
+        ),
+    ]
+
+    for fmt, label, icon, description in options:
+        format_links.append({
+            "label": label,
+            "icon": icon,
+            "description": description,
+            "trigger_url": f"{trigger_base}?format={fmt}{query_suffix}",
+        })
+
+    context = {
+        "format_links": format_links,
+        "has_active_filters": bool(query_params),
+    }
+    return render(request, "_export_users_modal.html", context)
+
+
+@login_required
+@permission_required("accounts.view_user", raise_exception=True)
+def export_users_initiate_view(request):
+    if not is_htmx_request(request):
+        return redirect("accounts:manage_accounts")
+
+    format_value = (request.GET.get("format") or "xlsx").lower()
+    if format_value not in {"xlsx", "csv", "xls"}:
+        format_value = "xlsx"
+
+    query_params = request.GET.copy()
+    query_params.pop("format", None)
+    query_string = query_params.urlencode()
+
+    download_url = reverse("accounts:export_users") + f"?format={format_value}"
+    if query_string:
+        download_url = f"{download_url}&{query_string}"
+
+    response = HttpResponse(status=204)
+    response["HX-Trigger"] = json.dumps({
+        "closeUserModal": True,
+        "triggerUserExport": {"url": download_url},
+    })
+    return response
+
 @login_required
 @permission_required("accounts.add_user", raise_exception=True)
 def import_users_view(request):
@@ -674,19 +759,42 @@ def import_users_view(request):
             return render(request, '_import_users_form.html', {'form': form, 'errors': ["Vui lòng chọn một file để import."]}, status=422)
 
         # Đọc dữ liệu từ file upload
-        if new_users_file.name.endswith('csv'):
-            # Dữ liệu từ file CSV có thể là tab-separated, nên dùng format 'tsv'
-            # Thử đọc với utf-8-sig trước, nếu lỗi thì thử cp1252 (Windows encoding)
-            file_content = new_users_file.read()
-            try:
-                decoded_content = file_content.decode('utf-8-sig')
-            except UnicodeDecodeError:
-                # Nếu utf-8-sig thất bại, thử với cp1252 là một phương án dự phòng phổ biến
-                decoded_content = file_content.decode('cp1252')
-            # Để tablib tự động phát hiện định dạng (csv hoặc tsv)
-            dataset.load(decoded_content)
-        else: # Mặc định là excel
-            dataset.load(new_users_file.read(), format='xlsx')
+        try:
+            if new_users_file.name.endswith('csv'):
+                # Dữ liệu từ file CSV có thể là tab-separated, nên dùng format 'tsv'
+                # Thử đọc với utf-8-sig trước, nếu lỗi thì thử cp1252 (Windows encoding)
+                file_content = new_users_file.read()
+                try:
+                    decoded_content = file_content.decode('utf-8-sig')
+                except UnicodeDecodeError:
+                    # Nếu utf-8-sig thất bại, thử với cp1252 là một phương án dự phòng phổ biến
+                    decoded_content = file_content.decode('cp1252')
+                # Để tablib tự động phát hiện định dạng (csv hoặc tsv)
+                dataset.load(decoded_content)
+            else: # Mặc định là excel
+                dataset.load(new_users_file.read(), format='xlsx')
+        except (UnicodeDecodeError, TablibException, InvalidFileException, ValueError) as exc:
+            form = ImportUserForm()
+            if isinstance(exc, (TablibException, InvalidFileException, ValueError)):
+                error_message = (
+                    "Không thể đọc file import. Vui lòng sử dụng đúng định dạng .xlsx hoặc .csv."
+                )
+            else:
+                error_message = (
+                    "Không thể giải mã nội dung file. Vui lòng lưu file với mã hóa UTF-8."
+                )
+            response = render(request, '_import_users_form.html', {
+                'form': form,
+                'errors': [error_message]
+            }, status=422)
+            response['HX-Trigger'] = json.dumps({
+                "show-sweet-alert": {
+                    "icon": "error",
+                    "title": "Import thất bại",
+                    "text": error_message
+                }
+            })
+            return response
 
         # Thực hiện import, dry_run=True để kiểm tra lỗi trước
         result = user_resource.import_data(dataset, dry_run=True, raise_errors=False)

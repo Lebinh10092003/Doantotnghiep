@@ -41,15 +41,12 @@
                           @click="modalTitle = 'Thêm người dùng mới'">
                       <i class="bi bi-plus-lg"></i> Thêm mới
                   </button>
-                  <div class="btn-group">
-                      <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                          <i class="bi bi-file-earmark-arrow-down"></i> Export
-                      </button>
-                      <ul class="dropdown-menu">
-                          <li><a class="dropdown-item" href="#" onclick="exportWithFilters('xlsx')">Export (.xlsx)</a></li>
-                          <li><a class="dropdown-item" href="#" onclick="exportWithFilters('csv')">Export (.csv)</a></li>
-                      </ul>
-                  </div>
+                    <button type="button" class="btn btn-success btn-sm"
+                        hx-get="{% url 'accounts:export_users_modal' %}{% if current_query_params %}?{{ current_query_params }}{% endif %}"
+                        hx-target="#user-modal-content"
+                        @click="modalTitle = 'Export người dùng'">
+                      <i class="bi bi-file-earmark-arrow-down"></i> Export
+                    </button>
                   <button type="button" class="btn btn-info btn-sm"
                           hx-get="{% url 'accounts:import_users' %}"
                           hx-target="#user-modal-content"
@@ -122,14 +119,6 @@
         for (let i = 0; i < checkboxes.length; i++) {
             checkboxes[i].checked = source.checked;
         }
-    }
-
-    function exportWithFilters(format) {
-        const form = document.querySelector('#accounts-filterable-content #filter-form');
-        const params = form ? new URLSearchParams(new FormData(form)).toString() : '';
-        const query = params ? `&${params}` : '';
-        const url = `{% url 'accounts:export_users' %}?format=${format}${query}`;
-        window.location.href = url;
     }
 
   window.syncAccountGroupBy = function(value) {
