@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
@@ -76,6 +77,50 @@ def _related_products_queryset(user):
             | Q(session__assistants=user)
         )
     return qs
+
+
+def _resolve_portal_student(request, klass: Class, flags: dict):
+    """Determine which student's data should be shown on the course portal page."""
+    user = request.user
+
+    if flags["is_parent"]:
+        child_relations = (
+            ParentStudentRelation.objects.filter(parent=user)
+            .select_related("student")
+            .order_by("student__first_name", "student__last_name")
+        )
+        child_lookup = {rel.student_id: rel.student for rel in child_relations}
+        if not child_lookup:
+            return None
+
+        requested_id = request.GET.get("student_id")
+        target_student = None
+        candidate_id = None
+        if requested_id:
+            try:
+                candidate_id = int(requested_id)
+            except (TypeError, ValueError):
+                candidate_id = None
+
+        if candidate_id and candidate_id in child_lookup:
+            if Enrollment.objects.filter(student_id=candidate_id, klass=klass, active=True).exists():
+                target_student = child_lookup[candidate_id]
+
+        if not target_student:
+            enrollment = (
+                Enrollment.objects.filter(student_id__in=child_lookup.keys(), klass=klass, active=True)
+                .select_related("student")
+                .first()
+            )
+            if enrollment:
+                target_student = enrollment.student
+
+        return target_student
+
+    if Enrollment.objects.filter(student=user, klass=klass, active=True).exists():
+        return user
+
+    return None
 
 
 def _fetch_class_sessions(klass: Class):
@@ -343,15 +388,28 @@ def portal_course_detail(request, class_id: int):
     - Sản phẩm học sinh theo buổi / cả khóa.
     """
     user = request.user
+    flags = _product_role_flags(user)
 
     klass = get_object_or_404(
         Class.objects.select_related("subject", "center", "main_teacher"),
         id=class_id,
     )
 
-    # Học sinh phải đang học lớp này
-    if not Enrollment.objects.filter(student=user, klass=klass, active=True).exists():
-        return render(request, "not_enrolled.html", {"klass": klass})
+    target_student = _resolve_portal_student(request, klass, flags)
+    if not target_student:
+        context = {"klass": klass, "is_parent_view": flags["is_parent"]}
+        return render(request, "not_enrolled.html", context)
+
+    if flags["is_parent"]:
+        requested_id = request.GET.get("student_id") or ""
+        if str(target_student.id) != requested_id:
+            params = request.GET.copy()
+            params["student_id"] = str(target_student.id)
+            redirect_url = request.path
+            query_string = params.urlencode()
+            if query_string:
+                redirect_url = f"{redirect_url}?{query_string}"
+            return redirect(redirect_url)
 
     class_sessions, lesson_sessions = _fetch_class_sessions(klass)
     session_param = request.GET.get("session_id")
@@ -361,14 +419,13 @@ def portal_course_detail(request, class_id: int):
     subject = klass.subject
     modules = subject.modules.prefetch_related("lessons").all()
 
-    # Lấy bài học, bài giảng, bài tập (nếu có)
     lesson = selected_session.lesson if (selected_session and selected_session.lesson_id) else None
     lecture = None
     exercise = None
 
     if lesson:
         try:
-            lecture = lesson.lecture  
+            lecture = lesson.lecture
         except ObjectDoesNotExist:
             lecture = None
 
@@ -378,7 +435,7 @@ def portal_course_detail(request, class_id: int):
             exercise = None
 
     my_products, session_products, other_products, latest_product = _student_course_products(
-        user,
+        target_student,
         klass,
         selected_session,
     )
@@ -387,11 +444,43 @@ def portal_course_detail(request, class_id: int):
     latest_submission = None
     if exercise:
         exercise_submissions = (
-            StudentExerciseSubmission.objects.filter(student=user, exercise=exercise)
+            StudentExerciseSubmission.objects.filter(student=target_student, exercise=exercise)
             .select_related("session")
             .order_by("-created_at")
         )
         latest_submission = exercise_submissions.first()
+
+    is_self_view = target_student.id == user.id
+    student_display_name = _format_student_display(target_student)
+    product_owner_label = "bạn" if is_self_view else student_display_name
+
+    products_panel_base_url = reverse("students:course_products_panel", args=[klass.id])
+    base_query_params = {}
+    if flags["is_parent"]:
+        base_query_params["student_id"] = target_student.id
+    base_query_string = urlencode(base_query_params)
+    products_panel_url = (
+        f"{products_panel_base_url}?{base_query_string}"
+        if base_query_string
+        else products_panel_base_url
+    )
+
+    initial_query = base_query_params.copy()
+    if selected_session:
+        initial_query["session_id"] = selected_session.id
+    initial_query_string = urlencode(initial_query)
+    products_panel_initial_url = (
+        f"{products_panel_base_url}?{initial_query_string}"
+        if initial_query_string
+        else products_panel_base_url
+    )
+
+    course_panel_base_url = reverse("students:portal_course_detail", args=[klass.id])
+    course_panel_url = (
+        f"{course_panel_base_url}?{base_query_string}"
+        if base_query_string
+        else course_panel_base_url
+    )
 
     context = {
         "klass": klass,
@@ -411,20 +500,34 @@ def portal_course_detail(request, class_id: int):
         "lesson_sessions": lesson_sessions,
         "class_sessions": class_sessions,
         "swap_session_meta": False,
+        "portal_student": target_student,
+        "student_display_name": student_display_name,
+        "product_owner_label": product_owner_label,
+        "is_parent_view": flags["is_parent"],
+        "can_manage_products": is_self_view,
+        "can_submit_exercise": is_self_view,
+        "products_panel_url": products_panel_url,
+        "products_panel_initial_url": products_panel_initial_url,
+        "course_panel_url": course_panel_url,
     }
+    context["today_str"] = date.today().strftime("%Y-%m-%d")
+    if is_htmx_request(request):
+        return render(request, "_course_detail_panel.html", context)
     return render(request, "course_detail.html", context)
 
 
 @login_required
 def portal_course_products_panel(request, class_id: int):
     user = request.user
+    flags = _product_role_flags(user)
 
     klass = get_object_or_404(
         Class.objects.select_related("subject", "center", "main_teacher"),
         id=class_id,
     )
 
-    if not Enrollment.objects.filter(student=user, klass=klass, active=True).exists():
+    target_student = _resolve_portal_student(request, klass, flags)
+    if not target_student:
         return HttpResponseForbidden("Bạn không có quyền truy cập lớp học này.")
 
     class_sessions, _ = _fetch_class_sessions(klass)
@@ -432,10 +535,14 @@ def portal_course_products_panel(request, class_id: int):
     upcoming = _next_upcoming_session(class_sessions)
 
     my_products, session_products, other_products, latest_product = _student_course_products(
-        user,
+        target_student,
         klass,
         selected_session,
     )
+
+    is_self_view = target_student.id == user.id
+    student_display_name = _format_student_display(target_student)
+    product_owner_label = "bạn" if is_self_view else student_display_name
 
     context = {
         "klass": klass,
@@ -446,6 +553,11 @@ def portal_course_products_panel(request, class_id: int):
         "upcoming": upcoming,
         "my_products": my_products,
         "swap_session_meta": True,
+        "portal_student": target_student,
+        "student_display_name": student_display_name,
+        "product_owner_label": product_owner_label,
+        "is_parent_view": flags["is_parent"],
+        "can_manage_products": is_self_view,
     }
     return render(request, "_course_products_panel.html", context)
 

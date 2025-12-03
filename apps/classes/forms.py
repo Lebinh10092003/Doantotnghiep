@@ -1,5 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
+from django.db.models import Q
+
 from .models import Class, ClassSchedule
 from apps.accounts.models import User
 
@@ -21,20 +23,32 @@ class UserMultipleChoiceField(forms.ModelMultipleChoiceField):
 
 
 class ClassForm(forms.ModelForm):
+    teacher_filter = Q(role__iexact="teacher") | Q(groups__name__iexact="teacher")
+    assistant_filter = (
+        Q(role__iexact="assistant")
+        | Q(role__iexact="teacher")
+        | Q(groups__name__iexact="assistant")
+        | Q(groups__name__iexact="teacher")
+    )
+
     # Lọc danh sách giáo viên
     main_teacher = UserChoiceField(
-        queryset=User.objects.filter(role="TEACHER").order_by("first_name", "last_name"),
+        queryset=User.objects.filter(teacher_filter, is_active=True)
+        .order_by("first_name", "last_name")
+        .distinct(),
         required=False,
         label="Giáo viên chính",
-        widget=forms.Select(attrs={"class": "form-select tom-select"}), # Đảm bảo class tom-select
+        widget=forms.Select(attrs={"class": "form-select tom-select"}),  # Đảm bảo class tom-select
     )
 
     # Lọc danh sách trợ giảng
     assistants = UserMultipleChoiceField(
-        queryset=User.objects.filter(role__in=["ASSISTANT", "TEACHER"]).order_by("first_name", "last_name"),
+        queryset=User.objects.filter(assistant_filter, is_active=True)
+        .order_by("first_name", "last_name")
+        .distinct(),
         required=False,
         label="Trợ giảng",
-        widget=forms.SelectMultiple(attrs={"class": "form-select tom-select", "multiple": "multiple"}), # Đảm bảo class tom-select
+        widget=forms.SelectMultiple(attrs={"class": "form-select tom-select", "multiple": "multiple"}),  # Đảm bảo class tom-select
     )
 
     class Meta:

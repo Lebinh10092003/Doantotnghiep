@@ -636,12 +636,38 @@ def revenue_report(request):
         .annotate(total_amount=Sum("amount"), total_sessions=Sum("sessions"), entries=Count("id"))
         .order_by("enrollment__klass__center__name")
     )
-    recent = entries.order_by("-created_at")[:10]
+
+    ordered_entries = entries.order_by("-created_at", "-id")
+
+    try:
+        per_page = int(request.GET.get("per_page", 10))
+        if per_page <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        per_page = 10
+
+    try:
+        page_number = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page_number = 1
+
+    paginator = Paginator(ordered_entries, per_page)
+    page_obj = paginator.get_page(page_number)
+
+    pagination_query_dict = request.GET.copy()
+    if hasattr(pagination_query_dict, "_mutable"):
+        pagination_query_dict._mutable = True
+    pagination_query_dict.pop("page", None)
+    pagination_query_params = pagination_query_dict.urlencode()
 
     context = {
         "totals": totals,
         "by_center": by_center,
-        "recent": recent,
+        "recent": page_obj.object_list,
+        "paginator": paginator,
+        "page_obj": page_obj,
+        "per_page": per_page,
+        "pagination_query_params": pagination_query_params,
     }
     context.update(
         _build_filter_ui_context(

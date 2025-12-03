@@ -30,9 +30,14 @@
                   <h5 class="mb-0">{{ child.student.display_name_with_email|default:child.student.preferred_full_name|default:child.student.preferred_email|default:"Chưa cập nhật" }}</h5>
                   <small class="text-muted">{{ child.enrollments|length }} lớp đang tham gia</small>
                 </div>
-                {% if child.note %}
-                <span class="badge bg-info text-dark">Ghi chú: {{ child.note }}</span>
-                {% endif %}
+                <div class="d-flex align-items-center gap-2">
+                  {% if child.note %}
+                  <span class="badge bg-info text-dark">Ghi chú: {{ child.note }}</span>
+                  {% endif %}
+                  <a class="btn btn-sm btn-outline-primary rounded-pill" href="{{ child.report_url }}">
+                    <i class="bi bi-graph-up"></i> Xem báo cáo
+                  </a>
+                </div>
               </div>
               <div class="card-body">
                 {% if child.recent_photos %}
@@ -66,9 +71,14 @@
                   <h5 class="mb-0">{{ child.student.display_name_with_email|default:child.student.preferred_full_name|default:child.student.preferred_email|default:"Chưa cập nhật" }}</h5>
                   <small class="text-muted">{{ child.student.center.name|default:"Chưa có trung tâm" }}</small>
                 </div>
-                {% if child.note %}
-                <span class="badge bg-light text-dark border">Ghi chú: {{ child.note }}</span>
-                {% endif %}
+                <div class="d-flex align-items-center gap-2">
+                  {% if child.note %}
+                  <span class="badge bg-light text-dark border">Ghi chú: {{ child.note }}</span>
+                  {% endif %}
+                  <a class="btn btn-sm btn-outline-primary rounded-pill" href="{{ child.report_url }}">
+                    <i class="bi bi-graph-up"></i> Xem báo cáo
+                  </a>
+                </div>
               </div>
               <div class="card-body">
                 <div class="row g-3">
@@ -110,13 +120,18 @@
                   <div class="col-md-4">
                     <div class="border rounded p-3 h-100">
                       <h6 class="mb-3">Lớp đang học</h6>
-                      {% if child.enrollments %}
+                      {% if child.enrollment_links %}
                       <ul class="list-unstyled mb-0 small">
-                        {% for enrollment in child.enrollments %}
-                        <li class="mb-2">
-                          <strong>{{ enrollment.klass.name }}</strong><br>
-                          <span class="text-muted">{{ enrollment.klass.subject.name|default:"" }}  {{ enrollment.klass.center.name|default:"" }}</span>
+                        {% for enrollment_link in child.enrollment_links %}
+                        {% with enrollment=enrollment_link.enrollment %}
+                        <li class="mb-3">
+                          <div class="fw-semibold">{{ enrollment.klass.name }}</div>
+                          <div class="text-muted">{{ enrollment.klass.subject.name|default:"" }}  {{ enrollment.klass.center.name|default:"" }}</div>
+                          <a class="btn btn-sm btn-outline-secondary rounded-pill mt-2" href="{{ enrollment_link.course_url }}">
+                            <i class="bi bi-box-arrow-up-right"></i> Xem chi tiết lớp
+                          </a>
                         </li>
+                        {% endwith %}
                         {% endfor %}
                       </ul>
                       {% else %}

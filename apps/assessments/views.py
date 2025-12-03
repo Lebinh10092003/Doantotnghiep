@@ -100,14 +100,33 @@ def assessment_list(request):
         avg_score=Avg("score"),
     )
 
-    paginator = Paginator(filtered_qs, 25)
-    page_number = request.GET.get("page")
+    try:
+        per_page = int(request.GET.get("per_page", 25))
+        if per_page <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        per_page = 25
+
+    try:
+        page_number = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page_number = 1
+
+    paginator = Paginator(filtered_qs, per_page)
     page_obj = paginator.get_page(page_number)
+
+    pagination_query_dict = request.GET.copy()
+    if hasattr(pagination_query_dict, "_mutable"):
+        pagination_query_dict._mutable = True
+    pagination_query_dict.pop("page", None)
+    pagination_query_params = pagination_query_dict.urlencode()
 
     context = {
         "page_obj": page_obj,
         "paginator": paginator,
         "stats": stats,
+        "per_page": per_page,
+        "pagination_query_params": pagination_query_params,
     }
     context.update(
         _build_filter_ui_context(
@@ -150,9 +169,26 @@ def student_results(request):
         last_session_date=Max("assessments__session__date"),
     ).order_by("-avg_score", "username")
 
-    paginator = Paginator(students, 25)
-    page_number = request.GET.get("page")
+    try:
+        per_page = int(request.GET.get("per_page", 25))
+        if per_page <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        per_page = 25
+
+    try:
+        page_number = int(request.GET.get("page", 1))
+    except (TypeError, ValueError):
+        page_number = 1
+
+    paginator = Paginator(students, per_page)
     page_obj = paginator.get_page(page_number)
+
+    pagination_query_dict = request.GET.copy()
+    if hasattr(pagination_query_dict, "_mutable"):
+        pagination_query_dict._mutable = True
+    pagination_query_dict.pop("page", None)
+    pagination_query_params = pagination_query_dict.urlencode()
 
     cleaned_data = filterset.form.cleaned_data if filterset.form.is_valid() else {}
 
@@ -196,6 +232,8 @@ def student_results(request):
         "page_obj": page_obj,
         "paginator": paginator,
         "summary": summary,
+        "per_page": per_page,
+        "pagination_query_params": pagination_query_params,
     }
     context.update(
         _build_filter_ui_context(

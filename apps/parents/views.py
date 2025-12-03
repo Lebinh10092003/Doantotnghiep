@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
@@ -31,8 +33,27 @@ def children_overview(request, default_tab="overview"):
 	parent = request.user
 	snapshot = build_parent_children_snapshot(parent)
 	active_tab = request.GET.get("tab") or default_tab
+	children_data = snapshot["children_data"]
+	for child in children_data:
+		student = child.get("student")
+		student_id = getattr(student, "id", None)
+		if student_id:
+			report_query = urlencode({"student": student_id})
+			child["report_url"] = f"{reverse('parents:children_report')}?{report_query}"
+		else:
+			child["report_url"] = reverse("parents:children_report")
+		enrollment_links = []
+		for enrollment in child.get("enrollments", []):
+			course_url = reverse("students:portal_course_detail", args=[enrollment.klass_id])
+			if student_id:
+				course_url = f"{course_url}?{urlencode({'student_id': student_id})}"
+			enrollment_links.append({
+				"enrollment": enrollment,
+				"course_url": course_url,
+			})
+		child["enrollment_links"] = enrollment_links
 	context = {
-		"children_data": snapshot["children_data"],
+		"children_data": children_data,
 		"has_children": snapshot["has_children"],
 		"active_tab": active_tab,
 		"summary_metrics": snapshot["summary_metrics"],

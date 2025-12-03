@@ -1,4 +1,6 @@
 from django import forms
+from django.db.models import Q
+
 from .models import ClassSession, ClassSessionPhoto
 from apps.accounts.models import User
 
@@ -17,15 +19,26 @@ class UserMultipleChoiceField(forms.ModelMultipleChoiceField):
         return obj.preferred_full_name() if hasattr(obj, "preferred_full_name") else obj.get_full_name() or (obj.email or obj.username)
 
 class ClassSessionForm(forms.ModelForm):
+    teacher_filter = (
+        Q(role__iexact="teacher")
+        | Q(role__iexact="assistant")
+        | Q(groups__name__iexact="teacher")
+        | Q(groups__name__iexact="assistant")
+    )
+
     teacher_override = UserChoiceField(
-        queryset=User.objects.filter(role__in=["TEACHER", "ASSISTANT"]).order_by('first_name', 'last_name'),
+        queryset=User.objects.filter(teacher_filter, is_active=True)
+        .order_by('first_name', 'last_name')
+        .distinct(),
         required=False,
         label="Giáo viên thay thế",
         widget=forms.Select(attrs={'class': 'form-select tom-select'})
     )
     
     assistants = UserMultipleChoiceField(
-        queryset=User.objects.filter(role__in=["ASSISTANT", "TEACHER"]).order_by('first_name', 'last_name'),
+        queryset=User.objects.filter(teacher_filter, is_active=True)
+        .order_by('first_name', 'last_name')
+        .distinct(),
         required=False,
         label="Trợ giảng (Buổi)",
         widget=forms.SelectMultiple(attrs={'class': 'form-select tom-select', 'multiple': 'multiple'})

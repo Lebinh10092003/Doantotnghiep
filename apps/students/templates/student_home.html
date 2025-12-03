@@ -115,7 +115,7 @@
                         {% endif %}
 
                         <div class="mt-auto">
-                          <a href="{% url 'students:portal_course_detail' k.id %}"
+                          <a href="{% url 'students:portal_course_detail' k.id %}{% if item.student %}?student_id={{ item.student.id }}{% endif %}"
                              class="btn w-100"
                              style="background-color: #24B273; color: #fff; border-radius: 999px;">
                             Xem chi tiết
