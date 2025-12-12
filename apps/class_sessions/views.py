@@ -486,6 +486,7 @@ def update_student_session_status(request, session_id, student_id):
                 "request": request,
                 "success": True,
                 "as_page": as_page,
+                "can_edit_records": can_edit_session_records,
             },
             request=request,
         )

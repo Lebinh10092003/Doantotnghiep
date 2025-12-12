@@ -114,7 +114,7 @@
         {% if page_obj and page_obj.has_other_pages %}
         <nav aria-label="Phân trang đánh giá" class="dataTable-pagination">
           <ul class="pagination justify-content-end mb-0">
-            {% if page_obj.number > 1 %}
+            {% if page_obj.has_previous %}
             <li class="page-item">
               <a class="page-link"
                  href="{{ request.path }}?page=1{% if pagination_query_params %}&{{ pagination_query_params }}{% endif %}"
@@ -122,16 +122,6 @@
                  hx-target="#filterable-content"
                  hx-swap="innerHTML"
                  hx-push-url="true">Đầu</a>
-            </li>
-            {% endif %}
-            {% if page_obj.has_previous %}
-            <li class="page-item">
-              <a class="page-link"
-                 href="{{ request.path }}?page={{ page_obj.previous_page_number }}{% if pagination_query_params %}&{{ pagination_query_params }}{% endif %}"
-                 hx-get="{{ request.path }}?page={{ page_obj.previous_page_number }}{% if pagination_query_params %}&{{ pagination_query_params }}{% endif %}"
-                 hx-target="#filterable-content"
-                 hx-swap="innerHTML"
-                 hx-push-url="true">Trước</a>
             </li>
             {% endif %}
             {% for p in paginator.page_range %}
@@ -147,16 +137,6 @@
               {% endif %}
             {% endfor %}
             {% if page_obj.has_next %}
-            <li class="page-item">
-              <a class="page-link"
-                 href="{{ request.path }}?page={{ page_obj.next_page_number }}{% if pagination_query_params %}&{{ pagination_query_params }}{% endif %}"
-                 hx-get="{{ request.path }}?page={{ page_obj.next_page_number }}{% if pagination_query_params %}&{{ pagination_query_params }}{% endif %}"
-                 hx-target="#filterable-content"
-                 hx-swap="innerHTML"
-                 hx-push-url="true">Sau</a>
-            </li>
-            {% endif %}
-            {% if page_obj.number < paginator.num_pages %}
             <li class="page-item">
               <a class="page-link"
                  href="{{ request.path }}?page={{ paginator.num_pages }}{% if pagination_query_params %}&{{ pagination_query_params }}{% endif %}"

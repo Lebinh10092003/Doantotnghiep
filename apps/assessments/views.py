@@ -22,6 +22,10 @@ from .forms import AssessmentForm
 from .models import Assessment
 
 
+DEFAULT_PER_PAGE = 10
+PER_PAGE_CHOICES = (10, 25, 50, 100)
+
+
 def _ensure_mutable_querydict(params_source):
     if isinstance(params_source, QueryDict):
         cloned = params_source.copy()
@@ -75,6 +79,14 @@ def _build_filter_ui_context(
     }
 
 
+def _resolve_per_page(request):
+    try:
+        per_page = int(request.GET.get("per_page", DEFAULT_PER_PAGE))
+    except (TypeError, ValueError):
+        return DEFAULT_PER_PAGE
+    return per_page if per_page in PER_PAGE_CHOICES else DEFAULT_PER_PAGE
+
+
 @login_required
 @permission_required("assessments.view_assessment", raise_exception=True)
 def assessment_list(request):
@@ -100,12 +112,7 @@ def assessment_list(request):
         avg_score=Avg("score"),
     )
 
-    try:
-        per_page = int(request.GET.get("per_page", 25))
-        if per_page <= 0:
-            raise ValueError
-    except (TypeError, ValueError):
-        per_page = 25
+    per_page = _resolve_per_page(request)
 
     try:
         page_number = int(request.GET.get("page", 1))
@@ -169,12 +176,7 @@ def student_results(request):
         last_session_date=Max("assessments__session__date"),
     ).order_by("-avg_score", "username")
 
-    try:
-        per_page = int(request.GET.get("per_page", 25))
-        if per_page <= 0:
-            raise ValueError
-    except (TypeError, ValueError):
-        per_page = 25
+    per_page = _resolve_per_page(request)
 
     try:
         page_number = int(request.GET.get("page", 1))
@@ -362,7 +364,7 @@ def update_assessment(request, session_id, student_id):
             'student': student,
             'assessment': updated_assessment
         }
-        # Trả về fragment template (sẽ tạo ở Bước 5)
+        # Trả về fragment template 
         return render(request, '_assessment_form_cell.html', context)
         
     return HttpResponseBadRequest("Dữ liệu không hợp lệ")
