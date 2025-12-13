@@ -21,211 +21,11 @@
       </div>
     </div>
 
-    <section class="section">
-      <div class="card border-0 shadow-sm rounded-3">
-
-        {# ====== HEADER: TUẦN + NÚT CHUYỂN TUẦN ====== #}
-        <div class="card-header border-0 border-bottom bg-light-subtle">
-          <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div>
-              <div class="small text-muted text-uppercase fw-semibold ls-1 mb-1">
-                Tuần đang xem
-              </div>
-              <div class="d-flex flex-wrap align-items-center gap-2">
-                <span class="fw-semibold fs-6">
-                  {{ start|date:"d/m/Y" }} – {{ end|date:"d/m/Y" }}
-                </span>
-                {% now "Y-m-d" as today_str %}
-                {% if today and today|date:"Y-m-d" >= start|date:"Y-m-d" and today|date:"Y-m-d" <= end|date:"Y-m-d" %}
-                  <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">
-                    Tuần hiện tại
-                  </span>
-                {% endif %}
-              </div>
-            </div>
-
-            <div class="d-flex flex-wrap align-items-center gap-2">
-              <div class="btn-group btn-group-sm shadow-sm rounded-pill overflow-hidden" role="group" aria-label="Chuyển tuần">
-                <button type="button"
-                        class="btn btn-outline-secondary border-0"
-                        id="prev-week">
-                  <i class="bi bi-chevron-left me-1"></i> Tuần trước
-                </button>
-                <button type="button"
-                        class="btn btn-outline-secondary border-0"
-                        id="this-week">
-                  Tuần này
-                </button>
-                <button type="button"
-                        class="btn btn-outline-secondary border-0"
-                        id="next-week">
-                  Tuần sau <i class="bi bi-chevron-right ms-1"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {# ====== BODY: FILTER + BẢNG ====== #}
-        <div class="card-body">
-          <div x-data="{ showFilters: true }">
-
-            {# --- THANH TRÊN GIỐNG STYLE FILTER Ở QUẢN LÝ LỚP --- #}
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <div class="d-flex align-items-center gap-2">
-                {% if filter_enabled %}
-                  <button type="button"
-                          class="btn btn-outline-secondary btn-sm"
-                          @click="showFilters = !showFilters">
-                    <i class="bi bi-funnel-fill"></i>
-                    <span x-text="showFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'">Bộ lọc</span>
-                  </button>
-                  <span class="text-muted small d-none d-md-inline">
-                    Điều chỉnh ngày làm mốc hoặc chọn giáo viên để thay đổi lịch hiển thị.
-                  </span>
-                {% else %}
-                  <span class="text-muted small">Lịch dạy theo tuần của bạn.</span>
-                {% endif %}
-              </div>
-
-              <div class="d-flex flex-wrap gap-2">
-                {# Quick actions vẫn giữ ở đây #}
-                <div class="btn-group btn-group-sm" role="group" aria-label="Chuyển nhanh tuần">
-                  <button type="button"
-                          class="btn btn-outline-secondary"
-                          data-week-nav="prev">
-                    <i class="bi bi-chevron-left"></i>
-                  </button>
-                  <button type="button"
-                          class="btn btn-outline-secondary"
-                          data-week-nav="today">
-                    Hôm nay
-                  </button>
-                  <button type="button"
-                          class="btn btn-outline-secondary"
-                          data-week-nav="next">
-                    <i class="bi bi-chevron-right"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {# --- HÀNG BADGE "ĐANG LỌC THEO" (THAM KHẢO TỪ FILTER LỚP HỌC) --- #}
-            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 small">
-              {% if filter_enabled %}
-                <span class="text-muted">Đang xem:</span>
-
-                <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
-                  <span>
-                    <strong>Tuần:</strong>
-                    {{ start|date:"d/m" }} – {{ end|date:"d/m" }}
-                  </span>
-                </span>
-
-                {% if teacher %}
-                  <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
-                    <span>
-                      <strong>Giáo viên:</strong>
-                      {{ teacher.display_name_with_email }}
-                    </span>
-                  </span>
-                {% endif %}
-
-                {% if date %}
-                  <span class="badge bg-light text-dark border d-flex align-items-center gap-2">
-                    <span>
-                      <strong>Mốc:</strong> {{ date|date:"d/m/Y" }}
-                    </span>
-                  </span>
-                {% endif %}
-
-                <a href="{% url 'class_sessions:teaching_schedule' %}"
-                   class="btn btn-sm btn-link text-danger text-decoration-none px-1">
-                  <i class="bi bi-x-lg"></i> Xóa lọc
-                </a>
-              {% else %}
-                <span class="text-muted">Lịch dạy theo tuần của bạn.</span>
-              {% endif %}
-            </div>
-
-            {# --- KHỐI FILTER CHI TIẾT (GIỐNG KHUNG XÁM NHẠT Ở QUẢN LÝ LỚP) --- #}
-            {% if filter_enabled %}
-              <div x-show="showFilters"
-                   x-transition
-                   class="card card-body bg-light border mb-3"
-                   style="display: none;">
-                <h6 class="mb-3 d-flex align-items-center gap-2">
-                  <i class="bi bi-sliders"></i>
-                  Tùy chọn lọc lịch dạy
-                </h6>
-
-                <form id="teaching-schedule-filters"
-                      method="get"
-                      class="row g-3"
-                      hx-get="{% url 'class_sessions:teaching_schedule' %}"
-                      hx-target="#teaching-schedule-table"
-                      hx-swap="innerHTML">
-
-                  <div class="col-12 col-md-4">
-                    <label class="form-label small mb-1">Ngày làm mốc</label>
-                    <div class="input-group input-group-sm">
-                      <span class="input-group-text border-end-0">
-                        <i class="bi bi-calendar-event"></i>
-                      </span>
-                      <input type="date"
-                             class="form-control border-start-0"
-                             name="date"
-                             value="{{ date|date:'Y-m-d' }}">
-                    </div>
-                  </div>
-
-                  {% if teachers %}
-                    <div class="col-12 col-md-4">
-                      <label class="form-label small mb-1">Giáo viên</label>
-                      <div class="input-group input-group-sm">
-                        <span class="input-group-text border-end-0">
-                          <i class="bi bi-person-badge"></i>
-                        </span>
-                        <select name="teacher"
-                                class="form-select border-start-0">
-                          {% for t in teachers %}
-                            <option value="{{ t.id }}"
-                                    {% if teacher and teacher.id == t.id %}selected{% endif %}>
-                              {{ t.display_name_with_email }}
-                            </option>
-                          {% endfor %}
-                        </select>
-                      </div>
-                    </div>
-                  {% endif %}
-
-                  <div class="col-12 col-md-4 d-flex align-items-end justify-content-md-end gap-2">
-                    <a href="{% url 'class_sessions:teaching_schedule' %}"
-                       class="btn btn-sm btn-light-secondary">
-                      Xóa lọc
-                    </a>
-                    <button type="submit"
-                            class="btn btn-sm btn-primary d-flex align-items-center gap-1">
-                      <i class="bi bi-check2"></i>
-                      Áp dụng
-                    </button>
-                  </div>
-                </form>
-              </div>
-            {% endif %}
-
-            {# --- BẢNG LỊCH DẠY --- #}
-            <div id="teaching-schedule-table" class="table-responsive">
-              {% include "_schedule_table.html" %}
-            </div>
-
-          </div>
-        </div>
-      </div>
-    </section>
+    <div id="teaching-schedule-content">
+      {% include "_teaching_schedule_content.html" %}
+    </div>
   </div>
 
-  {# ====== MODAL CHI TIẾT BUỔI DẠY (GIỮ NGUYÊN ID/STRUCTURE) ====== #}
   <div class="modal fade" id="sessions-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content rounded-3 shadow-lg">
@@ -239,6 +39,25 @@
                   aria-label="Close"></button>
         </div>
         <div id="sessions-modal-content">
+          <div class="modal-body">
+            <p class="text-muted mb-0">Đang tải...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="curriculum-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content rounded-3 shadow-lg">
+        <div class="modal-header border-0 border-bottom">
+          <h5 class="modal-title">Giáo án</h5>
+          <button type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"></button>
+        </div>
+        <div id="curriculum-modal-content">
           <div class="modal-body">
             <p class="text-muted mb-0">Đang tải...</p>
           </div>

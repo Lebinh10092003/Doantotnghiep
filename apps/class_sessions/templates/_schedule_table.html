@@ -98,8 +98,7 @@
                             hx-get="{% url 'curriculum:lesson_detail' s.lesson.id %}"
                             hx-target="#curriculum-modal-content"
                             data-bs-toggle="modal"
-                            data-bs-target="#sessions-modal"
-                            @click="modalTitle = 'Giáo án: {{ s.lesson.title|escapejs }}'"
+                            data-bs-target="#curriculum-modal"
                             title="Giáo án / Bài học">
                       <i class="bi bi-journal-text"></i>
                     </button>

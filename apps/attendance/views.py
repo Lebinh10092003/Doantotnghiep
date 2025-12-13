@@ -8,6 +8,7 @@ from .forms import AttendanceForm
 from apps.class_sessions.models import ClassSession
 from apps.accounts.models import User
 
+# Cập nhật điểm danh cho một học sinh trong một buổi học
 @require_POST
 @login_required
 @permission_required("attendance.change_attendance") # Hoặc "attendance.add_attendance"

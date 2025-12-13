@@ -21,7 +21,7 @@ from apps.filters.utils import (
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
 
-
+# Trang chính của module billing, hiển thị danh sách ghi danh với bộ lọc
 @login_required
 def billing_home(request):
     base_qs = Enrollment.objects.select_related(
@@ -74,7 +74,7 @@ def billing_home(request):
         return render(request, "_billing_filterable_content.html", context)
     return render(request, "billing_home.html", context)
 
-
+# Xem các phiếu thu/buổi học của một ghi danh
 @login_required
 def billing_entries(request, enrollment_id):
     enrollment = get_object_or_404(Enrollment, pk=enrollment_id)
@@ -87,7 +87,7 @@ def billing_entries(request, enrollment_id):
     }
     return render(request, "billing_entries.html", context)
 
-
+# Tạo phiếu thu/buổi học cho một ghi danh
 @login_required
 def billing_purchase(request, enrollment_id):
     enrollment = get_object_or_404(Enrollment, pk=enrollment_id)
@@ -115,7 +115,7 @@ def billing_purchase(request, enrollment_id):
     }
     return render(request, "billing_purchase_form.html", context)
 
-
+# Danh sách mã giảm giá
 @login_required
 def discount_list(request):
     if not request.user.is_staff:
@@ -124,7 +124,7 @@ def discount_list(request):
     discounts = Discount.objects.order_by("-active", "code")
     return render(request, "discount_list.html", {"discounts": discounts})
 
-
+# Tạo mã giảm giá mới
 @login_required
 def discount_create(request):
     if not request.user.is_staff:
@@ -161,7 +161,7 @@ def discount_create(request):
         })
     return response
 
-
+# Chỉnh sửa mã giảm giá
 @login_required
 def discount_update(request, pk):
     if not request.user.is_staff:
@@ -198,7 +198,7 @@ def discount_update(request, pk):
         })
     return response
 
-
+# Xóa mã giảm giá
 @login_required
 def discount_delete(request, pk):
     if not request.user.is_staff:

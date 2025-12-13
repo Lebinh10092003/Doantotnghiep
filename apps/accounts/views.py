@@ -63,23 +63,23 @@ PASSWORD_RESET_RATE_LIMIT = getattr(settings, "PASSWORD_RESET_RATE_LIMIT", 5)
 PASSWORD_RESET_RATE_WINDOW = getattr(settings, "PASSWORD_RESET_RATE_WINDOW", 300)
 
 
-# === Tiện ích giới hạn tần suất đặt lại mật khẩu ===
+# Hỗ trợ giới hạn tần suất yêu cầu đặt lại mật khẩu
 def _password_reset_rate_key(request) -> str:
     forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
     client_ip = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "unknown")
     return f"pwd-reset-rate:{client_ip}"
 
-
+# Kiểm tra xem yêu cầu đặt lại mật khẩu có bị giới hạn tần suất không
 def _is_password_reset_rate_limited(request) -> bool:
     return cache.get(_password_reset_rate_key(request), 0) >= PASSWORD_RESET_RATE_LIMIT
 
-
+# Tăng số lần yêu cầu đặt lại mật khẩu
 def _increment_password_reset_rate(request):
     key = _password_reset_rate_key(request)
     attempts = cache.get(key, 0) + 1
     cache.set(key, attempts, PASSWORD_RESET_RATE_WINDOW)
 
-
+# Phản hồi khi bị giới hạn tần suất
 def _rate_limit_response(request):
     alert = {
         "icon": "warning",
@@ -97,7 +97,7 @@ def _rate_limit_response(request):
         status=429,
     )
 
-
+# Phản hồi thành công sau khi yêu cầu đặt lại mật khẩu
 def _password_reset_success_response(request):
     alert = {
         "icon": "success",
@@ -133,7 +133,7 @@ PROTECTED_GROUPS = [
     'CENTER_MANAGER',
     'ASSISTANT'
 ]
-# Đăng nhập và đăng xuất
+# Quy trình đăng nhập
 @ensure_csrf_cookie
 def login_view(request):
     if request.method == "POST":
@@ -240,11 +240,11 @@ def password_reset_request_view(request):
 
     return render(request, "resetpassword/password_reset_form.html", {"form": form})
 
-
+# Xác nhận yêu cầu đặt lại mật khẩu đã gửi
 def password_reset_done_view(request):
     return render(request, "resetpassword/password_reset_done.html")
 
-
+# Xử lý đặt lại mật khẩu từ link email
 @ensure_csrf_cookie
 def password_reset_confirm_view(request, uidb64, token):
     user = _resolve_user_from_uid(uidb64)
@@ -299,11 +299,11 @@ def password_reset_confirm_view(request, uidb64, token):
         {"form": form, "validlink": True},
     )
 
-
+# Xác nhận hoàn tất đặt lại mật khẩu
 def password_reset_complete_view(request):
     return render(request, "resetpassword/password_reset_complete.html")
 
-
+# Đăng xuất
 @require_POST
 def logout_view(request):
     logout(request)
@@ -341,7 +341,7 @@ def _base_users_queryset(current_user):
 
     return qs.select_related("center").prefetch_related("groups").distinct()
 
-
+# Lọc queryset người dùng với bộ lọc
 def _filter_users_queryset(request, with_filter=False):
     base_qs = _base_users_queryset(request.user)
     user_filter = UserFilter(request.GET, queryset=base_qs)
@@ -413,7 +413,7 @@ def manage_accounts(request):
 
     return render(request, "manage_accounts.html", context)
 
-
+# Tạo người dùng mới
 @login_required
 @permission_required("accounts.add_user", raise_exception=True)
 def user_create_view(request):
@@ -453,7 +453,7 @@ def user_create_view(request):
     return resp
 
 
-
+# Vô hiệu hóa người dùng
 @require_POST
 @login_required
 @permission_required("accounts.delete_user", raise_exception=True)
@@ -542,7 +542,7 @@ def user_delete_view(request):
         "show-sweet-alert": alert
     })
     return response
-
+# Xem chi tiết người dùng
 @login_required
 @permission_required("accounts.view_user", raise_exception=True)
 def user_detail_view(request, user_id):
@@ -606,7 +606,7 @@ def user_detail_view(request, user_id):
         except Exception:
             pass
     return response
-
+# Chỉnh sửa người dùng
 @login_required
 @permission_required("accounts.change_user", raise_exception=True)
 def user_edit_view(request, user_id):
@@ -644,7 +644,7 @@ def user_edit_view(request, user_id):
     })
     return resp
 
-
+# Xuất danh sách người dùng
 @login_required
 @permission_required("accounts.view_user", raise_exception=True)
 def export_users_view(request):
@@ -667,7 +667,7 @@ def export_users_view(request):
         
     return response
 
-
+# Hiển thị modal chọn định dạng xuất người dùng
 @login_required
 @permission_required("accounts.view_user", raise_exception=True)
 def export_users_modal_view(request):
@@ -719,7 +719,7 @@ def export_users_modal_view(request):
     }
     return render(request, "_export_users_modal.html", context)
 
-
+# Xử lý khởi tạo xuất người dùng (trả về URL tải file)
 @login_required
 @permission_required("accounts.view_user", raise_exception=True)
 def export_users_initiate_view(request):
@@ -745,6 +745,7 @@ def export_users_initiate_view(request):
     })
     return response
 
+# Nhập người dùng từ file
 @login_required
 @permission_required("accounts.add_user", raise_exception=True)
 def import_users_view(request):
@@ -852,6 +853,7 @@ def import_users_view(request):
         form = ImportUserForm()
         return render(request, '_import_users_form.html', {'form': form})
 
+# Tải mẫu import người dùng
 @login_required
 @permission_required("accounts.view_user", raise_exception=True)
 def export_import_template_view(request):
@@ -871,7 +873,7 @@ PERMISSION_ACTIONS = [
     ("delete", "Xóa"),
 ]
 
-
+# Nhóm quyền theo tính năng và model
 def _group_permissions_by_functionality(permissions_qs):
     """
     Nhóm quyền theo tính năng và model để giao diện hiển thị dạng lưới 4 hành động.
@@ -961,7 +963,7 @@ def _group_permissions_by_functionality(permissions_qs):
 
     return ordered_grouped
 
-
+# Quản lý nhóm người dùng
 @login_required
 @permission_required("auth.view_group", raise_exception=True)
 def manage_groups(request):
@@ -994,7 +996,7 @@ def manage_groups(request):
 
     return render(request, "manage_groups.html", context)
 
-
+# Tạo nhóm người dùng
 @login_required
 @permission_required("auth.add_group", raise_exception=True)
 def group_create_view(request):
@@ -1040,7 +1042,7 @@ def group_create_view(request):
         }
         return render(request, '_group_form.html', context)
 
-
+# Chỉnh sửa nhóm người dùng
 @login_required
 @permission_required("auth.change_group", raise_exception=True)
 def group_edit_view(request, group_id):
@@ -1089,7 +1091,7 @@ def group_edit_view(request, group_id):
         }
         return render(request, '_group_form.html', context)
 
-
+# Xóa nhóm người dùng
 @require_POST
 @login_required
 @permission_required("auth.delete_group", raise_exception=True)
@@ -1178,6 +1180,7 @@ def group_delete_view(request):
     })
     return response
 
+# Lọc người dùng theo các tiêu chí (hàm tái sử dụng)
 @login_required
 @permission_required("accounts.view_user", raise_exception=True)
 def group_users_view(request, group_id):
@@ -1216,7 +1219,7 @@ def group_users_view(request, group_id):
     # Trả về partial mới
     return render(request, '_group_users_list.html', context)
 
-
+# Xem chi tiết nhóm người dùng
 @login_required
 @permission_required("auth.view_group", raise_exception=True)
 def group_view(request, group_id):
@@ -1287,12 +1290,15 @@ def profile_view(request):
     }
     return render(request, 'profile.html', context)
 
+
+# Chỉnh sửa hồ sơ cá nhân
 @login_required
 def profile_edit_view(request):
     # View này chỉ để trả về form chỉnh sửa khi người dùng bấm nút "Chỉnh sửa"
     form = UserProfileUpdateForm(instance=request.user)
     return render(request, '_profile_form_edit.html', {'form': form})
 
+# Đổi mật khẩu cá nhân
 @login_required
 @require_POST # Chỉ chấp nhận POST
 def change_password_view(request):

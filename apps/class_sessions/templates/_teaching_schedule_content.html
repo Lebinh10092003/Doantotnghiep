@@ -1,0 +1,84 @@
+<section class="section">
+  <div class="card border-0 shadow-sm rounded-3">
+
+    {# ====== HEADER: TUẦN + NÚT CHUYỂN TUẦN ====== #}
+    <div class="card-header border-0 border-bottom bg-light-subtle">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div>
+          <div class="small text-muted text-uppercase fw-semibold ls-1 mb-1">
+            Tuần đang xem
+          </div>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="fw-semibold fs-6">
+              {% if range_is_single_day %}
+                {{ start|date:"d/m/Y" }}
+              {% else %}
+                {{ start|date:"d/m/Y" }} – {{ end|date:"d/m/Y" }}
+              {% endif %}
+            </span>
+            {% now "Y-m-d" as today_str %}
+            {% if today and today|date:"Y-m-d" >= start|date:"Y-m-d" and today|date:"Y-m-d" <= end|date:"Y-m-d" %}
+              <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">
+                Tuần hiện tại
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <div class="btn-group btn-group-sm shadow-sm rounded-pill overflow-hidden" role="group" aria-label="Chuyển tuần">
+            <button type="button"
+                    class="btn btn-outline-secondary border-0"
+                    id="prev-week">
+              <i class="bi bi-chevron-left me-1"></i> Tuần trước
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary border-0"
+                    id="this-week">
+              Tuần này
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary border-0"
+                    id="next-week">
+              Tuần sau <i class="bi bi-chevron-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ====== BODY: FILTER + BẢNG ====== #}
+    <div class="card-body" x-data="{ showFilters: false }">
+      {% include "_filter_ui_controls.html" with filter=filter active_filter_name=active_filter_name model_name=model_name current_query_params=current_query_params active_filter_badges=active_filter_badges target_id='teaching-schedule-content' form_id='teaching-schedule-filters' %}
+
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+          <div class="text-muted small">Giáo viên hiển thị</div>
+          <div class="fw-semibold">{{ teacher_label }}</div>
+        </div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Chuyển nhanh tuần">
+          <button type="button"
+                  class="btn btn-outline-secondary"
+                  data-week-nav="prev">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <button type="button"
+                  class="btn btn-outline-secondary"
+                  data-week-nav="today">
+            Hôm nay
+          </button>
+          <button type="button"
+                  class="btn btn-outline-secondary"
+                  data-week-nav="next">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="teaching-schedule-table" class="table-responsive">
+        {% include "_schedule_table.html" %}
+      </div>
+
+    </div>
+  </div>
+</section>

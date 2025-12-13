@@ -17,6 +17,7 @@ from .filters import CenterFilter
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
 
+# Lọc queryset phòng học dựa trên tham số truy vấn
 def _filter_rooms_queryset(request):
     qs = Room.objects.select_related("center").all()
     q = request.GET.get("q", "").strip()
@@ -34,7 +35,8 @@ def _filter_rooms_queryset(request):
             qs = qs.filter(center_id=int(center_id))
         except (TypeError, ValueError):
             pass
-# Quanr lý trung tâm 
+
+# Quản lý Trung tâm
 @login_required
 @permission_required("centers.view_center", raise_exception=True)
 def centers_manage(request):
@@ -101,7 +103,7 @@ def centers_manage(request):
 
     return render(request, "manage_centers.html", context)
 
-
+# Chi tiết Trung tâm
 @login_required
 @permission_required("centers.view_center", raise_exception=True)
 def center_detail_view(request, center_id: int):
@@ -153,7 +155,7 @@ def center_detail_view(request, center_id: int):
     return render(request, "center_detail.html", context)
 
 
-# Quan ly phong hoc
+# Quản lý Phòng học
 @login_required
 @permission_required("centers.view_room", raise_exception=True)
 def rooms_manage(request):
@@ -205,7 +207,7 @@ def rooms_manage(request):
 
     return render(request, "manage_rooms.html", context)
 
-
+# Tạo Phòng học
 @login_required
 @permission_required("centers.add_room", raise_exception=True)
 def room_create_view(request):
@@ -253,7 +255,7 @@ def room_create_view(request):
 
     return render(request, "_room_form.html", {"form": form, "is_create": True})
 
-
+# Chỉnh sửa Phòng học
 @login_required
 @permission_required("centers.change_room", raise_exception=True)
 def room_edit_view(request, room_id: int):
@@ -292,7 +294,7 @@ def room_edit_view(request, room_id: int):
 
     return render(request, "_room_form.html", {"form": form, "room": room})
 
-
+# Xóa Phòng học
 @require_POST
 @login_required
 @permission_required("centers.delete_room", raise_exception=True)
@@ -337,7 +339,7 @@ def room_delete_view(request):
     )
     return response
 
-# Create Center
+# Tạo Trung tâm
 @login_required
 @permission_required("centers.add_center", raise_exception=True)
 def center_create_view(request):
@@ -375,7 +377,7 @@ def center_create_view(request):
     }
     return render(request, '_center_form.html', context)
 
-# 
+# Chỉnh sửa Trung tâm
 @login_required
 @permission_required("centers.change_center", raise_exception=True)
 def center_edit_view(request, center_id):
@@ -415,7 +417,7 @@ def center_edit_view(request, center_id):
     }
     return render(request, '_center_form.html', context)
 
-# Delete Center
+# Xóa Trung tâm
 @require_POST
 @login_required
 @permission_required("centers.delete_center", raise_exception=True)

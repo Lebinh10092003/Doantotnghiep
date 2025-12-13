@@ -25,7 +25,7 @@ from .models import Assessment
 DEFAULT_PER_PAGE = 10
 PER_PAGE_CHOICES = (10, 25, 50, 100)
 
-
+# Giúp đảm bảo QueryDict có thể thay đổi được
 def _ensure_mutable_querydict(params_source):
     if isinstance(params_source, QueryDict):
         cloned = params_source.copy()
@@ -45,7 +45,7 @@ def _ensure_mutable_querydict(params_source):
             qd.appendlist(key, value)
     return qd
 
-
+# Xây dựng ngữ cảnh giao diện lọc
 def _build_filter_ui_context(
     request,
     filterset,
@@ -78,7 +78,7 @@ def _build_filter_ui_context(
         "target_id": target_id,
     }
 
-
+# Giải quyết số mục trên mỗi trang
 def _resolve_per_page(request):
     try:
         per_page = int(request.GET.get("per_page", DEFAULT_PER_PAGE))
@@ -86,7 +86,7 @@ def _resolve_per_page(request):
         return DEFAULT_PER_PAGE
     return per_page if per_page in PER_PAGE_CHOICES else DEFAULT_PER_PAGE
 
-
+# Danh sách đánh giá
 @login_required
 @permission_required("assessments.view_assessment", raise_exception=True)
 def assessment_list(request):
@@ -151,7 +151,7 @@ def assessment_list(request):
         )
     return render(request, "assessments/assessment_list.html", context)
 
-
+# Tổng hợp kết quả học tập của học sinh
 @login_required
 @permission_required("assessments.view_assessment", raise_exception=True)
 def student_results(request):
@@ -254,6 +254,7 @@ def student_results(request):
     return render(request, "assessments/student_results.html", context)
 
 
+# Tổng hợp đánh giá
 @login_required
 @permission_required("assessments.view_assessment", raise_exception=True)
 def assessment_summary(request):
@@ -342,6 +343,7 @@ def assessment_summary(request):
         )
     return render(request, "assessments/assessment_summary.html", context)
 
+# Cập nhật đánh giá cho học sinh trong buổi học
 @require_POST
 @login_required
 @permission_required("assessments.change_assessment") # Hoặc "assessments.add_assessment"

@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
@@ -25,11 +25,36 @@ from apps.enrollments.models import Enrollment
 from apps.filters.models import SavedFilter
 from apps.filters.utils import build_filter_badges, determine_active_filter_name
 
-from .filters import ClassSessionFilter
+from .filters import ClassSessionFilter, TeachingScheduleFilter
 from .forms import ClassSessionForm
 from .models import ClassSession, ClassSessionPhoto
 
 
+def _user_display_name(user):
+    if not user:
+        return ""
+    display = getattr(user, "display_name_with_email", None)
+    if display:
+        return display
+    full_name = user.get_full_name()
+    return full_name or user.username
+
+
+def _parse_date_param(value, default):
+    if not value:
+        return default
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return default
+
+
+# Hàm phụ để lấy nhãn nhóm cho buổi học
 def _session_teacher_label(session):
     teacher = session.teacher_override or session.klass.main_teacher
     if not teacher:
@@ -39,13 +64,13 @@ def _session_teacher_label(session):
     full_name = teacher.get_full_name()
     return full_name or teacher.username
 
-
+# Hàm phụ để lấy nhãn nhóm cho buổi học
 def _session_timeslot_label(session):
     start = session.start_time.strftime("%H:%M") if session.start_time else "--"
     end = session.end_time.strftime("%H:%M") if session.end_time else "--"
     return f"{start} - {end}"
 
-
+# Hàm phụ để lấy nhãn nhóm cho buổi học
 def _session_group_label(session, group_by):
     if group_by == "subject":
         return session.klass.subject.name if session.klass and session.klass.subject else "Chưa có môn"
@@ -61,7 +86,7 @@ def _session_group_label(session, group_by):
         return session.date.strftime("%d/%m/%Y") if session.date else "Chưa có ngày"
     return ""
 
-
+# Hàm phụ kiểm tra người dùng có phải là nhân sự của buổi học không
 def _user_is_session_staff(session, user):
     if not getattr(user, "is_authenticated", False):
         return False
@@ -72,7 +97,7 @@ def _user_is_session_staff(session, user):
         or session.klass.assistants.filter(id=user.id).exists()
     )
 
-
+# Quản lý Buổi học
 @login_required
 @permission_required("class_sessions.view_classsession", raise_exception=True)
 def manage_class_sessions(request):
@@ -165,7 +190,7 @@ def manage_class_sessions(request):
     
     return render(request, "manage_class_sessions.html", context)
 
-
+# Tạo Buổi học
 @login_required
 @permission_required("class_sessions.add_classsession", raise_exception=True)
 def session_create_view(request):
@@ -200,7 +225,7 @@ def session_create_view(request):
     context = {"form": form, "is_create": True}
     return render(request, "_session_form.html", context)
 
-
+# Chỉnh sửa Buổi học
 @login_required
 @permission_required("class_sessions.change_classsession", raise_exception=True)
 def session_edit_view(request, pk):
@@ -236,7 +261,7 @@ def session_edit_view(request, pk):
     context = {"form": form, "session": session}
     return render(request, "_session_form.html", context)
 
-
+# Chi tiết Buổi học
 @login_required
 def session_detail_view(request, pk):
     session = get_object_or_404(
@@ -308,7 +333,7 @@ def session_detail_view(request, pk):
     context["as_page"] = True
     return render(request, "session_detail.html", context)
 
-
+# Quản lý Ảnh Buổi học
 @login_required
 def session_photos_upload(request, pk):
     session = get_object_or_404(ClassSession, pk=pk)
@@ -342,7 +367,7 @@ def session_photos_upload(request, pk):
         return resp
     return redirect(redirect_url)
 
-
+# Xóa Ảnh Buổi học
 @login_required
 @require_POST
 def session_photo_delete(request, session_pk, photo_pk):
@@ -377,7 +402,7 @@ def session_photo_delete(request, session_pk, photo_pk):
         return resp
     return redirect(redirect_url)
 
-
+# Hiển thị Modal Điểm danh & Đánh giá cho học sinh
 @login_required
 def student_attendance_assessment_modal(request, session_id, student_id):
     """
@@ -410,7 +435,7 @@ def student_attendance_assessment_modal(request, session_id, student_id):
     # Template này nằm trực tiếp dưới apps/class_sessions/templates/
     return render(request, "_student_attendance_assessment_modal.html", context)
 
-
+# Xóa Buổi học
 @require_POST
 @login_required
 @permission_required("class_sessions.delete_classsession", raise_exception=True)
@@ -429,6 +454,8 @@ def session_delete_view(request, pk):
         }
     })
     return response
+
+# Cập nhật Điểm danh & Đánh giá cho học sinh trong buổi học
 @require_POST
 @login_required
 def update_student_session_status(request, session_id, student_id):
@@ -504,7 +531,7 @@ def update_student_session_status(request, session_id, student_id):
 
     return HttpResponseBadRequest("Dữ liệu không hợp lệ")
 
-
+# Xem Lịch của tôi
 @login_required
 def my_schedule_view(request):
     today = date.today()
@@ -560,102 +587,126 @@ def my_schedule_view(request):
         return render(request, "_schedule_table.html", context)
     return render(request, "my_schedule.html", context)
 
-
-@login_required
-def teaching_schedule_view(request):
+def _build_teaching_schedule_context(request, *, force_self=False):
     today = date.today()
-    try:
-        selected_date = date.fromisoformat(request.GET.get("date")) if request.GET.get("date") else today
-    except ValueError:
-        selected_date = today
-    start_of_week = selected_date - timedelta(days=selected_date.weekday())
-    end_of_week = start_of_week + timedelta(days=6)
-
     viewer = request.user
-    teacher_id = request.GET.get("teacher")
+    can_view_all = viewer.has_perm("class_sessions.view_classsession") and not force_self
 
-    teacher = viewer
-    if teacher_id and viewer.has_perm("class_sessions.view_classsession"):
+    filterset = TeachingScheduleFilter(
+        request.GET or None,
+        queryset=ClassSession.objects.none(),
+        user=viewer,
+        allow_teacher_filter=can_view_all,
+    )
+
+    form = filterset.form
+    if form.is_bound:
+        form.is_valid()
+    cleaned = getattr(form, "cleaned_data", {})
+
+    start_date = cleaned.get("start_date") if cleaned else None
+    end_date = cleaned.get("end_date") if cleaned else None
+
+    raw_date = request.GET.get("date")
+    single_date = _parse_date_param(raw_date, None)
+    if not start_date and not end_date and single_date:
+        start_date = single_date
+        end_date = single_date
+
+    if start_date and not end_date:
+        end_date = start_date
+    if end_date and not start_date:
+        start_date = end_date
+
+    if not start_date and not end_date:
+        anchor = _parse_date_param(raw_date, today)
+        start_date = anchor - timedelta(days=anchor.weekday())
+        end_date = start_date + timedelta(days=6)
+
+    teacher = None
+    teacher_id = request.GET.get("teacher") if can_view_all else None
+    if teacher_id:
         try:
             teacher = User.objects.get(pk=int(teacher_id))
         except (User.DoesNotExist, ValueError, TypeError):
-            teacher = viewer
+            teacher = None
+    if not can_view_all:
+        teacher = viewer
+
+    teacher_label = _user_display_name(teacher) if teacher else "Tất cả giáo viên"
 
     base = ClassSession.objects.select_related(
         "klass", "klass__subject", "klass__center", "klass__main_teacher", "lesson"
-    ).prefetch_related("assistants").filter(date__isnull=False, date__range=(start_of_week, end_of_week))
+    ).prefetch_related("assistants").filter(date__isnull=False)
 
-    sessions = base.filter(
-        Q(teacher_override=teacher) |
-        Q(klass__main_teacher=teacher) |
-        Q(assistants=teacher) |
-        Q(klass__assistants=teacher)
-    ).order_by("date", "start_time", "klass__name").distinct()
+    sessions_qs = base
+    if start_date:
+        sessions_qs = sessions_qs.filter(date__gte=start_date)
+    if end_date:
+        sessions_qs = sessions_qs.filter(date__lte=end_date)
+    if teacher is not None:
+        sessions_qs = sessions_qs.filter(
+            Q(teacher_override=teacher)
+            | Q(klass__main_teacher=teacher)
+            | Q(assistants=teacher)
+            | Q(klass__assistants=teacher)
+        )
+    sessions = sessions_qs.order_by("date", "start_time", "klass__name").distinct()
 
-    teachers = None
-    if viewer.has_perm("class_sessions.view_classsession"):
-        teachers = User.objects.filter(Q(groups__name__in=["Teacher", "TEACHER"]) | Q(role__iexact="TEACHER")).distinct()
+    if not form.is_bound:
+        if start_date:
+            form.initial.setdefault("start_date", start_date.isoformat())
+        if end_date:
+            form.initial.setdefault("end_date", end_date.isoformat())
+        if can_view_all and teacher is not None:
+            form.initial.setdefault("teacher", teacher.pk)
 
-    filter_applied = bool(request.GET.get("date")) or (teacher_id and viewer.has_perm("class_sessions.view_classsession"))
-    filter_enabled = bool(teachers)
+    model_name = "TeachingSchedule"
+    saved_filters = SavedFilter.objects.filter(model_name=model_name).filter(
+        Q(user=viewer) | Q(is_public=True)
+    ).distinct()
+    active_filter_badges = build_filter_badges(filterset)
+    active_filter_name = determine_active_filter_name(request, saved_filters)
+    current_query_params = request.GET.urlencode()
 
-    context = {
+    range_is_single_day = start_date == end_date
+
+    return {
         "sessions": sessions,
-        "date": selected_date,
-        "start": start_of_week,
-        "end": end_of_week,
+        "start": start_date,
+        "end": end_date,
+        "range_is_single_day": range_is_single_day,
         "teacher": teacher,
-        "teachers": teachers,
+        "teacher_label": teacher_label,
         "today": today,
-        "filter_applied": filter_applied,
-        "filter_enabled": filter_enabled,
+        "filter": filterset,
+        "model_name": model_name,
+        "current_query_params": current_query_params,
+        "active_filter_badges": active_filter_badges,
+        "active_filter_name": active_filter_name,
     }
+
+
+# Lịch dạy của giáo viên
+@login_required
+def teaching_schedule_view(request):
+    context = _build_teaching_schedule_context(request)
     if is_htmx_request(request):
-        return render(request, "_schedule_table.html", context)
+        return render(request, "_teaching_schedule_content.html", context)
     return render(request, "teaching_schedule.html", context)
 
 
+# Lịch dạy của tôi
 @login_required
 def teaching_schedule_my_view(request):
-    """
-    View dành cho giáo viên/trợ giảng: chỉ xem lịch của mình, không bộ lọc giáo viên.
-    """
-    today = date.today()
-    try:
-        selected_date = date.fromisoformat(request.GET.get("date")) if request.GET.get("date") else today
-    except ValueError:
-        selected_date = today
-    start_of_week = selected_date - timedelta(days=selected_date.weekday())
-    end_of_week = start_of_week + timedelta(days=6)
+    """View dành riêng cho giáo viên/trợ giảng: chỉ thấy lịch của chính mình."""
 
-    viewer = request.user
-    base = ClassSession.objects.select_related(
-        "klass", "klass__subject", "klass__center", "klass__main_teacher", "lesson"
-    ).prefetch_related("assistants").filter(date__isnull=False, date__range=(start_of_week, end_of_week))
-
-    sessions = base.filter(
-        Q(teacher_override=viewer)
-        | Q(klass__main_teacher=viewer)
-        | Q(assistants=viewer)
-        | Q(klass__assistants=viewer)
-    ).order_by("date", "start_time", "klass__name").distinct()
-
-    context = {
-        "sessions": sessions,
-        "date": selected_date,
-        "start": start_of_week,
-        "end": end_of_week,
-        "teacher": viewer,
-        "teachers": None,
-        "today": today,
-        "filter_applied": False,
-        "filter_enabled": False,
-    }
+    context = _build_teaching_schedule_context(request, force_self=True)
     if is_htmx_request(request):
-        return render(request, "_schedule_table.html", context)
+        return render(request, "_teaching_schedule_content.html", context)
     return render(request, "teaching_schedule.html", context)
 
-
+# Lớp đang dạy
 @login_required
 def teaching_classes_view(request):
     from apps.classes.models import Class
@@ -694,7 +745,7 @@ def teaching_classes_view(request):
         return render(request, "_teaching_classes_table.html", context)
     return render(request, "teaching_classes.html", context)
 
-
+# Lớp đang dạy của tôi
 @login_required
 def teaching_classes_my_view(request):
     """

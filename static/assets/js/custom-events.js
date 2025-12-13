@@ -445,6 +445,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } catch (_) { /* noop */ }
+
+        // --- Logic 4: Gắn lại các sự kiện custom sau khi HTMX render ---
+        try { bindMySchedule(); } catch (_) { /* noop */ }
+        try { bindTeachingSchedule(); } catch (_) { /* noop */ }
+        try { bindTeachingClasses(); } catch (_) { /* noop */ }
     });
     
     // 4. Xử lý TRƯỚC KHI SWAP 
@@ -516,6 +521,20 @@ function _toISO(d) {
     return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
 }
 
+function _parseDateValue(value) {
+    if (!value) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return new Date(`${value}T00:00:00`);
+    }
+    const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (match) {
+        const [, day, month, year] = match;
+        return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function _mondayOf(date) {
     const d = new Date(date);
     const day = d.getDay(); // 0..6, 0=CN, 1=T2
@@ -570,17 +589,38 @@ function bindMySchedule() {
 }
 
 function bindTeachingSchedule() {
-    const form = document.getElementById('teaching-schedule-filters');
+    const form = document.getElementById('teaching-schedule-filters') || document.getElementById('filter-form');
     if (!form || form.dataset.bound === '1') return;
     form.dataset.bound = '1';
 
-    const dateInput = () => form.elements['date'];
+    const startInput = () => form.elements['start_date'];
+    const endInput = () => form.elements['end_date'];
+    if (!startInput() && !endInput()) return;
+
+    function setRange(startDate, endDate) {
+        if (startInput()) {
+            startInput().value = _toISO(startDate);
+        }
+        if (endInput()) {
+            endInput().value = _toISO(endDate);
+        }
+        form.requestSubmit();
+    }
+
+    function currentAnchorDate() {
+        const startEl = startInput();
+        const endEl = endInput();
+        const startVal = _parseDateValue(startEl ? startEl.value : null);
+        if (startVal) return startVal;
+        const endVal = _parseDateValue(endEl ? endEl.value : null);
+        if (endVal) return endVal;
+        return new Date();
+    }
 
     function adjustWeek(delta) {
-        const base = dateInput().value ? new Date(dateInput().value) : new Date();
+        const base = currentAnchorDate();
         base.setDate(base.getDate() + (7 * delta));
-        dateInput().value = _toISO(base);
-        form.requestSubmit();
+        setRange(base, base);
     }
 
     const prevBtns = [
@@ -598,7 +638,10 @@ function bindTeachingSchedule() {
 
     prevBtns.forEach(btn => btn.addEventListener('click', () => adjustWeek(-1)));
     nextBtns.forEach(btn => btn.addEventListener('click', () => adjustWeek(1)));
-    thisBtns.forEach(btn => btn.addEventListener('click', () => { dateInput().value = _toISO(new Date()); form.requestSubmit(); }));
+    thisBtns.forEach(btn => btn.addEventListener('click', () => {
+        const today = new Date();
+        setRange(today, today);
+    }));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
