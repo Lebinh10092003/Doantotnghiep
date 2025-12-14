@@ -897,7 +897,7 @@ def product_update(request, pk: int):
     else:
         form = StudentProductForm(instance=product)
 
-    template = "_student_product_form.html" if request.headers.get("HX-Request") == "true" else "_student_product_form.html"
+    template = "_student_product_form.html" if request.headers.get("HX-Request") == "true" else "student_product_form.html"
     return render(
         request,
         template,
@@ -909,7 +909,7 @@ def product_update(request, pk: int):
         },
     )
 
-# Cập nhật sản phẩm học sinh
+# Xóa sản phẩm học sinh
 @login_required
 def product_delete(request, pk: int):
     product = get_object_or_404(StudentProduct, pk=pk)

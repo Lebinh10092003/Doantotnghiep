@@ -87,10 +87,14 @@
 
           {% if can_manage_products %}
           <div class="mt-3 d-flex gap-2">
-            <a class="btn btn-outline-primary btn-sm"
-               href="{% url 'students:product_update' p.id %}">
+            <button type="button"
+                    class="btn btn-outline-primary btn-sm"
+                    hx-get="{% url 'students:product_update' p.id %}"
+                    hx-target="#student-product-modal-content"
+                    data-bs-toggle="modal"
+                    data-bs-target="#student-product-modal">
               Sửa
-            </a>
+            </button>
             <button
               class="btn btn-outline-danger btn-sm"
               hx-post="{% url 'students:product_delete' p.id %}"

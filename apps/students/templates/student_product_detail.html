@@ -4,7 +4,7 @@
 {% block title %}Chi tiết sản phẩm học sinh{% endblock %}
 
 {% block content %}
-<div id="student-portal-root" x-data>
+<div id="student-portal-root" x-data="{ modalTitle: 'Chi tiết sản phẩm' }">
   <div id="main">
     <header class="mb-3">
       <a href="#" class="burger-btn d-block d-xl-none">
@@ -36,9 +36,15 @@
                   <i class="bi bi-arrow-left"></i> Quay lại
                 </a>
                 {% if can_edit %}
-                  <a href="{% url 'students:product_update' pk=product.pk %}" class="btn btn-primary btn-sm">
+                  <button type="button"
+                          class="btn btn-primary btn-sm"
+                          hx-get="{% url 'students:product_update' pk=product.pk %}"
+                          hx-target="#student-product-modal-content"
+                          data-bs-toggle="modal"
+                          data-bs-target="#student-product-modal"
+                          @click="modalTitle = 'Chỉnh sửa sản phẩm'">
                     <i class="bi bi-pencil-square"></i> Chỉnh sửa
-                  </a>
+                  </button>
                 {% endif %}
                 <a href="{% url 'students:portal_course_detail' class_id=product.session.klass.id %}" class="btn btn-outline-info btn-sm">
                   <i class="bi bi-journal-richtext"></i> Xem lớp
@@ -175,5 +181,24 @@
       </section>
     </div>
   </div>
+
+  <div class="modal fade" id="student-product-modal" tabindex="-1" aria-hidden="true" x-init="bootstrap.Modal.getOrCreateInstance($el)">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" x-text="modalTitle">Đang tải...</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div id="student-product-modal-content">
+          <div class="modal-body"><p>Đang tải...</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+  {% include "_student_product_modal_helpers.html" %}
 {% endblock %}
