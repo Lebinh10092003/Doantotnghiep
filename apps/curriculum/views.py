@@ -26,8 +26,7 @@ from apps.filters.models import SavedFilter
 from apps.filters.utils import build_filter_badges, determine_active_filter_name
 from .filters import SubjectFilter, ModuleFilter, LessonFilter
 
-
-# Môn học
+# Danh sách môn học
 @login_required
 @permission_required("curriculum.view_subject", raise_exception=True)
 def subjects_manage(request):
@@ -75,7 +74,7 @@ def subjects_manage(request):
 
     return render(request, "manage_subjects.html", context)
 
-
+# Tạo môn học
 @login_required
 @permission_required("curriculum.add_subject", raise_exception=True)
 def subject_create_view(request):
@@ -104,7 +103,7 @@ def subject_create_view(request):
     form = SubjectForm()
     return render(request, "_subject_form.html", {"form": form, "is_create": True})
 
-
+# Chỉnh sửa môn học
 @login_required
 @permission_required("curriculum.change_subject", raise_exception=True)
 def subject_edit_view(request, subject_id: int):
@@ -134,7 +133,7 @@ def subject_edit_view(request, subject_id: int):
     form = SubjectForm(instance=subject)
     return render(request, "_subject_form.html", {"form": form, "subject": subject})
 
-
+# Chi tiết môn học
 @login_required
 @permission_required("curriculum.view_subject", raise_exception=True)
 def subject_detail_view(request, subject_id: int):
@@ -142,7 +141,7 @@ def subject_detail_view(request, subject_id: int):
     context = {"subject": subject}
     return render(request, "_subject_detail.html", context)
 
-
+# Xóa môn học
 @login_required
 @permission_required("curriculum.delete_subject", raise_exception=True)
 def subject_delete_view(request):
@@ -171,7 +170,7 @@ def subject_delete_view(request):
     })
     return resp
 
-
+# Xóa môn học đơn lẻ
 @login_required
 @permission_required("curriculum.delete_subject", raise_exception=True)
 def subject_delete_single_view(request, subject_id: int):
@@ -191,7 +190,7 @@ def subject_delete_single_view(request, subject_id: int):
     return HttpResponse(status=405) # Phương thức không được phép
 
 
-# Học phần
+# Quản lý học phần
 @login_required
 @permission_required("curriculum.view_module", raise_exception=True)
 def modules_manage(request):
@@ -239,7 +238,7 @@ def modules_manage(request):
 
     return render(request, "manage_modules.html", context)
 
-
+# Tạo học phần cho môn học 
 @login_required
 @permission_required("curriculum.add_module", raise_exception=True)
 def module_create_view(request):
@@ -274,7 +273,7 @@ def module_create_view(request):
     form = ModuleForm(initial=initial)
     return render(request, "_module_form.html", {"form": form, "is_create": True})
 
-
+# Chỉnh sửa học phần 
 @login_required
 @permission_required("curriculum.change_module", raise_exception=True)
 def module_edit_view(request, module_id: int):
@@ -304,7 +303,7 @@ def module_edit_view(request, module_id: int):
     form = ModuleForm(instance=module)
     return render(request, "_module_form.html", {"form": form, "module": module})
 
-
+# Chi tiết học phần
 @login_required
 @permission_required("curriculum.view_module", raise_exception=True)
 def module_detail_view(request, module_id: int):
@@ -312,7 +311,7 @@ def module_detail_view(request, module_id: int):
     context = {"module": module}
     return render(request, "_module_detail.html", context)
 
-
+# Xóa học phần
 @login_required
 @permission_required("curriculum.delete_module", raise_exception=True)
 def module_delete_view(request):
@@ -342,7 +341,7 @@ def module_delete_view(request):
     return resp
 
 
-# Bài học
+# Quản lý bài học
 @login_required
 @permission_required("curriculum.view_lesson", raise_exception=True)
 def lessons_manage(request):
@@ -393,7 +392,7 @@ def lessons_manage(request):
 
     return render(request, "manage_lessons.html", context)
 
-
+# Tạo bài học
 @login_required
 @permission_required("curriculum.add_lesson", raise_exception=True)
 def lesson_create_view(request):
@@ -428,7 +427,7 @@ def lesson_create_view(request):
     form = LessonForm(initial=initial)
     return render(request, "_lesson_form.html", {"form": form, "is_create": True})
 
-
+# Chỉnh sửa bài học
 @login_required
 @permission_required("curriculum.change_lesson", raise_exception=True)
 def lesson_edit_view(request, lesson_id: int):
@@ -458,7 +457,7 @@ def lesson_edit_view(request, lesson_id: int):
     form = LessonForm(instance=lesson)
     return render(request, "_lesson_form.html", {"form": form, "lesson": lesson})
 
-
+# Chi tiết bài học
 @login_required
 @permission_required("curriculum.view_lesson", raise_exception=True)
 def lesson_detail_view(request, lesson_id: int):
@@ -516,7 +515,7 @@ def lesson_detail_view(request, lesson_id: int):
     # Không phải HTMX: render biến thể toàn trang
     return render(request, "lesson_detail.html", context)
 
-
+# Xóa bài học
 @login_required
 @permission_required("curriculum.delete_lesson", raise_exception=True)
 def lesson_delete_view(request):
@@ -545,7 +544,7 @@ def lesson_delete_view(request):
     })
     return resp
 
-
+# Xóa bài học đơn lẻ
 @login_required
 @permission_required("curriculum.delete_lesson", raise_exception=True)
 def lesson_delete_single_view(request, lesson_id: int):
@@ -564,7 +563,7 @@ def lesson_delete_single_view(request, lesson_id: int):
         return resp
     return HttpResponse(status=405) # Phương thức không được phép
 
-
+# Quản lý nội dung bài học (Bài giảng và Bài tập)
 @login_required
 @permission_required("curriculum.change_lesson", raise_exception=True) # Dùng quyền change_lesson
 def lesson_content_edit_view(request, lesson_id: int):
@@ -613,7 +612,7 @@ def lesson_content_edit_view(request, lesson_id: int):
     }
     return render(request, "_lesson_content_form.html", context, status=422 if request.method == "POST" else 200)
 
-
+# Xóa bài giảng
 @login_required
 @permission_required("curriculum.delete_lecture", raise_exception=True)
 def lecture_delete_view(request, lesson_id: int):
@@ -634,7 +633,7 @@ def lecture_delete_view(request, lesson_id: int):
         return resp
     return HttpResponse(status=405)
 
-
+# Xóa bài tập
 @login_required
 @permission_required("curriculum.delete_exercise", raise_exception=True)
 def exercise_delete_view(request, lesson_id: int):
@@ -656,7 +655,7 @@ def exercise_delete_view(request, lesson_id: int):
     return HttpResponse(status=405)
 
 
-# -------- Nhập/Xuất Chương trình --------
+# Xuất curriculum ra file Excel
 @login_required
 @permission_required("curriculum.view_subject", raise_exception=True)
 def export_curriculum_view(request):
@@ -749,7 +748,7 @@ def export_curriculum_view(request):
     response["Content-Disposition"] = 'attachment; filename="curriculum.xlsx"'
     return response
 
-
+# Nhập curriculum từ file Excel
 @login_required
 @permission_required("curriculum.add_subject", raise_exception=True)
 def import_curriculum_view(request):
@@ -1016,7 +1015,7 @@ def import_curriculum_view(request):
     form = ImportCurriculumForm()
     return render(request, "_import_curriculum_form.html", {"form": form})
 
-
+# Tải mẫu file nhập curriculum 
 @login_required
 @permission_required("curriculum.view_subject", raise_exception=True)
 def import_curriculum_template_view(request):

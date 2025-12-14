@@ -36,7 +36,7 @@ from apps.reports.filters import (
 )
 from apps.common.utils.http import is_htmx_request
 
-
+# Chuẩn hóa định danh (role, group name) thành dạng in hoa, không dấu cách
 def _normalize_identifier(value) -> str:
     if not value:
         return ""
@@ -44,7 +44,7 @@ def _normalize_identifier(value) -> str:
         value = value.name
     return re.sub(r"\s+", "_", str(value)).strip().upper()
 
-
+# Xác định các cờ vai trò người dùng
 def _role_flags(user):
     normalized_role = _normalize_identifier(getattr(user, "role", ""))
     group_names = {_normalize_identifier(name) for name in user.groups.values_list("name", flat=True)}
@@ -63,12 +63,12 @@ def _role_flags(user):
         "is_student": is_student,
     }
 
-
+# Kiểm tra người dùng có vai trò quản trị viên hoặc quản lý trung tâm không
 def _user_is_admin_or_center_manager(user):
     flags = _role_flags(user)
     return flags["is_admin"], flags["is_center_manager"]
 
-
+# Tính toán thời lượng buổi học trong giờ
 def _session_duration_hours(session):
     """
     Return duration in hours if start/end time are present; otherwise fallback to 0.
@@ -82,13 +82,13 @@ def _session_duration_hours(session):
         return round(delta.total_seconds() / 3600, 2)
     return 0
 
-
+# Phân tích ngày an toàn
 def _parse_date_safe(value: str | None) -> date | None:
     if not value:
         return None
     return parse_date(value)
 
-
+# Xây dựng ngữ cảnh báo cáo học tập của học sinh
 def _build_student_report_context(request, *, paginate=False) -> dict:
     base_enrollments = _student_report_accessible_enrollments(request.user)
     flags = _role_flags(request.user)
@@ -233,7 +233,7 @@ def _build_student_report_context(request, *, paginate=False) -> dict:
     context.setdefault("detail_url_name", "reports:student_report_detail")
     return context
 
-
+# Lưu bộ lọc đã lưu
 def _student_report_accessible_enrollments(user):
     flags = _role_flags(user)
     base = Enrollment.objects.select_related(
@@ -260,7 +260,7 @@ def _student_report_accessible_enrollments(user):
         return base.filter(student=user)
     raise PermissionDenied
 
-
+# Tính toán số lần điểm danh theo trạng thái
 def _attendance_counts(student_id, session_ids):
     stats = {"P": 0, "A": 0, "L": 0}
     if not session_ids:
@@ -271,7 +271,7 @@ def _attendance_counts(student_id, session_ids):
         stats[row["status"]] = row["total"]
     return stats
 
-
+# Xây dựng các hàng báo cáo học tập của học sinh
 def _student_report_rows(enrollments, start_date=None, end_date=None):
     rows = []
     for enrollment in enrollments:
@@ -386,7 +386,7 @@ def _student_report_rows(enrollments, start_date=None, end_date=None):
 
     return rows
 
-
+# Tóm tắt đăng ký
 @login_required
 def enrollment_summary(request):
     user = request.user
@@ -447,7 +447,7 @@ def enrollment_summary(request):
         return render(request, "_enrollment_summary_filterable_content.html", context)
     return render(request, "enrollment_summary.html", context)
 
-
+# Xây dựng ngữ cảnh giao diện bộ lọc
 def _build_filter_ui_context(
     request,
     filterset,
@@ -479,7 +479,7 @@ def _build_filter_ui_context(
         "target_id": target_id,
     }
 
-
+# Đảm bảo QueryDict có thể thay đổi
 def _ensure_mutable_querydict(params_source):
     if isinstance(params_source, QueryDict):
         cloned = params_source.copy()
@@ -499,7 +499,7 @@ def _ensure_mutable_querydict(params_source):
             qd.appendlist(key, value)
     return qd
 
-
+# Báo cáo học tập của học sinh
 @login_required
 def student_report(request):
     context = _build_student_report_context(request, paginate=True)
@@ -507,7 +507,7 @@ def student_report(request):
         return render(request, "_student_report_filterable_content.html", context)
     return render(request, "student_report.html", context)
 
-
+# Chi tiết báo cáo học tập của học sinh
 @login_required
 def student_report_detail(request, pk):
     base_enrollments = _student_report_accessible_enrollments(request.user)
@@ -534,7 +534,7 @@ def student_report_detail(request, pk):
         },
     )
 
-
+# Chi tiết buổi học của học sinh
 @login_required
 def student_session_detail(request, enrollment_id, session_id):
     base_enrollments = _student_report_accessible_enrollments(request.user)
@@ -587,7 +587,7 @@ def student_session_detail(request, enrollment_id, session_id):
         },
     )
 
-
+# Báo cáo doanh thu
 @login_required
 def revenue_report(request):
     flags = _role_flags(request.user)
@@ -682,7 +682,7 @@ def revenue_report(request):
         return render(request, "_revenue_report_filterable_content.html", context)
     return render(request, "revenue_report.html", context)
 
-
+# Báo cáo giờ giảng dạy
 @login_required
 def teaching_hours_report(request):
     flags = _role_flags(request.user)
@@ -814,7 +814,7 @@ def teaching_hours_report(request):
         return render(request, "_teaching_hours_report_filterable_content.html", context)
     return render(request, "teaching_hours_report.html", context)
 
-
+# Báo cáo hoạt động lớp học
 @login_required
 def class_activity_report(request):
     flags = _role_flags(request.user)
@@ -966,7 +966,7 @@ def class_activity_report(request):
         return render(request, "_class_activity_report_filterable_content.html", context)
     return render(request, "class_activity_report.html", context)
 
-
+# Xuất báo cáo học tập của học sinh ra PDF
 @login_required
 def student_report_pdf(request):
     try:

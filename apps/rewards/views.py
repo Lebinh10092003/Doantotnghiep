@@ -21,7 +21,7 @@ from apps.rewards.models import (
     SessionPointEventType,
 )
 
-
+# Xác định vai trò người dùng
 def _role_flags(user):
     role = (getattr(user, "role", "") or "").upper()
     in_group = lambda name: user.groups.filter(name=name).exists()
@@ -38,7 +38,7 @@ def _role_flags(user):
         "is_admin": is_admin,
     }
 
-
+# Tổng quan tài khoản điểm thưởng
 @login_required
 def account_summary(request):
     try:
@@ -109,7 +109,7 @@ def account_summary(request):
         },
     )
 
-
+# Danh mục phần quà
 @login_required
 def catalog(request):
     account = PointAccount.get_or_create_for_student(request.user)
@@ -117,7 +117,7 @@ def catalog(request):
     form = RedemptionRequestForm()
     return render(request, "catalog.html", {"items": items, "account": account, "form": form})
 
-
+# Gửi yêu cầu đổi quà
 @login_required
 @require_POST
 def submit_request(request):
@@ -137,13 +137,13 @@ def submit_request(request):
         messages.error(request, "Dữ liệu không hợp lệ.")
     return redirect("rewards:catalog")
 
-
+# Xem các yêu cầu đổi quà của tôi
 @login_required
 def my_requests(request):
     qs = RedemptionRequest.objects.filter(student=request.user).select_related("item").order_by("-created_at")
     return render(request, "my_requests.html", {"requests": qs})
 
-
+# Cộng điểm cho học viên
 @login_required
 def award_points(request):
     flags = _role_flags(request.user)
@@ -184,7 +184,7 @@ def award_points(request):
         form = AwardPointsForm()
     return render(request, "award_points.html", {"form": form})
 
-
+# Quản lý phần quà
 @login_required
 def manage_items(request):
     if not request.user.has_perm("rewards.change_rewarditem"):
@@ -243,7 +243,7 @@ def manage_items(request):
         )
     return render(request, "manage_items.html", {"items": items, "form": form, "editing": instance})
 
-
+# Quản lý các yêu cầu đổi quà
 @login_required
 def manage_requests(request):
     if not request.user.has_perm("rewards.change_redemptionrequest"):
@@ -257,13 +257,13 @@ def manage_requests(request):
         )
     return render(request, "manage_requests.html", {"requests": qs, "status": RedemptionStatus})
 
-
+# Lấy yêu cầu đổi quà để quản lý
 def _get_request_for_manage(request, pk) -> RedemptionRequest:
     if not request.user.has_perm("rewards.change_redemptionrequest"):
         raise PermissionDenied
     return get_object_or_404(RedemptionRequest.objects.select_related("item", "student"), pk=pk)
 
-
+# Duyệt yêu cầu đổi quà
 @login_required
 @require_POST
 def approve_request(request, pk):
@@ -294,7 +294,7 @@ def approve_request(request, pk):
         messages.error(request, e.message)
     return redirect("rewards:manage_requests")
 
-
+# Từ chối yêu cầu đổi quà
 @login_required
 @require_POST
 def reject_request(request, pk):
@@ -325,7 +325,7 @@ def reject_request(request, pk):
         messages.error(request, e.message)
     return redirect("rewards:manage_requests")
 
-
+# Duyệt yêu cầu đổi quà và đánh dấu đã trao quà
 @login_required
 @require_POST
 def fulfill_request(request, pk):
@@ -356,7 +356,7 @@ def fulfill_request(request, pk):
         messages.error(request, e.message)
     return redirect("rewards:manage_requests")
 
-
+# Hủy yêu cầu đổi quà
 @login_required
 @require_POST
 def cancel_request(request, pk):

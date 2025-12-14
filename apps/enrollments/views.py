@@ -30,7 +30,7 @@ from django.utils.dateparse import parse_date
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
 
-
+# Đánh dấu vai trò người dùng
 def _role_flags(user):
     role = (getattr(user, "role", "") or "").upper()
     in_group = lambda name: user.groups.filter(name=name).exists()
@@ -54,7 +54,7 @@ def _role_flags(user):
         "can_manage": is_admin or is_center_manager,
     }
 
-
+# Lấy các lớp mà người dùng có thể quản lý
 def _get_managed_classes(user, flags):
     if flags["is_admin"]:
         return Class.objects.select_related("center", "subject").order_by("code")
@@ -66,7 +66,7 @@ def _get_managed_classes(user, flags):
         )
     return Class.objects.none()
 
-
+# Danh sách ghi danh
 @login_required
 def enrollment_list(request):
     user = request.user
@@ -217,12 +217,12 @@ def enrollment_list(request):
         return render(request, "_enrollment_filterable_content.html", context)
     return render(request, "enrollment_list.html", context)
 
-
+# Yêu cầu quyền quản lý
 def _require_manage_permission(user, flags):
     if not flags["can_manage"]:
         raise PermissionDenied
 
-
+# Đảm bảo phạm vi truy cập
 def _ensure_scope(enrollment, user, flags):
     if flags["is_admin"]:
         return
@@ -232,7 +232,7 @@ def _ensure_scope(enrollment, user, flags):
     else:
         raise PermissionDenied
 
-
+# Tính ngày kết thúc ghi danh
 @login_required
 def enrollment_calculate_end_date(request):
     user = request.user
@@ -257,7 +257,7 @@ def enrollment_calculate_end_date(request):
     projected = calculate_end_date(start_date, sessions, klass)
     return JsonResponse({"end_date": projected.isoformat() if projected else None})
 
-
+# Tạo ghi danh
 @login_required
 def enrollment_create(request):
     user = request.user
@@ -315,7 +315,7 @@ def enrollment_create(request):
     }
     return render(request, "_enrollment_form.html", context)
 
-
+# Cập nhật ghi danh
 @login_required
 def enrollment_update(request, pk):
     user = request.user
@@ -382,7 +382,7 @@ def enrollment_update(request, pk):
     }
     return render(request, "_enrollment_form.html", context)
 
-
+# Chuyển phí ghi danh
 @login_required
 def enrollment_transfer(request, pk):
     user = request.user
@@ -457,7 +457,7 @@ def enrollment_transfer(request, pk):
     }
     return render(request, "_enrollment_transfer_form.html", context)
 
-
+# Hủy ghi danh
 @login_required
 @require_POST
 def enrollment_cancel(request, pk):

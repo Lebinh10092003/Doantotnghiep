@@ -10,7 +10,7 @@ from django.db.models import Q
 from .utils import resolve_dynamic_params, serialize_query_params
 from apps.common.utils.forms import form_errors_as_text
 from apps.common.utils.http import is_htmx_request
-
+# Tạo bộ lọc nhanh và lưu lại
 @login_required
 def save_filter_view(request):
     if not is_htmx_request(request):
@@ -70,7 +70,7 @@ def save_filter_view(request):
                 # Nếu có nhiều giá trị, lưu cả list
                 else:
                     query_params[key] = value_list
-    # === SỬA ĐỔI KẾT THÚC ===
+    # sửa đổi kết thúc
 
     form = SavedFilterForm(initial={
         "model_name": model_name,
@@ -82,7 +82,7 @@ def save_filter_view(request):
         "query_params_str": urlencode(query_params, doseq=True)
     }
     return render(request, "_save_filter_form.html", context)
-
+# Xóa bộ lọc đã lưu
 @login_required
 @require_POST
 def delete_filter_view(request, pk):
@@ -104,6 +104,7 @@ def delete_filter_view(request, pk):
     })
     return response
 
+# Tải danh sách bộ lọc đã lưu (HTMX)
 @login_required
 @require_GET # Chỉ cho phép request GET
 def load_saved_filters_view(request, model_name: str):

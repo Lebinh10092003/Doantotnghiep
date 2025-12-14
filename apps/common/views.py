@@ -6,7 +6,7 @@ from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
 
-# Domain models
+# Import các mô hình cần thiết, sử dụng try-except để tránh lỗi khi mô hình không tồn tại
 try:
     from apps.class_sessions.models import ClassSession
 except Exception:
@@ -28,13 +28,13 @@ try:
 except Exception:
     Attendance = None
 
-
+# Các hàm phụ để sử dụng trong dashboard
 def _choices_to_dict(choices):
     if not choices:
         return {}
     return {value: label for value, label in choices}
 
-
+# Hàm phụ để hiển thị tên người dùng
 def _user_display(user):
     if not user:
         return ""
@@ -45,7 +45,7 @@ def _user_display(user):
             return name
     return getattr(user, "username", "")
 
-
+# Hàm phụ để xác định trạng thái buổi học
 def _session_state_label(session, current_time):
     start = getattr(session, "start_time", None)
     end = getattr(session, "end_time", None)
@@ -62,7 +62,7 @@ def _session_state_label(session, current_time):
         return ("Chưa bắt đầu", "secondary")
     return ("Chưa xếp giờ", "light")
 
-
+# Hàm phụ để định dạng khoảng thời gian
 def _format_time_range(start, end):
     if start and end:
         return f"{start.strftime('%H:%M')} - {end.strftime('%H:%M')}"
@@ -70,7 +70,7 @@ def _format_time_range(start, end):
         return start.strftime("%H:%M")
     return "Chưa xếp giờ"
 
-
+# Hàm phụ để xác định trạng thái điểm danh
 def _attendance_state(summary, session, current_time):
     if summary and summary.get("total"):
         return ("Đã điểm danh", "success")
@@ -79,7 +79,7 @@ def _attendance_state(summary, session, current_time):
         return ("Chưa điểm danh", "warning")
     return (state_label, state_badge)
 
-
+# Hàm phụ để tính tỷ lệ và phần trăm
 def _ratio_text(current_value, total_value):
     if total_value:
         percent = round((current_value / total_value) * 100)
@@ -87,7 +87,7 @@ def _ratio_text(current_value, total_value):
         return f"{current_value}/{total_value}", percent
     return (f"{current_value}/—", None)
 
-
+# Hàm phụ để tổng hợp điểm danh theo buổi học
 def _attendance_totals_by_session(session_ids):
     if not Attendance or not session_ids:
         return {}
@@ -109,7 +109,7 @@ def _attendance_totals_by_session(session_ids):
             entry["late"] += row["count"]
     return summary
 
-
+# Hàm phụ để lấy bản đồ điểm danh cho học sinh trong ngày
 def _attendance_map_for_students(student_ids, date_value):
     if not Attendance or not student_ids:
         return {}
@@ -119,7 +119,7 @@ def _attendance_map_for_students(student_ids, date_value):
         result[(attendance.session_id, attendance.student_id)] = attendance
     return result
 
-
+# Trang chủ chung của ứng dụng
 def home(request):
     home_products = []
     home_page_obj = None
@@ -152,7 +152,7 @@ def home(request):
         },
     )
 
-
+# Trang dashboard tùy theo vai trò người dùng
 @login_required
 def dashboard(request):
     user = request.user

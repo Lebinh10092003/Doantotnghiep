@@ -26,7 +26,7 @@ from .filters import ClassFilter
 from .forms import ClassForm, ClassScheduleFormSet
 from .models import Class
 
-
+# Hàm phụ để lấy nhãn khung giờ của lớp
 def _class_timeslot_label(klass):
     schedules = []
     if hasattr(klass, "weekly_schedules"):
@@ -38,7 +38,7 @@ def _class_timeslot_label(klass):
     end = schedule.end_time.strftime("%H:%M") if schedule.end_time else "--"
     return f"{schedule.get_day_of_week_display()} {start} - {end}"
 
-
+# Hàm phụ để lấy nhãn giáo viên
 def _teacher_label(user):
     if not user:
         return "Chưa có giáo viên"
@@ -47,7 +47,7 @@ def _teacher_label(user):
     full_name = user.get_full_name()
     return full_name or user.username
 
-
+# Hàm phụ để lấy nhãn nhóm của lớp
 def _class_group_label(klass, group_by):
     if group_by == "subject":
         return klass.subject.name if klass.subject else "Chưa có môn"
@@ -61,7 +61,7 @@ def _class_group_label(klass, group_by):
         return _class_timeslot_label(klass)
     return ""
 
-
+# Trang quản lý lớp học
 @login_required
 @permission_required("classes.view_class", raise_exception=True)
 def manage_classes(request):
@@ -143,7 +143,7 @@ def manage_classes(request):
     
     # Nếu là yêu cầu thông thường, tải trang đầy đủ
     return render(request, "manage_classes.html", context)
-
+# Tạo lớp học mới
 @login_required
 @permission_required("classes.add_class", raise_exception=True)
 def class_create_view(request):
@@ -183,7 +183,7 @@ def class_create_view(request):
     context = {"form": form, "formset": formset, "is_create": True}
     return render(request, "_class_form.html", context)
 
-
+# Chỉnh sửa lớp học
 @login_required
 @permission_required("classes.change_class", raise_exception=True)
 def class_edit_view(request, pk):
@@ -236,7 +236,7 @@ def class_edit_view(request, pk):
     context = {"form": form, "formset": formset, "klass": klass}
     return render(request, "_class_form.html", context)
 
-
+# Chi tiết lớp học
 @login_required
 def class_detail_view(request, pk):
     klass = get_object_or_404(
@@ -265,7 +265,7 @@ def class_detail_view(request, pk):
     response = render(request, "_class_detail.html", context)
     return response
 
-
+# Xóa lớp học
 @require_POST
 @login_required
 @permission_required("classes.delete_class", raise_exception=True)
@@ -297,7 +297,7 @@ def class_delete_view(request, pk):
     })
     return response
 
-
+# Tạo buổi học cho lớp
 PLANNED_STATUS = "PLANNED"
 @require_POST
 @login_required

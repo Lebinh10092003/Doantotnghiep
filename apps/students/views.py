@@ -30,7 +30,8 @@ from apps.reports.views import (
     _parse_date_safe,
     _role_flags,
 )
-
+# Các hàm hỗ trợ cho views của học sinh
+# Xác định phạm vi tuần từ ngày cho trước
 def _week_range(center_date: date | None = None):
     """
     Trả về (start, end) là thứ 2 -> CN của tuần chứa center_date.
@@ -39,7 +40,7 @@ def _week_range(center_date: date | None = None):
     start = today - timedelta(days=today.weekday())  # Monday
     end = start + timedelta(days=6)
     return start, end
-
+# Xác định vai trò người dùng và quyền truy cập sản phẩm
 def _product_role_flags(user):
     role = (getattr(user, "role", "") or "").upper()
     in_group = user.groups.filter
@@ -51,7 +52,7 @@ def _product_role_flags(user):
         "is_assistant": role == "ASSISTANT" or in_group(name__iexact="assistant").exists(),
         "can_manage_all": user.has_perm("students.view_studentproduct"),
     }
-
+# Truy vấn sản phẩm học sinh cơ bản
 def _base_product_queryset():
     return StudentProduct.objects.select_related(
         "student",
@@ -60,7 +61,7 @@ def _base_product_queryset():
         "session__klass__subject",
         "session__klass__center",
     )
-
+# Truy vấn sản phẩm học sinh liên quan đến người dùng
 def _related_products_queryset(user):
     flags = _product_role_flags(user)
     qs = _base_product_queryset()
@@ -78,7 +79,7 @@ def _related_products_queryset(user):
         )
     return qs
 
-
+# Xác định học sinh hiển thị trên trang portal khóa học
 def _resolve_portal_student(request, klass: Class, flags: dict):
     """Determine which student's data should be shown on the course portal page."""
     user = request.user
@@ -122,7 +123,7 @@ def _resolve_portal_student(request, klass: Class, flags: dict):
 
     return None
 
-
+# Lấy các buổi học của lớp và ánh xạ bài học
 def _fetch_class_sessions(klass: Class):
     sessions = list(
         ClassSession.objects.filter(klass=klass)
@@ -135,7 +136,7 @@ def _fetch_class_sessions(klass: Class):
             lesson_map[session.lesson_id] = session
     return sessions, lesson_map
 
-
+# Tìm buổi học sắp tới nhất
 def _next_upcoming_session(sessions):
     today = date.today()
     for session in sessions:
@@ -143,7 +144,7 @@ def _next_upcoming_session(sessions):
             return session
     return None
 
-
+# Chọn buổi học dựa trên session_id hoặc buổi học sắp tới nhất
 def _pick_selected_session(sessions, session_id):
     try:
         session_id = int(session_id)
@@ -161,7 +162,7 @@ def _pick_selected_session(sessions, session_id):
 
     return sessions[-1] if sessions else None
 
-
+# Truy vấn sản phẩm học sinh cho khóa học và buổi học cụ thể
 def _student_course_products(user, klass, session):
     base_qs = (
         StudentProduct.objects.filter(student=user, session__klass=klass)
@@ -177,7 +178,7 @@ def _student_course_products(user, klass, session):
         other_qs = base_qs
         latest = None
     return base_qs, session_qs, other_qs, latest
-
+# Render trang danh sách sản phẩm học sinh với phân trang và lọc
 def _render_products_page(request, products, flags, page_title, page_description):
     order = request.GET.get("order", "desc")
 
@@ -239,7 +240,7 @@ def _render_products_page(request, products, flags, page_title, page_description
         return render(request, "_student_products_content.html", context)
     return render(request, "student_products_list.html", context)
 
-
+# Lưu bộ lọc đã lưu
 def _format_student_display(student):
     preferred = getattr(student, "display_name_with_email", None)
     if callable(preferred):
@@ -253,7 +254,7 @@ def _format_student_display(student):
         return full_name
     return getattr(student, "username", "")
 
-
+# Lưu bộ lọc đã lưu
 @login_required
 def portal_home(request):
     """
@@ -376,7 +377,7 @@ def portal_home(request):
     }
     return render(request, "student_home.html", context)
 
-
+# Trang chi tiết khóa học của học sinh
 @login_required
 def portal_course_detail(request, class_id: int):
     """
@@ -515,7 +516,7 @@ def portal_course_detail(request, class_id: int):
         return render(request, "_course_detail_panel.html", context)
     return render(request, "course_detail.html", context)
 
-
+# Bảng điều khiển sản phẩm khóa học trên portal
 @login_required
 def portal_course_products_panel(request, class_id: int):
     user = request.user
@@ -561,7 +562,7 @@ def portal_course_products_panel(request, class_id: int):
     }
     return render(request, "_course_products_panel.html", context)
 
-
+# Trang kết quả học tập của học sinh
 @login_required
 def learning_results(request):
     context = _build_student_report_context(request, paginate=True)
@@ -576,7 +577,7 @@ def learning_results(request):
         return render(request, "_student_report_filterable_content.html", context)
     return render(request, "student_learning_results.html", context)
 
-
+# Trang chi tiết kết quả học tập của học sinh
 @login_required
 def learning_result_detail(request, pk: int):
     base_enrollments = _student_report_accessible_enrollments(request.user)
@@ -603,7 +604,7 @@ def learning_result_detail(request, pk: int):
         },
     )
 
-
+# Trang chi tiết buổi học của học sinh
 @login_required
 def learning_session_detail(request, enrollment_id: int, session_id: int):
     base_enrollments = _student_report_accessible_enrollments(request.user)
@@ -656,7 +657,7 @@ def learning_session_detail(request, enrollment_id: int, session_id: int):
         },
     )
 
-
+# Tạo sản phẩm học sinh mới
 @login_required
 def product_create(request, session_id: int):
     # Danh sách buổi học của học sinh
@@ -721,7 +722,7 @@ def product_create(request, session_id: int):
         },
     )
 
-
+# Tạo bản nộp bài tập học sinh mới
 @login_required
 def submission_create(request, exercise_id: int):
     from apps.curriculum.models import Exercise
@@ -789,7 +790,7 @@ def submission_create(request, exercise_id: int):
         },
     )
 
-
+# Cập nhật bản nộp bài tập học sinh
 @login_required
 def submission_update(request, pk: int):
     submission = get_object_or_404(StudentExerciseSubmission, pk=pk)
@@ -853,7 +854,7 @@ def submission_update(request, pk: int):
         },
     )
 
-
+# Cập nhật sản phẩm học sinh
 @login_required
 def product_update(request, pk: int):
     product = get_object_or_404(StudentProduct, pk=pk)
@@ -908,7 +909,7 @@ def product_update(request, pk: int):
         },
     )
 
-
+# Cập nhật sản phẩm học sinh
 @login_required
 def product_delete(request, pk: int):
     product = get_object_or_404(StudentProduct, pk=pk)
@@ -936,7 +937,7 @@ def product_delete(request, pk: int):
 
     return redirect("students:portal_course_detail", class_id=class_id)
 
-
+# Trang danh sách sản phẩm học sinh với bộ lọc đầy đủ
 @login_required
 def student_products_list(request):
     user = request.user
@@ -956,7 +957,7 @@ def student_products_list(request):
         page_description="Xem tất cả sản phẩm học sinh với bộ lọc đầy đủ.",
     )
 
-
+# Trang danh sách sản phẩm học sinh của chính người dùng
 @login_required
 def student_products_my(request):
     user = request.user
@@ -976,7 +977,7 @@ def student_products_my(request):
         page_description="Các sản phẩm liên quan tới bạn, học sinh của bạn hoặc con của bạn.",
     )
 
-
+# Trang chi tiết sản phẩm học sinh
 @login_required
 def student_product_detail(request, pk: int):
     product = get_object_or_404(
@@ -1022,7 +1023,7 @@ def student_product_detail(request, pk: int):
         },
     )
 
-
+# Trang chi tiết sản phẩm học sinh công khai
 def student_product_detail_public(request, pk: int):
     product = get_object_or_404(
         StudentProduct.objects.select_related(

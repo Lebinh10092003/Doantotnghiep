@@ -29,7 +29,7 @@ from .filters import ClassSessionFilter, TeachingScheduleFilter
 from .forms import ClassSessionForm
 from .models import ClassSession, ClassSessionPhoto
 
-
+# Hàm phụ để lấy tên hiển thị của người dùng
 def _user_display_name(user):
     if not user:
         return ""
@@ -39,7 +39,7 @@ def _user_display_name(user):
     full_name = user.get_full_name()
     return full_name or user.username
 
-
+# Hàm phụ để phân tích tham số ngày từ chuỗi
 def _parse_date_param(value, default):
     if not value:
         return default
@@ -587,6 +587,7 @@ def my_schedule_view(request):
         return render(request, "_schedule_table.html", context)
     return render(request, "my_schedule.html", context)
 
+# Hàm phụ để xây dựng context cho Lịch dạy
 def _build_teaching_schedule_context(request, *, force_self=False):
     today = date.today()
     viewer = request.user

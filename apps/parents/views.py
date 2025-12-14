@@ -20,14 +20,14 @@ from apps.assessments.models import Assessment
 from apps.students.models import StudentProduct
 from .services import build_parent_children_snapshot
 
-
+# Kiểm tra người dùng có vai trò phụ huynh không
 def _user_is_parent(user):
 	role = (getattr(user, "role", "") or "").strip().upper()
 	if role == "PARENT":
 		return True
 	return user.groups.filter(name__iexact="parent").exists()
 
-
+# Tổng quan về con cái
 @login_required
 def children_overview(request, default_tab="overview"):
 	parent = request.user
@@ -62,7 +62,7 @@ def children_overview(request, default_tab="overview"):
 	}
 	return render(request, "children_overview.html", context)
 
-
+# Báo cáo học tập của con
 @login_required
 def children_report(request):
 	if not _user_is_parent(request.user):
@@ -79,7 +79,7 @@ def children_report(request):
 		return render(request, "_student_report_filterable_content.html", context)
 	return render(request, "children_report.html", context)
 
-
+# Chi tiết báo cáo học tập của con
 @login_required
 def children_report_detail(request, pk: int):
 	if not _user_is_parent(request.user):
@@ -108,7 +108,7 @@ def children_report_detail(request, pk: int):
 		},
 	)
 
-
+# Chi tiết buổi học của con
 @login_required
 def children_session_detail(request, enrollment_id: int, session_id: int):
 	if not _user_is_parent(request.user):
